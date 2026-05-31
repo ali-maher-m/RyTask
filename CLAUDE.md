@@ -27,16 +27,32 @@ Feature work is scaffolded by `.specify/scripts/bash/create-new-feature.sh` into
 
 ## The planning documents (the source of truth)
 
-Read in this order; each builds on the previous. Requirement IDs (`FR-*`, `NFR-*`), differentiators (`D1`–`D9`), and opportunities (`OPP-*`) are cited across the docs — trace decisions back through these IDs.
+**All planning/spec docs live in `knowledge/`** (not the repo root). Read in this order; each builds on the previous. Requirement IDs (`FR-*`, `NFR-*`), differentiators (`D1`–`D9`), and opportunities (`OPP-*`) are cited across the docs — trace decisions back through these IDs.
 
-1. **VISION.md** — the "why": problem, personas (note the **"Albert/Marissa test"** — must be usable by non-technical teammates), positioning, phased roadmap, monetization.
-2. **features.md** — capability matrix across 15 tools, MVP/v2/v3 feature tiers, the nine differentiators.
-3. **REQUIREMENTS.md** — functional/non-functional requirements with stable IDs; the testable spec.
-4. **PRD.md** — product scope, user stories, acceptance criteria, Stage 1 vs later.
-5. **BRD.md** — business objectives, success metrics, scope boundaries.
-6. **ARCHITECTURE.md** — **the single source of architectural truth.** Bounded contexts, data model, multi-tenancy, MCP parity, testing system, monorepo layout, CI/CD. Decisions are marked `▶ DECISION` and indexed as ADRs in §17.
+1. **`knowledge/VISION.md`** — the "why": problem, personas (note the **"Albert/Marissa test"** — must be usable by non-technical teammates), positioning, phased roadmap, monetization.
+2. **`knowledge/features.md`** — capability matrix across 15 tools, MVP/v2/v3 feature tiers, the nine differentiators.
+3. **`knowledge/REQUIREMENTS.md`** — functional/non-functional requirements with stable IDs; the testable spec.
+4. **`knowledge/PRD.md`** — product scope, user stories, acceptance criteria, Stage 1 vs later.
+5. **`knowledge/BRD.md`** — business objectives, success metrics, scope boundaries.
+6. **`knowledge/ARCHITECTURE.md`** — **the single source of architectural truth.** Bounded contexts, data model, multi-tenancy, MCP parity, testing system, monorepo layout, CI/CD. Decisions are marked `▶ DECISION` and indexed as ADRs in §17.
 
-Supporting: `capability-catalog.md`, `research/`, `docs/`. The **North-Star metric** is CTW (Tasks Captured-and-Tracked per Active User per Week) — couples fast capture with honest time-tracking.
+### Where to find each piece of info (`knowledge/` map)
+
+| File | What's in it / when to read |
+|------|------------------------------|
+| `knowledge/VISION.md` | Problem, personas, positioning, roadmap, monetization, North-Star metric. |
+| `knowledge/features.md` | Capability matrix, MVP/v2/v3 tiers, the nine differentiators (D1–D9). |
+| `knowledge/REQUIREMENTS.md` | Testable `FR-*`/`NFR-*` requirements — the authority for "must it do X?". |
+| `knowledge/PRD.md` | Product scope, user stories, acceptance criteria, Stage 1 vs later. |
+| `knowledge/BRD.md` | Business objectives, success metrics, scope boundaries. |
+| `knowledge/ARCHITECTURE.md` | **Single architectural source of truth** — contexts, data model, multi-tenancy, MCP parity, testing, layout, ADRs (§17). |
+| `knowledge/capability-catalog.md` | Exhaustive catalog of capabilities/use cases (maps to MCP-tool parity). |
+| `knowledge/BUILD-PLAYBOOK.md` | Step-by-step build playbook. **Do not read unless explicitly asked** — drive build work from the Spec Kit flow and ARCHITECTURE.md instead. |
+| `knowledge/research/pain-points-and-opportunities.md` | Ranked pain points → opportunities (`OPP-*`); the evidence layer under VISION/features. |
+| `knowledge/research/competitors/mainstream-saas-suites.md` | SaaS competitor deep dive (Jira, Linear, Asana, Monday, ClickUp, etc.). |
+| `knowledge/docs/competitor-deep-dive-open-source.md` | Open-source competitor deep dive (Plane, OpenProject, Taiga, Vikunja, Leantime, Huly, Redmine). |
+
+The **North-Star metric** is CTW (Tasks Captured-and-Tracked per Active User per Week) — couples fast capture with honest time-tracking.
 
 ## FIXED technical stack (do not substitute)
 
