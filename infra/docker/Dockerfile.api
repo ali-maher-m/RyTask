@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# Builds ONE image that runs both `api` and `worker` (ARCHITECTURE §2.2, ADR-012).
+# Start the worker with `WORKER=1` (see docker-compose.yml).
+
+FROM node:22-alpine AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /repo
+
+# ---- build: install everything, build the workspace, prune to a prod deployment ----
+FROM base AS build
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm build
+# `pnpm deploy` bundles workspace deps (copies, not symlinks) into a standalone tree.
+RUN pnpm --filter @rytask/api --prod deploy /app
+
+# ---- runtime ----
+FROM base AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app /app
+# Drizzle migrations ship with the db package so `migrate.js` can find them at runtime.
+COPY --from=build /repo/packages/db/migrations /app/node_modules/@rytask/db/migrations
+EXPOSE 3001
+# Override with `node node_modules/@rytask/db/dist/migrate.js` for the migrate job,
+# and set WORKER=1 to run the worker instead of the HTTP server.
+CMD ["node", "dist/main.js"]

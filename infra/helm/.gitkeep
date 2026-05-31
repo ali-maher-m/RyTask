@@ -1,0 +1,2 @@
+# Helm chart for Kubernetes self-hosting lands in v3 (ARCHITECTURE §15 "Future — Helm").
+# docker-compose remains the canonical local/one-box path.

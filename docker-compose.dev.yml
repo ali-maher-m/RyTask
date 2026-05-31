@@ -1,0 +1,32 @@
+# Hot-reload overrides (ARCHITECTURE §15): `docker compose -f docker-compose.yml \
+#   -f docker-compose.dev.yml up`.
+#
+# These bind-mount the repo and run the dev servers. NOTE: this expects node_modules
+# to already exist on the host (run `pnpm install` first); the bind mount shadows the
+# image's node_modules. M0 hardens the dev workflow (anonymous-volume node_modules).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+      target: build
+    command: ['pnpm', '--filter', '@rytask/api', 'dev']
+    working_dir: /repo
+    volumes:
+      - ./:/repo
+    environment:
+      DATABASE_URL: postgres://rytask:rytask@postgres:5432/rytask
+      REDIS_URL: redis://redis:6379
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      target: build
+    command: ['pnpm', '--filter', '@rytask/web', 'dev']
+    working_dir: /repo
+    volumes:
+      - ./:/repo
+    environment:
+      API_URL: http://api:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3001

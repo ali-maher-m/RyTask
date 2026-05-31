@@ -3,3 +3,30 @@
 
 # macOS
 .DS_Store
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# Environment (only .env.example is committed)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

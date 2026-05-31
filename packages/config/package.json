@@ -1,0 +1,14 @@
+{
+  "name": "@rytask/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./vitest/base": "./vitest/base.ts",
+    "./vitest/integration": "./vitest/integration.ts",
+    "./dependency-cruiser": "./dependency-cruiser.cjs",
+    "./tsconfig/*": "./tsconfig/*.json"
+  },
+  "dependencies": {
+    "vitest": "2.1.8"
+  }
+}

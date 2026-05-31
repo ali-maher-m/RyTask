@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780075084447,
+      "tag": "0000_brief_praxagora",
+      "breakpoints": true
+    }
+  ]
+}

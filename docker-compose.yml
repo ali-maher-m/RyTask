@@ -1,0 +1,125 @@
+# One-command full stack (ARCHITECTURE §15): `docker compose up -d` brings everything
+# online, migrated and seeded. Services + ports match §15.
+name: rytask
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rytask
+      POSTGRES_PASSWORD: rytask
+      POSTGRES_DB: rytask
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rytask']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rytask
+      MINIO_ROOT_PASSWORD: rytasksecret
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - miniodata:/data
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+  # Runs once on startup: transactional migrations, then the deterministic seed.
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    image: rytask-api
+    command:
+      - sh
+      - -c
+      - 'node node_modules/@rytask/db/dist/migrate.js && node node_modules/@rytask/db/dist/seed.js'
+    environment:
+      DATABASE_URL: postgres://rytask:rytask@postgres:5432/rytask
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    image: rytask-api
+    environment:
+      PORT: '3001'
+      DATABASE_URL: postgres://rytask:rytask@postgres:5432/rytask
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '3001:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3001/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Same image as `api`, started as the background worker (WORKER=1).
+  worker:
+    image: rytask-api
+    command: ['node', 'dist/main.js']
+    environment:
+      WORKER: '1'
+      DATABASE_URL: postgres://rytask:rytask@postgres:5432/rytask
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+    image: rytask-web
+    environment:
+      API_URL: http://api:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - '3000:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  miniodata:

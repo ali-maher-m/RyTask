@@ -1,0 +1,105 @@
+# CI gate pipeline (ARCHITECTURE §16.2). Every gate below is REQUIRED on `main` via
+# branch protection: all jobs green + >= 1 review, no merge without the required tests
+# and thresholds. Coverage thresholds are turned on in M0 (see vitest base preset).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  quality:
+    name: Lint + Format + Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint + format check (Biome)
+        run: pnpm lint
+      - name: Build (types needed for typecheck)
+        run: pnpm build
+      - name: Typecheck (tsc)
+        run: pnpm typecheck
+
+  test:
+    name: Unit + Contract + Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Unit + contract tests (Vitest)
+        run: pnpm test
+      - name: Required-tests manifest check
+        run: pnpm check:required-tests
+      - name: MCP-surface parity check
+        run: pnpm check:mcp-parity
+      - name: Architecture-boundary check
+        run: pnpm check:boundaries
+
+  integration:
+    name: Integration (real Postgres via testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Generate migrations (if not committed)
+        run: pnpm db:generate
+      - name: Integration tests (Docker-backed Postgres)
+        run: pnpm test:integration
+
+  e2e:
+    name: E2E + Accessibility (Playwright + axe)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Install Playwright browser
+        run: pnpm --filter @rytask/web exec playwright install --with-deps chromium
+      - name: E2E + a11y
+        run: pnpm test:e2e
+
+  # --- Post-merge (documented; enable when deploy + nightly infra exist) ---
+  # build-and-push:  build & push api/web images, deploy staging->prod + drizzle migrate
+  # nightly:         k6 load/perf regression gate + dependency/secret scan

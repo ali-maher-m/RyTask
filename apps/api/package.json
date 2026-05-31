@@ -1,0 +1,44 @@
+{
+  "name": "@rytask/api",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "worker": "WORKER=1 node dist/main.js",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.0.1",
+    "@nestjs/config": "4.0.0",
+    "@nestjs/core": "11.0.1",
+    "@nestjs/platform-express": "11.0.1",
+    "@rytask/contracts": "workspace:*",
+    "@rytask/db": "workspace:*",
+    "drizzle-orm": "0.38.3",
+    "ioredis": "5.4.2",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.1",
+    "uuidv7": "1.0.2"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "11.0.1",
+    "@swc/core": "1.10.7",
+    "@testcontainers/postgresql": "10.16.0",
+    "@types/express": "5.0.0",
+    "@types/node": "22.10.5",
+    "@types/supertest": "6.0.2",
+    "@vitest/coverage-v8": "2.1.8",
+    "supertest": "7.0.0",
+    "testcontainers": "10.16.0",
+    "tsx": "4.19.2",
+    "typescript": "5.7.3",
+    "unplugin-swc": "1.5.1",
+    "vitest": "2.1.8"
+  }
+}
