@@ -1,0 +1,693 @@
+openapi: 3.1.0
+info:
+  title: RyTask API — M1 Core Work Loop
+  version: "1.0.0-m1"
+  description: >
+    REST surface for Milestone M1 (capture → detail → board/list → organize → views → collaborate
+    → search). Served under /api/v1. The success/error envelope, cursor pagination, tenancy and RBAC
+    rules are described in contracts/README.md. Every mutating route is RBAC-guarded server-side and
+    tenant-scoped from the authenticated principal (Principles II, VI). `x-rbac` / `x-fr` extensions
+    annotate the required permission and the requirement ID each route satisfies.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: projects
+  - name: statuses
+  - name: work-items
+  - name: comments
+  - name: labels
+  - name: views
+  - name: search
+  - name: notifications
+
+paths:
+  # ---------------------------------------------------------------- projects
+  /projects:
+    get:
+      tags: [projects]
+      summary: List accessible projects
+      x-fr: FR-PROJ-001
+      parameters:
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+        - name: includeArchived
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200': { $ref: '#/components/responses/ProjectListEnvelope' }
+    post:
+      tags: [projects]
+      summary: Create a project (seeds default statuses + counter)
+      x-fr: FR-PROJ-001, FR-WF-001
+      x-rbac: org:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateProject' } } }
+      responses:
+        '201': { $ref: '#/components/responses/ProjectEnvelope' }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /projects/{projectId}:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    get:
+      tags: [projects]
+      summary: Get a project
+      x-rbac: project:viewer
+      responses:
+        '200': { $ref: '#/components/responses/ProjectEnvelope' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [projects]
+      summary: Update / archive / restore a project
+      x-fr: FR-PROJ-001
+      x-rbac: project:admin
+      requestBody:
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateProject' } } }
+      responses:
+        '200': { $ref: '#/components/responses/ProjectEnvelope' }
+    delete:
+      tags: [projects]
+      summary: Delete a project (cascade)
+      x-rbac: project:admin
+      responses:
+        '204': { description: Deleted }
+  /projects/{projectId}/members:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    get:
+      tags: [projects]
+      summary: List project members
+      x-fr: FR-PROJ-002
+      x-rbac: project:viewer
+      responses: { '200': { description: Members, content: { application/json: { schema: { $ref: '#/components/schemas/MemberListEnvelope' } } } } }
+    post:
+      tags: [projects]
+      summary: Add a member
+      x-fr: FR-PROJ-002
+      x-rbac: project:admin
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AddMember' } } }
+      responses: { '201': { description: Added }, '403': { $ref: '#/components/responses/Error' } }
+
+  # ---------------------------------------------------------------- statuses
+  /projects/{projectId}/statuses:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    get:
+      tags: [statuses]
+      summary: List statuses (board columns, ordered)
+      x-fr: FR-WF-001
+      x-rbac: project:viewer
+      responses: { '200': { description: Statuses, content: { application/json: { schema: { $ref: '#/components/schemas/StatusListEnvelope' } } } } }
+    post:
+      tags: [statuses]
+      summary: Add a status (mapped to a category)
+      x-fr: FR-WF-002
+      x-rbac: project:admin
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateStatus' } } }
+      responses: { '201': { description: Created } }
+  /projects/{projectId}/statuses/reorder:
+    parameters: [ { $ref: '#/components/parameters/projectId' } ]
+    post:
+      tags: [statuses]
+      summary: Reorder statuses
+      x-fr: FR-WF-002
+      x-rbac: project:admin
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { orderedIds: { type: array, items: { type: string, format: uuid } } }, required: [orderedIds] } } }
+      responses: { '200': { description: Reordered } }
+  /statuses/{statusId}:
+    parameters: [ { name: statusId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch:
+      tags: [statuses]
+      summary: Rename / recolor / recategorize a status
+      x-fr: FR-WF-002
+      x-rbac: project:admin
+      responses: { '200': { description: Updated } }
+    delete:
+      tags: [statuses]
+      summary: Delete a status (requires reassignTo if it has items)
+      x-fr: FR-WF-002
+      x-rbac: project:admin
+      parameters:
+        - name: reassignTo
+          in: query
+          schema: { type: string, format: uuid }
+          description: Target status to re-map existing items to. Required when the status has items.
+      responses:
+        '204': { description: Deleted }
+        '409': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- work-items
+  /work-items:
+    get:
+      tags: [work-items]
+      summary: List / filter work items (powers List, Board, smart views)
+      description: >
+        Accepts the filter AST (see filter-dsl.md) as a base64-encoded `filter` param OR typed
+        shorthand params. Cursor (keyset) pagination. `group` + `sort` per filter-dsl.md.
+      x-fr: FR-VIEW-001, FR-VIEW-002, FR-VIEW-006, FR-VIEW-007, FR-VIEW-010
+      x-rbac: project:viewer
+      parameters:
+        - { name: projectId, in: query, schema: { type: string, format: uuid }, description: Omit for cross-project (My Work). }
+        - { name: filter, in: query, schema: { type: string }, description: base64(JSON filter AST). }
+        - { name: smart, in: query, schema: { type: string, enum: [my-issues, due-soon, overdue, urgent, my-work] }, description: Live smart view (FR-VIEW-009, FR-PROJ-006). }
+        - { name: group, in: query, schema: { type: string, enum: [status, assignee, priority, label, project] } }
+        - { name: sort, in: query, schema: { type: string }, description: "Comma list, e.g. -priority,due_date (multi-key)." }
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200': { $ref: '#/components/responses/WorkItemListEnvelope' }
+    post:
+      tags: [work-items]
+      summary: Create a work item (title-only or quick-add inline syntax)
+      description: >
+        `title` alone creates with project defaults (FR-WI-001). If `quickAdd` is provided, the
+        server parses `@assignee #label !priority ^date` into structured fields and returns any
+        `unresolved` tokens (FR-WI-004). Mints a never-recycled per-project key (FR-WI-002).
+      x-fr: FR-WI-001, FR-WI-004, FR-WI-002
+      x-rbac: project:member
+      parameters: [ { $ref: '#/components/parameters/idempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateWorkItem' } } }
+      responses:
+        '201': { $ref: '#/components/responses/WorkItemEnvelope' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /work-items/{itemId}:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    get:
+      tags: [work-items]
+      summary: Get a work item (full payload incl. labels, watchers, child count)
+      x-fr: FR-WI-003
+      x-rbac: project:viewer
+      responses:
+        '200': { $ref: '#/components/responses/WorkItemEnvelope' }
+        '404': { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [work-items]
+      summary: Update fields (logs activity per changed field)
+      description: Optimistic concurrency via `version`; stale → 409 (FR-WI-009).
+      x-fr: FR-WI-003, FR-WI-006, FR-WI-009, FR-DATE-001, FR-DATE-002, FR-PRIO-001, FR-EST
+      x-rbac: project:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateWorkItem' } } }
+      responses:
+        '200': { $ref: '#/components/responses/WorkItemEnvelope' }
+        '409': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [work-items]
+      summary: Soft-delete (trash)
+      x-fr: FR-WI-008
+      x-rbac: project:member
+      responses: { '204': { description: Trashed } }
+  /work-items/{itemId}/restore:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    post:
+      tags: [work-items]
+      summary: Restore from trash
+      x-fr: FR-WI-008
+      x-rbac: project:member
+      responses: { '200': { $ref: '#/components/responses/WorkItemEnvelope' } }
+  /work-items/{itemId}/move:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    post:
+      tags: [work-items]
+      summary: Move on board (change status and/or position)
+      description: Single-row fractional reorder; logs a STATUS_CHANGED/MOVED activity entry (FR-VIEW-001).
+      x-fr: FR-VIEW-001
+      x-rbac: project:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MoveWorkItem' } } }
+      responses:
+        '200': { $ref: '#/components/responses/WorkItemEnvelope' }
+        '409': { $ref: '#/components/responses/Error' }
+  /work-items/{itemId}/assign:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    post:
+      tags: [work-items]
+      summary: Assign / unassign (single assignee in M1)
+      x-fr: FR-WI-003, FR-NOTIF-001
+      x-rbac: project:member
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { assigneeId: { type: [string, "null"], format: uuid } } } } }
+      responses: { '200': { $ref: '#/components/responses/WorkItemEnvelope' } }
+  /work-items/{itemId}/labels:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    post:
+      tags: [work-items]
+      summary: Add a label (by id or name; create-on-capture per policy)
+      x-fr: FR-LBL-001
+      x-rbac: project:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { labelId: { type: string, format: uuid }, name: { type: string } } } } }
+      responses: { '201': { description: Labeled } }
+  /work-items/{itemId}/labels/{labelId}:
+    parameters:
+      - { $ref: '#/components/parameters/itemId' }
+      - { name: labelId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [work-items]
+      summary: Remove a label
+      x-fr: FR-LBL-001
+      x-rbac: project:member
+      responses: { '204': { description: Removed } }
+  /work-items/{itemId}/subtasks:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    get:
+      tags: [work-items]
+      summary: List child sub-tasks
+      x-fr: FR-HIER-001
+      x-rbac: project:viewer
+      responses: { '200': { $ref: '#/components/responses/WorkItemListEnvelope' } }
+    post:
+      tags: [work-items]
+      summary: Create a sub-task under this item (cycle/depth checked)
+      x-fr: FR-HIER-001
+      x-rbac: project:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateWorkItem' } } }
+      responses:
+        '201': { $ref: '#/components/responses/WorkItemEnvelope' }
+        '422': { $ref: '#/components/responses/Error' }
+  /work-items/{itemId}/activity:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    get:
+      tags: [work-items]
+      summary: Per-item activity / history feed
+      x-fr: FR-WI-009
+      x-rbac: project:viewer
+      responses: { '200': { description: Activity, content: { application/json: { schema: { $ref: '#/components/schemas/ActivityListEnvelope' } } } } }
+
+  # ---------------------------------------------------------------- comments
+  /work-items/{itemId}/comments:
+    parameters: [ { $ref: '#/components/parameters/itemId' } ]
+    get:
+      tags: [comments]
+      summary: List threaded comments
+      x-fr: FR-COLLAB-001
+      x-rbac: project:viewer
+      responses: { '200': { description: Comments, content: { application/json: { schema: { $ref: '#/components/schemas/CommentListEnvelope' } } } } }
+    post:
+      tags: [comments]
+      summary: Post a comment (markdown; @mentions notify + grant context access)
+      x-fr: FR-COLLAB-001, FR-COLLAB-002, FR-NOTIF-001
+      x-rbac: project:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateComment' } } }
+      responses: { '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CommentEnvelope' } } } } }
+
+  # ---------------------------------------------------------------- labels
+  /labels:
+    get:
+      tags: [labels]
+      summary: List workspace labels
+      x-fr: FR-LBL-001
+      x-rbac: project:viewer
+      responses: { '200': { description: Labels, content: { application/json: { schema: { $ref: '#/components/schemas/LabelListEnvelope' } } } } }
+    post:
+      tags: [labels]
+      summary: Create a label
+      x-fr: FR-LBL-001
+      x-rbac: project:admin
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, color: { type: string } } } } }
+      responses: { '201': { description: Created } }
+
+  # ---------------------------------------------------------------- views
+  /views:
+    get:
+      tags: [views]
+      summary: List saved views (personal + shared) for a project or cross-project
+      x-fr: FR-VIEW-008
+      x-rbac: project:viewer
+      parameters: [ { name: projectId, in: query, schema: { type: string, format: uuid } } ]
+      responses: { '200': { description: Views, content: { application/json: { schema: { $ref: '#/components/schemas/ViewListEnvelope' } } } } }
+    post:
+      tags: [views]
+      summary: Save a view (personal by default; shared if scope=SHARED)
+      x-fr: FR-VIEW-008
+      x-rbac: project:member
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SaveView' } } }
+      responses: { '201': { description: Saved, content: { application/json: { schema: { $ref: '#/components/schemas/ViewEnvelope' } } } } }
+  /views/{viewId}:
+    parameters: [ { name: viewId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch:
+      tags: [views]
+      summary: Update a saved view
+      x-fr: FR-VIEW-008
+      x-rbac: project:member
+      responses: { '200': { $ref: '#/components/responses/ProjectEnvelope' } }
+    delete:
+      tags: [views]
+      summary: Delete a saved view
+      x-rbac: project:member
+      responses: { '204': { description: Deleted } }
+
+  # ---------------------------------------------------------------- search
+  /search:
+    get:
+      tags: [search]
+      summary: Full-text search (items, comments, projects, labels, users), tenant + permission scoped
+      x-fr: FR-SRCH-001, FR-SRCH-004
+      x-rbac: authenticated
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: types, in: query, schema: { type: string }, description: "Comma list: work_item,comment,project,label,user" }
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Ranked, scoped results
+          content: { application/json: { schema: { $ref: '#/components/schemas/SearchEnvelope' } } }
+
+  # ---------------------------------------------------------------- notifications
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: Inbox (filter by state)
+      x-fr: FR-NOTIF-002
+      x-rbac: authenticated
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [unread, all, snoozed, archived], default: unread } }
+        - $ref: '#/components/parameters/cursor'
+        - $ref: '#/components/parameters/limit'
+      responses: { '200': { description: Inbox, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationListEnvelope' } } } } }
+  /notifications/unread-count:
+    get:
+      tags: [notifications]
+      summary: Unread count (badge)
+      x-fr: FR-NOTIF-002
+      x-rbac: authenticated
+      responses: { '200': { description: Count, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { count: { type: integer } } } } } } } } }
+  /notifications/{notificationId}:
+    parameters: [ { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch:
+      tags: [notifications]
+      summary: Mark read/unread, snooze, or archive
+      x-fr: FR-NOTIF-002
+      x-rbac: authenticated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                read: { type: boolean }
+                snoozedUntil: { type: [string, "null"], format: date-time }
+                archived: { type: boolean }
+      responses: { '200': { description: Updated } }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    projectId: { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+    itemId: { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }
+    cursor: { name: cursor, in: query, schema: { type: string }, description: Opaque keyset cursor from pageInfo.nextCursor. }
+    limit: { name: limit, in: query, schema: { type: integer, default: 50, maximum: 200 } }
+    idempotencyKey: { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+  responses:
+    Error:
+      description: Error envelope
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+    ProjectEnvelope:
+      description: A project
+      content: { application/json: { schema: { type: object, properties: { statusCode: { type: integer }, message: { type: string }, data: { $ref: '#/components/schemas/Project' } } } } }
+    ProjectListEnvelope:
+      description: Projects page
+      content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/PageInfoEnvelope' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Project' } } } } ] } } }
+    WorkItemEnvelope:
+      description: A work item
+      content: { application/json: { schema: { type: object, properties: { statusCode: { type: integer }, message: { type: string }, data: { $ref: '#/components/schemas/WorkItem' } } } } }
+    WorkItemListEnvelope:
+      description: Work items page
+      content: { application/json: { schema: { allOf: [ { $ref: '#/components/schemas/PageInfoEnvelope' }, { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/WorkItem' } } } } ] } } }
+  schemas:
+    PageInfoEnvelope:
+      type: object
+      properties:
+        pageInfo:
+          type: object
+          properties:
+            nextCursor: { type: [string, "null"] }
+            hasNextPage: { type: boolean }
+    ErrorEnvelope:
+      type: object
+      required: [error, statusCode, message, timestamp, path]
+      properties:
+        error: { type: string }
+        statusCode: { type: integer }
+        message: { type: array, items: { type: string } }
+        timestamp: { type: string, format: date-time }
+        path: { type: string }
+    Project:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        keyPrefix: { type: string }
+        description: { type: [string, "null"] }
+        icon: { type: [string, "null"] }
+        color: { type: string }
+        leadId: { type: [string, "null"], format: uuid }
+        archivedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    CreateProject:
+      type: object
+      required: [name, keyPrefix]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        keyPrefix: { type: string, pattern: '^[A-Z][A-Z0-9]{1,9}$' }
+        description: { type: string }
+        icon: { type: string }
+        color: { type: string }
+        leadId: { type: string, format: uuid }
+    UpdateProject:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        icon: { type: string }
+        color: { type: string }
+        leadId: { type: [string, "null"], format: uuid }
+        archived: { type: boolean }
+    AddMember:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: string, format: uuid }
+        role: { type: string, enum: [ADMIN, MEMBER, VIEWER], default: MEMBER }
+    MemberListEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/PageInfoEnvelope' }
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { type: object, properties: { userId: { type: string, format: uuid }, role: { type: string }, name: { type: string } } }
+    Status:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        category: { type: string, enum: [BACKLOG, UNSTARTED, STARTED, COMPLETED, CANCELLED] }
+        color: { type: string }
+        position: { type: integer }
+    CreateStatus:
+      type: object
+      required: [name, category]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        category: { type: string, enum: [BACKLOG, UNSTARTED, STARTED, COMPLETED, CANCELLED] }
+        color: { type: string }
+        position: { type: integer }
+    StatusListEnvelope:
+      type: object
+      properties: { data: { type: array, items: { $ref: '#/components/schemas/Status' } } }
+    WorkItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        key: { type: string, description: "Derived display key, e.g. RY-142" }
+        number: { type: integer }
+        projectId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: [string, "null"] }
+        statusId: { type: string, format: uuid }
+        priority: { type: string, enum: [URGENT, HIGH, MEDIUM, LOW, NONE] }
+        assigneeId: { type: [string, "null"], format: uuid }
+        reporterId: { type: [string, "null"], format: uuid }
+        parentId: { type: [string, "null"], format: uuid }
+        childCount: { type: integer }
+        labelIds: { type: array, items: { type: string, format: uuid } }
+        estimateValue: { type: [number, "null"] }
+        startDate: { type: [string, "null"], format: date }
+        endDate: { type: [string, "null"], format: date }
+        dueDate: { type: [string, "null"], format: date }
+        overdue: { type: boolean, description: "Computed: dueDate<today(orgTz) and not in a COMPLETED/CANCELLED status" }
+        position: { type: [number, "null"] }
+        version: { type: integer }
+        completedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateWorkItem:
+      type: object
+      properties:
+        projectId: { type: string, format: uuid, description: "Required at /work-items; implied at /subtasks." }
+        title: { type: string, maxLength: 500 }
+        quickAdd: { type: string, description: "Raw quick-add line; server parses @ # ! ^ tokens (FR-WI-004)." }
+        description: { type: string }
+        statusId: { type: string, format: uuid }
+        priority: { type: string, enum: [URGENT, HIGH, MEDIUM, LOW, NONE] }
+        assigneeId: { type: string, format: uuid }
+        labelIds: { type: array, items: { type: string, format: uuid } }
+        parentId: { type: string, format: uuid }
+        estimateValue: { type: number }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        dueDate: { type: string, format: date }
+      oneOf:
+        - { required: [title] }
+        - { required: [quickAdd] }
+    UpdateWorkItem:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, description: "Expected current version (optimistic lock)." }
+        title: { type: string }
+        description: { type: string }
+        priority: { type: string, enum: [URGENT, HIGH, MEDIUM, LOW, NONE] }
+        assigneeId: { type: [string, "null"], format: uuid }
+        parentId: { type: [string, "null"], format: uuid }
+        estimateValue: { type: [number, "null"] }
+        startDate: { type: [string, "null"], format: date }
+        endDate: { type: [string, "null"], format: date }
+        dueDate: { type: [string, "null"], format: date }
+    MoveWorkItem:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer }
+        statusId: { type: string, format: uuid }
+        beforeId: { type: string, format: uuid, description: "Place before this sibling (fractional rank)." }
+        afterId: { type: string, format: uuid, description: "Place after this sibling." }
+    CreateWorkItemResponseMeta:
+      type: object
+      properties:
+        unresolved:
+          type: array
+          description: "Quick-add tokens that could not be resolved (surfaced, never dropped — FR-WI-004)."
+          items: { type: object, properties: { token: { type: string }, kind: { type: string, enum: [assignee, label, priority, date] } } }
+    Comment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workItemId: { type: string, format: uuid }
+        authorId: { type: string, format: uuid }
+        parentId: { type: [string, "null"], format: uuid }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        editedAt: { type: [string, "null"], format: date-time }
+    CreateComment:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 10000 }
+        parentId: { type: string, format: uuid }
+    CommentEnvelope:
+      type: object
+      properties: { data: { $ref: '#/components/schemas/Comment' } }
+    CommentListEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/PageInfoEnvelope' }
+        - type: object
+          properties: { data: { type: array, items: { $ref: '#/components/schemas/Comment' } } }
+    Label:
+      type: object
+      properties: { id: { type: string, format: uuid }, name: { type: string }, color: { type: string } }
+    LabelListEnvelope:
+      type: object
+      properties: { data: { type: array, items: { $ref: '#/components/schemas/Label' } } }
+    SaveView:
+      type: object
+      required: [name, kind]
+      properties:
+        name: { type: string }
+        kind: { type: string, enum: [BOARD, LIST] }
+        scope: { type: string, enum: [PERSONAL, SHARED], default: PERSONAL }
+        projectId: { type: [string, "null"], format: uuid }
+        filters: { type: object, description: "Filter AST (filter-dsl.md)." }
+        grouping: { type: object }
+        sort: { type: array, items: { type: object } }
+        layout: { type: object }
+    View:
+      allOf:
+        - { $ref: '#/components/schemas/SaveView' }
+        - type: object
+          properties: { id: { type: string, format: uuid }, ownerId: { type: string, format: uuid } }
+    ViewEnvelope:
+      type: object
+      properties: { data: { $ref: '#/components/schemas/View' } }
+    ViewListEnvelope:
+      type: object
+      properties: { data: { type: array, items: { $ref: '#/components/schemas/View' } } }
+    ActivityEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        actorId: { type: [string, "null"], format: uuid }
+        action: { type: string }
+        field: { type: [string, "null"] }
+        oldValue: {}
+        newValue: {}
+        createdAt: { type: string, format: date-time }
+    ActivityListEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/PageInfoEnvelope' }
+        - type: object
+          properties: { data: { type: array, items: { $ref: '#/components/schemas/ActivityEntry' } } }
+    SearchResult:
+      type: object
+      properties:
+        type: { type: string, enum: [work_item, comment, project, label, user] }
+        id: { type: string, format: uuid }
+        title: { type: string }
+        snippet: { type: [string, "null"] }
+        rank: { type: number }
+        projectId: { type: [string, "null"], format: uuid }
+    SearchEnvelope:
+      type: object
+      properties: { data: { type: array, items: { $ref: '#/components/schemas/SearchResult' } } }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [ASSIGNED, MENTIONED, COMMENTED, STATUS_CHANGED, DUE_SOON, OVERDUE] }
+        entityType: { type: string }
+        entityId: { type: string, format: uuid }
+        actorId: { type: [string, "null"], format: uuid }
+        payload: { type: object }
+        readAt: { type: [string, "null"], format: date-time }
+        snoozedUntil: { type: [string, "null"], format: date-time }
+        archivedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NotificationListEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/PageInfoEnvelope' }
+        - type: object
+          properties: { data: { type: array, items: { $ref: '#/components/schemas/Notification' } } }

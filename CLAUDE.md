@@ -114,6 +114,12 @@ drizzle-kit migrate         # planned: transactional migrations (never db:push i
 Until code lands, the actionable "commands" are the Spec Kit skills above and the scripts in `.specify/scripts/bash/`.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+Active feature: **M1 — Core Work Loop** (`001-core-work-loop`). For technologies, project
+structure, shell commands, and the design decisions driving the current work, read the plan and
+its artifacts in `specs/001-core-work-loop/`:
+- `plan.md` — technical context, Constitution Check, project structure, complexity tracking
+- `research.md` — design decisions D0–D18 (keys, quick-add, query engine, search, MCP parity, …)
+- `data-model.md` — the M1 Drizzle enums + 13 tables (extends `packages/db/src/tables.ts`)
+- `contracts/` — REST OpenAPI (`/api/v1`), the filter DSL, and the MCP tool catalog
+- `quickstart.md` — run/seed/test the M1 slice
 <!-- SPECKIT END -->

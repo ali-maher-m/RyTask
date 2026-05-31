@@ -15,6 +15,12 @@ async function bootstrap(): Promise<void> {
   }
 
   const app = await NestFactory.create(AppModule);
+  // The web app is served from a different origin (compose: web :3000 → api :3001), and
+  // the browser sends the dev-principal `x-*` headers, so cross-origin requests must be
+  // allowed. `CORS_ORIGIN` (comma-separated) narrows it for production; default reflects
+  // the request origin for the self-hosted single-tenant case.
+  const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim());
+  app.enableCors({ origin: corsOrigin && corsOrigin.length > 0 ? corsOrigin : true });
   // REST API lives under /api/v1 (§6.1); infra probes stay at the root.
   app.setGlobalPrefix('api/v1', { exclude: ['healthz', 'readyz'] });
 

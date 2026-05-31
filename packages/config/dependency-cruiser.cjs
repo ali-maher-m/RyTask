@@ -13,7 +13,9 @@ module.exports = {
         "events/). Importing another module's services/providers/repositories/domain is " +
         'forbidden (ARCHITECTURE §3.1, §16.1).',
       severity: 'error',
-      from: { path: '^apps/api/src/modules/([^/]+)/' },
+      // Test files (*.spec.ts) are exempt: integration/contract tests legitimately wire
+      // fixtures across modules. Production boundaries below still apply to all src.
+      from: { path: '^apps/api/src/modules/([^/]+)/', pathNot: ['\\.spec\\.ts$'] },
       to: {
         path: '^apps/api/src/modules/[^/]+/',
         pathNot: [
@@ -32,7 +34,13 @@ module.exports = {
       severity: 'error',
       from: {
         path: '^apps/api/src/',
-        pathNot: ['repositories/', 'common/database/', 'common/tenancy/', '\\.module\\.ts$'],
+        pathNot: [
+          'repositories/',
+          'common/database/',
+          'common/tenancy/',
+          '\\.module\\.ts$',
+          '\\.spec\\.ts$', // tests may migrate/seed/query directly
+        ],
       },
       to: { path: '(^|/)packages/db/' },
     },

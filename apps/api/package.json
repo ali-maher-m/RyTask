@@ -11,15 +11,20 @@
     "worker": "WORKER=1 node dist/main.js",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:coverage": "vitest run --config vitest.coverage.config.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.0.1",
     "@nestjs/config": "4.0.0",
     "@nestjs/core": "11.0.1",
+    "@nestjs/event-emitter": "3.0.1",
     "@nestjs/platform-express": "11.0.1",
+    "@nestjs/websockets": "11.0.1",
     "@rytask/contracts": "workspace:*",
     "@rytask/db": "workspace:*",
+    "bullmq": "^5.77.6",
+    "chrono-node": "^2.7.0",
     "drizzle-orm": "0.38.3",
     "ioredis": "5.4.2",
     "reflect-metadata": "0.2.2",

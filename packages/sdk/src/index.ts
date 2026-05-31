@@ -1,13 +1,52 @@
 import type { HealthStatus, Readiness } from '@rytask/contracts';
+import type { components } from './generated';
 
 /**
- * Hand-written placeholder client. M1 replaces this with a client generated from
- * the OpenAPI spec in @rytask/contracts (see `gen:sdk`). The `FetchLike` shape keeps
- * the SDK free of DOM lib typings so it runs in Node, the browser, and tests alike.
+ * Typed RyTask SDK.
+ *
+ * The REST surface types are GENERATED from the OpenAPI contract
+ * (`specs/001-core-work-loop/contracts/openapi.yaml`) by `openapi-typescript`.
+ * Regenerate with `pnpm --filter @rytask/sdk gen:sdk` whenever the contract changes;
+ * `src/generated.ts` is a build artifact — do not edit it by hand.
+ */
+export type { components, operations, paths } from './generated';
+
+/** All response/request schema objects from the OpenAPI contract, keyed by name. */
+export type Schemas = components['schemas'];
+
+/** JSON body of a named OpenAPI response component (e.g. `WorkItemEnvelope`). */
+export type ResponseJson<Name extends keyof components['responses']> =
+  components['responses'][Name] extends { content: { 'application/json': infer B } } ? B : never;
+
+/** Convenience aliases for the M1 domain DTOs (mirror `components.schemas`). */
+export type Project = Schemas['Project'];
+export type CreateProject = Schemas['CreateProject'];
+export type UpdateProject = Schemas['UpdateProject'];
+export type AddMember = Schemas['AddMember'];
+export type Status = Schemas['Status'];
+export type CreateStatus = Schemas['CreateStatus'];
+export type WorkItem = Schemas['WorkItem'];
+export type CreateWorkItem = Schemas['CreateWorkItem'];
+export type UpdateWorkItem = Schemas['UpdateWorkItem'];
+export type MoveWorkItem = Schemas['MoveWorkItem'];
+export type Comment = Schemas['Comment'];
+export type CreateComment = Schemas['CreateComment'];
+export type Label = Schemas['Label'];
+export type View = Schemas['View'];
+export type SaveView = Schemas['SaveView'];
+export type ActivityEntry = Schemas['ActivityEntry'];
+export type SearchResult = Schemas['SearchResult'];
+export type Notification = Schemas['Notification'];
+export type ErrorEnvelope = Schemas['ErrorEnvelope'];
+export type PageInfo = Schemas['PageInfoEnvelope']['pageInfo'];
+
+/**
+ * Minimal fetch shape so the SDK stays free of DOM lib typings and runs in Node,
+ * the browser, and tests alike.
  */
 type FetchLike = (
   input: string,
-  init?: { headers?: Record<string, string> },
+  init?: { method?: string; headers?: Record<string, string>; body?: string },
 ) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
 
 export interface RytaskClientOptions {
@@ -32,21 +71,42 @@ export class RytaskClient {
     this.fetchImpl = fetchImpl;
   }
 
-  private async get<T>(path: string): Promise<T> {
+  private headers(extra?: Record<string, string>): Record<string, string> {
+    return {
+      ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+      ...extra,
+    };
+  }
+
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
+      method,
+      headers: this.headers(
+        body === undefined ? undefined : { 'content-type': 'application/json' },
+      ),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (!res.ok) {
-      throw new Error(`GET ${path} failed with ${res.status}`);
+      throw new Error(`${method} ${path} failed with ${res.status}`);
     }
     return (await res.json()) as T;
   }
 
+  // ── health (M0) ───────────────────────────────────────────────────────────────
   health(): Promise<HealthStatus> {
-    return this.get<HealthStatus>('/healthz');
+    return this.request<HealthStatus>('GET', '/healthz');
   }
 
   readiness(): Promise<Readiness> {
-    return this.get<Readiness>('/readyz');
+    return this.request<Readiness>('GET', '/readyz');
+  }
+
+  // ── work items (M1, types generated from the OpenAPI contract) ──────────────────
+  createWorkItem(body: CreateWorkItem): Promise<ResponseJson<'WorkItemEnvelope'>> {
+    return this.request('POST', '/work-items', body);
+  }
+
+  listProjects(): Promise<ResponseJson<'ProjectListEnvelope'>> {
+    return this.request('GET', '/projects');
   }
 }

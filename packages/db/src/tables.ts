@@ -1,13 +1,41 @@
-import { index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  date,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { uuidv7 } from 'uuidv7';
+import {
+  activityActionEnum,
+  notificationTypeEnum,
+  priorityEnum,
+  projectRoleEnum,
+  statusCategoryEnum,
+  viewKindEnum,
+  viewScopeEnum,
+  watcherReasonEnum,
+} from './enums';
 
 /**
  * Drizzle schema — the SINGLE SOURCE OF TRUTH for the data model (ARCHITECTURE §5, §16.1).
  *
- * Tenancy spine only (M0 foundation): organizations -> workspaces -> users.
- * Every tenant-scoped table carries `organization_id NOT NULL` with a composite index
- * leading on `organization_id` (ADR-002 row-level multi-tenancy, §4.2). IDs are UUIDv7
- * (sortable + safe to expose, ADR-003). Timestamps are `timestamptz`.
+ * Tenancy spine (M0 foundation): organizations -> workspaces -> users.
+ * M1 (data-model §2): projects/members/counters/statuses, work_items + labels/watchers/activity,
+ * comments, views, notifications. Every tenant-scoped table carries `organization_id NOT NULL`
+ * with a composite index leading on `organization_id` (ADR-002). IDs are UUIDv7 (sortable + safe to
+ * expose, ADR-003). Timestamps are `timestamptz`.
+ *
+ * NOTE (data-model §6): `work_items.parent_id` / `comments.parent_id` self-FKs and the generated
+ * `search_vector tsvector` columns + GIN indexes are emitted in the SQL migration (0001), not here —
+ * they live at the SQL layer. The columns themselves are plain `uuid` here so the ORM can read/write
+ * them; search is queried via raw `sql` fragments against the generated column.
  */
 
 /** UUIDv7 primary key, generated app-side (PG16 has no native uuidv7). */
@@ -20,6 +48,8 @@ const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 };
+
+// ────────────────────────────────────────────────────────────── tenancy spine
 
 /** The tenant root. An Organization is the tenant boundary (FR-TEN). */
 export const organizations = pgTable(
@@ -69,7 +99,332 @@ export const users = pgTable(
   ],
 );
 
-export const schema = { organizations, workspaces, users };
+// ──────────────────────────────────────────────────────── projects context
+
+/** A container for work items; owns its statuses, key prefix, membership, key sequence (FR-PROJ-001). */
+export const projects = pgTable(
+  'projects',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    keyPrefix: text('key_prefix').notNull(),
+    description: text('description'),
+    icon: text('icon'),
+    color: text('color').notNull().default('#6B7280'),
+    leadId: uuid('lead_id').references(() => users.id, { onDelete: 'set null' }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index('projects_org_ws_idx').on(t.organizationId, t.workspaceId),
+    uniqueIndex('projects_org_ws_prefix_unique').on(t.organizationId, t.workspaceId, t.keyPrefix),
+  ],
+);
+
+/** Project membership governs access: only members (or org admins) may act (FR-PROJ-002). */
+export const projectMembers = pgTable(
+  'project_members',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: projectRoleEnum('role').notNull().default('MEMBER'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('project_members_org_project_idx').on(t.organizationId, t.projectId),
+    uniqueIndex('project_members_project_user_unique').on(t.projectId, t.userId),
+    index('project_members_org_user_idx').on(t.organizationId, t.userId),
+  ],
+);
+
+/** Atomic per-project key sequence; keys never recycled (FR-WI-002, research D1). */
+export const projectCounters = pgTable('project_counters', {
+  projectId: uuid('project_id')
+    .primaryKey()
+    .references(() => projects.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  lastNumber: integer('last_number').notNull().default(0),
+});
+
+/** Per-project, customizable status rows mapped to a fixed category (FR-WF-001/002, ADR-004). */
+export const statuses = pgTable(
+  'statuses',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    category: statusCategoryEnum('category').notNull(),
+    color: text('color').notNull().default('#6B7280'),
+    position: integer('position').notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    index('statuses_org_project_idx').on(t.organizationId, t.projectId),
+    uniqueIndex('statuses_project_name_unique').on(t.projectId, t.name),
+  ],
+);
+
+// ──────────────────────────────────────────────────────── work-items context
+
+/** The core entity (FR-WI-001/002/003). `parent_id` self-FK + `search_vector` added in migration. */
+export const workItems = pgTable(
+  'work_items',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    number: integer('number').notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    statusId: uuid('status_id')
+      .notNull()
+      .references(() => statuses.id),
+    priority: priorityEnum('priority').notNull().default('NONE'),
+    assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    reporterId: uuid('reporter_id').references(() => users.id, { onDelete: 'set null' }),
+    parentId: uuid('parent_id'),
+    estimateValue: numeric('estimate_value'),
+    startDate: date('start_date'),
+    endDate: date('end_date'),
+    dueDate: date('due_date'),
+    position: numeric('position'),
+    version: integer('version').notNull().default(0),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    ...timestamps,
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('wi_org_proj_status_idx').on(t.organizationId, t.projectId, t.statusId),
+    uniqueIndex('wi_org_proj_number_unique').on(t.organizationId, t.projectId, t.number),
+    index('wi_org_due_idx').on(t.organizationId, t.dueDate),
+    index('wi_org_assignee_idx').on(t.organizationId, t.assigneeId),
+    index('wi_org_parent_idx').on(t.organizationId, t.parentId),
+  ],
+);
+
+/** Workspace-scoped labels, reusable across a workspace's projects (FR-LBL-001, D14). */
+export const labels = pgTable(
+  'labels',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    color: text('color').notNull().default('#3B82F6'),
+    ...timestamps,
+  },
+  (t) => [
+    index('labels_org_ws_idx').on(t.organizationId, t.workspaceId),
+    // Case-insensitive uniqueness per workspace is enforced in the migration (lower(name)).
+  ],
+);
+
+/** Many-to-many between work items and labels. */
+export const workItemLabels = pgTable(
+  'work_item_labels',
+  {
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }),
+    labelId: uuid('label_id')
+      .notNull()
+      .references(() => labels.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.workItemId, t.labelId] }),
+    index('work_item_labels_org_label_idx').on(t.organizationId, t.labelId),
+  ],
+);
+
+/** Threaded markdown comments (FR-COLLAB-001/002, D9). `parent_id` self-FK + search_vector in migration. */
+export const comments = pgTable(
+  'comments',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id')
+      .notNull()
+      .references(() => users.id),
+    parentId: uuid('parent_id'),
+    body: text('body').notNull(),
+    ...timestamps,
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('comments_org_work_item_idx').on(t.organizationId, t.workItemId),
+    index('comments_org_parent_idx').on(t.organizationId, t.parentId),
+  ],
+);
+
+/** Drives notification fan-out + mention-granted context access (D9). */
+export const workItemWatchers = pgTable(
+  'work_item_watchers',
+  {
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    reason: watcherReasonEnum('reason').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.workItemId, t.userId] }),
+    index('work_item_watchers_org_user_idx').on(t.organizationId, t.userId),
+  ],
+);
+
+/** Append-only per-item activity / history (FR-WI-009, D11). No update/delete path. */
+export const activity = pgTable(
+  'activity',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    action: activityActionEnum('action').notNull(),
+    field: text('field'),
+    oldValue: jsonb('old_value'),
+    newValue: jsonb('new_value'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('activity_org_work_item_created_idx').on(t.organizationId, t.workItemId, t.createdAt),
+  ],
+);
+
+// ──────────────────────────────────────────────────────────── views context
+
+/** Saved views (rows). Smart views + My Work are code-defined ASTs, not rows (D7). */
+export const views = pgTable(
+  'views',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    kind: viewKindEnum('kind').notNull(),
+    scope: viewScopeEnum('scope').notNull().default('PERSONAL'),
+    filters: jsonb('filters').notNull().default({}),
+    grouping: jsonb('grouping'),
+    sort: jsonb('sort').notNull().default([]),
+    layout: jsonb('layout'),
+    ...timestamps,
+  },
+  (t) => [
+    index('views_org_project_idx').on(t.organizationId, t.projectId),
+    index('views_org_owner_idx').on(t.organizationId, t.ownerId),
+  ],
+);
+
+// ──────────────────────────────────────────────────── notifications context
+
+/** In-app notifications; exactly-once via unique `dedupe_key` (FR-NOTIF-001/002, D10). */
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    recipientId: uuid('recipient_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: notificationTypeEnum('type').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: uuid('entity_id').notNull(),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    payload: jsonb('payload').notNull().default({}),
+    dedupeKey: text('dedupe_key').notNull(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    snoozedUntil: timestamp('snoozed_until', { withTimezone: true }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('notifications_org_recipient_created_idx').on(
+      t.organizationId,
+      t.recipientId,
+      t.createdAt,
+    ),
+    uniqueIndex('notifications_dedupe_key_unique').on(t.dedupeKey),
+    // Partial unread index (recipient_id WHERE read_at IS NULL) added in the migration.
+  ],
+);
+
+// ─────────────────────────────────────────────────────────── schema + types
+
+export const schema = {
+  organizations,
+  workspaces,
+  users,
+  projects,
+  projectMembers,
+  projectCounters,
+  statuses,
+  workItems,
+  labels,
+  workItemLabels,
+  comments,
+  workItemWatchers,
+  activity,
+  views,
+  notifications,
+};
 export type Schema = typeof schema;
 
 export type Organization = typeof organizations.$inferSelect;
@@ -78,3 +433,28 @@ export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+export type ProjectMember = typeof projectMembers.$inferSelect;
+export type NewProjectMember = typeof projectMembers.$inferInsert;
+export type ProjectCounter = typeof projectCounters.$inferSelect;
+export type NewProjectCounter = typeof projectCounters.$inferInsert;
+export type Status = typeof statuses.$inferSelect;
+export type NewStatus = typeof statuses.$inferInsert;
+export type WorkItem = typeof workItems.$inferSelect;
+export type NewWorkItem = typeof workItems.$inferInsert;
+export type Label = typeof labels.$inferSelect;
+export type NewLabel = typeof labels.$inferInsert;
+export type WorkItemLabel = typeof workItemLabels.$inferSelect;
+export type NewWorkItemLabel = typeof workItemLabels.$inferInsert;
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
+export type WorkItemWatcher = typeof workItemWatchers.$inferSelect;
+export type NewWorkItemWatcher = typeof workItemWatchers.$inferInsert;
+export type Activity = typeof activity.$inferSelect;
+export type NewActivity = typeof activity.$inferInsert;
+export type View = typeof views.$inferSelect;
+export type NewView = typeof views.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;

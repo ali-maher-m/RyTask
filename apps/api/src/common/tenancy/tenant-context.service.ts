@@ -4,6 +4,10 @@ import { Injectable } from '@nestjs/common';
 export interface TenantContext {
   organizationId: string;
   workspaceId?: string;
+  /** The acting principal's user id (resolved from the auth principal, M0). */
+  userId?: string;
+  /** Org-level admin/owner — bypasses project-role checks (RBAC matrix). */
+  isOrgAdmin?: boolean;
 }
 
 /**
@@ -29,5 +33,15 @@ export class TenantContextService {
 
   getOrgId(): string {
     return this.get().organizationId;
+  }
+
+  /** Optional tenant context — null outside a request (used by the interceptor). */
+  maybe(): TenantContext | undefined {
+    return this.als.getStore();
+  }
+
+  /** The acting user id, or undefined if unauthenticated (M0 populates the principal). */
+  getUserId(): string | undefined {
+    return this.als.getStore()?.userId;
   }
 }

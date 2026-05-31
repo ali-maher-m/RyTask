@@ -19,7 +19,8 @@ export default mergeConfig(
       }),
     ],
     test: {
-      include: ['src/**/*.int.spec.ts'],
+      // Tenancy-isolation specs also use real Postgres → run under the integration suite.
+      include: ['src/**/*.int.spec.ts', 'src/**/*.tenancy.spec.ts'],
     },
   }),
 );

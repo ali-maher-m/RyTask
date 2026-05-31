@@ -1,20 +1,38 @@
-import { Module } from '@nestjs/common';
+import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseModule } from './common/database/database.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
+import { PortsModule } from './common/ports/ports.module';
 import { RedisModule } from './common/redis/redis.module';
 import { TenancyModule } from './common/tenancy/tenancy.module';
+import { TenantContextMiddleware } from './common/tenancy/tenant-context.middleware';
+import { CommentsModule } from './modules/comments/comments.module';
 import { HealthModule } from './modules/health/health.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { SearchModule } from './modules/search/search.module';
+import { ViewsModule } from './modules/views/views.module';
+import { WorkItemsModule } from './modules/work-items/work-items.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
     DatabaseModule,
     RedisModule,
     TenancyModule,
+    PortsModule,
     HealthModule,
+    // M1 bounded contexts (data-model §4). Skeletons until each user story fills them.
+    ProjectsModule,
+    WorkItemsModule,
+    CommentsModule,
+    ViewsModule,
+    SearchModule,
+    NotificationsModule,
   ],
   providers: [
     // Pipeline is wired now; the guards are permissive STUBS that M0 fills in
@@ -23,4 +41,9 @@ import { HealthModule } from './modules/health/health.module';
     { provide: APP_GUARD, useClass: TenantGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    // Establish tenant context (org → ALS) for every request before guards/handlers.
+    consumer.apply(TenantContextMiddleware).forRoutes('*');
+  }
+}

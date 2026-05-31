@@ -10,7 +10,51 @@ import { mcpTools } from '../packages/contracts/src/mcp/registry';
 
 // Service capabilities that must be reachable over MCP. M0+ populates this — ideally
 // generated from the service contracts so it cannot drift from the real surface.
-const serviceCapabilities: string[] = [];
+const serviceCapabilities: string[] = [
+  // US4 — projects + membership (contracts/mcp-tools.md)
+  'projects.list',
+  'projects.get',
+  'projects.create',
+  'projects.update',
+  'projects.archive',
+  'projects.delete',
+  'projects.members.add',
+  // US1 — capture (contracts/mcp-tools.md)
+  'workItems.create',
+  'workItems.quickAdd',
+  // US2 — detail (contracts/mcp-tools.md)
+  'workItems.update',
+  'workItems.delete',
+  'workItems.restore',
+  'workItems.addLabel',
+  'workItems.removeLabel',
+  'workItems.activity',
+  'labels.list',
+  'labels.create',
+  // US3 — board/list + customizable statuses (contracts/mcp-tools.md)
+  'workItems.list',
+  'workItems.get',
+  'workItems.move',
+  // US6 — sub-tasks (contracts/mcp-tools.md)
+  'workItems.addSubtask',
+  'statuses.list',
+  'statuses.create',
+  'statuses.update',
+  'statuses.reorder',
+  'statuses.delete',
+  // US5 — saved views (contracts/mcp-tools.md)
+  'views.list',
+  'views.save',
+  'views.update',
+  'views.delete',
+  // US7 — comments + notifications (contracts/mcp-tools.md)
+  'comments.list',
+  'comments.create',
+  'notifications.list',
+  'notifications.update',
+  // US8 — search (contracts/mcp-tools.md)
+  'search.query',
+];
 
 function main(): void {
   const exposed = new Set(mcpTools.map((tool) => tool.capability));

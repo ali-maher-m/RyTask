@@ -22,7 +22,13 @@ export default mergeConfig(
     ],
     test: {
       include: ['src/**/*.spec.ts'],
-      exclude: ['**/node_modules/**', '**/dist/**', '**/*.int.spec.ts', '**/*.e2e.spec.ts'],
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/*.int.spec.ts',
+        '**/*.tenancy.spec.ts',
+        '**/*.e2e.spec.ts',
+      ],
     },
   }),
 );

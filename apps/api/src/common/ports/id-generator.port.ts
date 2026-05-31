@@ -5,6 +5,9 @@ export interface IdGenerator {
   next(): string;
 }
 
+/** DI token for the IdGenerator port. */
+export const ID_GENERATOR = Symbol('ID_GENERATOR');
+
 export const systemIdGenerator: IdGenerator = {
   next: () => uuidv7(),
 };

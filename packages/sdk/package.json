@@ -13,12 +13,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "gen:sdk": "echo 'TODO(M1): generate the typed client from packages/contracts OpenAPI spec'"
+    "gen:sdk": "openapi-typescript ../../specs/001-core-work-loop/contracts/openapi.yaml -o src/generated.ts && biome format --write src/generated.ts"
   },
   "dependencies": {
     "@rytask/contracts": "workspace:*"
   },
   "devDependencies": {
+    "openapi-typescript": "7.13.0",
     "typescript": "5.7.3"
   }
 }
