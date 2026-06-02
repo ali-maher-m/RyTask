@@ -124,8 +124,13 @@ async function tryRefresh(): Promise<boolean> {
   return refreshing;
 }
 
-/** Authenticated call — attaches the bearer token and silently refreshes once on a 401. */
-export async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
+/**
+ * Authenticated `fetch` returning the raw `Response` — attaches the bearer token and silently
+ * refreshes once on a 401. Use this when the caller must branch on the status itself (e.g. a 409
+ * optimistic-concurrency conflict, or a 204 no-content); otherwise prefer {@link authedRequest},
+ * which parses JSON and throws {@link ApiError} on a non-2xx. `path` is relative to `/api/v1`.
+ */
+export async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
   const send = async (): Promise<Response> => {
     const token = getAccessToken();
     return fetch(`${API_BASE}/api/v1${path}`, {
@@ -142,6 +147,12 @@ export async function authedRequest<T>(path: string, init?: RequestInit): Promis
   if (res.status === 401 && (await tryRefresh())) {
     res = await send();
   }
+  return res;
+}
+
+/** Authenticated call — attaches the bearer token, silently refreshes once on a 401, parses JSON. */
+export async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await authedFetch(path, init);
   return parse<T>(res, init?.method ?? 'GET', path);
 }
 

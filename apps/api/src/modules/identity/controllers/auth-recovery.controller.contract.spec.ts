@@ -18,7 +18,10 @@ describe('AuthRecoveryController (contract)', () => {
     requestReset: vi.fn(async () => undefined),
     confirmReset: vi.fn(async () => undefined),
   };
-  const mockVerification = { verifyEmail: vi.fn(async () => undefined) };
+  const mockVerification = {
+    verifyEmail: vi.fn(async () => undefined),
+    requestVerification: vi.fn(async () => undefined),
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -72,6 +75,21 @@ describe('AuthRecoveryController (contract)', () => {
       .post('/api/v1/auth/confirm-password-reset')
       .send({ token: 'rytask_otp_dead', newPassword: 'a-good-password' });
     expect(res.status).toBe(410);
+  });
+
+  it('POST /auth/request-verification → 202 (public, uniform)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/request-verification')
+      .send({ email: 'someone@x.test' });
+    expect(res.status).toBe(202);
+    expect(mockVerification.requestVerification).toHaveBeenCalledWith('someone@x.test');
+  });
+
+  it('POST /auth/request-verification bad email → 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/request-verification')
+      .send({ email: 'nope' });
+    expect(res.status).toBe(400);
   });
 
   it('POST /auth/verify-email → 204', async () => {

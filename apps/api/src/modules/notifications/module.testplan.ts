@@ -6,6 +6,7 @@ export const testPlan: ModuleTestPlan = {
   providers: [
     'InboxProvider',
     'NotificationsDispatchProcessor',
+    'DueScanProcessor',
     'NotificationsQueue',
     'NotificationsSubscriber',
     'NotificationsService',
@@ -45,6 +46,16 @@ export const testPlan: ModuleTestPlan = {
       kind: 'contract',
       target: 'NotificationsController',
       file: 'controllers/notifications.controller.contract.spec.ts',
+    },
+    {
+      kind: 'unit',
+      target: 'NotificationsSubscriber',
+      file: 'processors/notifications.subscriber.spec.ts',
+    },
+    {
+      kind: 'unit',
+      target: 'DueScanProcessor',
+      file: 'processors/due-scan.processor.spec.ts',
     },
   ],
 };

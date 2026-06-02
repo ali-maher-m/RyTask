@@ -1,3 +1,4 @@
+import { RequireAuth } from '../../components/require-auth';
 import { MyWorkClient } from './my-work-client';
 
 /**
@@ -8,5 +9,9 @@ import { MyWorkClient } from './my-work-client';
 export const dynamic = 'force-dynamic';
 
 export default function MyWorkPage() {
-  return <MyWorkClient />;
+  return (
+    <RequireAuth>
+      <MyWorkClient />
+    </RequireAuth>
+  );
 }

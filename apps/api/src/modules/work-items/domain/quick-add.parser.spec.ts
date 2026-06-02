@@ -37,6 +37,25 @@ describe('parseQuickAdd', () => {
     );
   });
 
+  it('parses a multi-word natural date phrase and keeps the rest as the title', () => {
+    const r = parseQuickAdd('Plan offsite ^next Friday', { referenceDate: REF });
+    expect(r.title).toBe('Plan offsite');
+    expect(r.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.unresolved).toEqual([]);
+  });
+
+  it('resolves a relative multi-word date (^in 3 days)', () => {
+    const r = parseQuickAdd('Ship ^in 3 days', { referenceDate: REF });
+    expect(r.dueDate).toBe('2026-06-03');
+    expect(r.title).toBe('Ship');
+  });
+
+  it('stops a date phrase at the single token when the rest is title text', () => {
+    const r = parseQuickAdd('x ^friday ship it', { referenceDate: REF });
+    expect(r.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.title).toBe('x ship it');
+  });
+
   it('does NOT treat mid-word markers as tokens (C#, emails)', () => {
     const r = parseQuickAdd('Learn C# and email foo@bar.com', { referenceDate: REF });
     expect(r.title).toBe('Learn C# and email foo@bar.com');

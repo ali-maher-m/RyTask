@@ -2,6 +2,7 @@ import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@ne
 import { type ConnectionOptions, Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../../common/redis/redis.module';
+import { DueScanProcessor } from './due-scan.processor';
 import {
   type NotificationJobData,
   NotificationsDispatchProcessor,
@@ -9,6 +10,12 @@ import {
 
 /** BullMQ queue name for notification dispatch (one job per domain event). */
 export const NOTIFICATIONS_QUEUE = 'notifications.dispatch';
+
+/** BullMQ job name for the daily due-soon/overdue scan (a repeatable job on the same queue). */
+export const DUE_SCAN_JOB = 'due-scan';
+
+/** Cron for the daily due scan (07:00 server time) — produces DUE_SOON/OVERDUE notifications. */
+export const DUE_SCAN_CRON = '0 7 * * *';
 
 /**
  * Owns the BullMQ `Queue` (producer) and — only when `WORKER=1` — the `Worker`
@@ -29,6 +36,7 @@ export class NotificationsQueue implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(REDIS_CLIENT) private readonly client: Redis,
     private readonly processor: NotificationsDispatchProcessor,
+    private readonly dueScan: DueScanProcessor,
   ) {}
 
   /**
@@ -55,9 +63,24 @@ export class NotificationsQueue implements OnModuleInit, OnModuleDestroy {
     if (process.env.WORKER === '1') {
       this.worker = new Worker<NotificationJobData>(
         NOTIFICATIONS_QUEUE,
-        async (job) => this.processor.handle(job.data),
+        async (job) => {
+          // The daily repeatable scan fans out into one dispatch job per due/overdue item.
+          if (job.name === DUE_SCAN_JOB) {
+            const jobs = await this.dueScan.computeJobs();
+            for (const data of jobs) await this.enqueue(data);
+            return jobs.length;
+          }
+          return this.processor.handle(job.data);
+        },
         { connection: this.connectionOptions() },
       );
+      // Register the daily due-soon/overdue scan. BullMQ dedupes repeatable jobs by their repeat
+      // key, so re-adding on every worker boot is idempotent (no duplicate schedules).
+      void this.getQueue().add(DUE_SCAN_JOB, {} as NotificationJobData, {
+        repeat: { pattern: DUE_SCAN_CRON },
+        removeOnComplete: true,
+        removeOnFail: 100,
+      });
     }
   }
 

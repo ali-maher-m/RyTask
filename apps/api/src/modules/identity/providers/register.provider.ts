@@ -6,6 +6,7 @@ import { ORG_ACCESS, type OrgAccessService } from '../../orgs/orgs.contract';
 import { UserRegisteredEvent } from '../events/auth.events';
 import { UsersRepository } from '../repositories/users.repository';
 import { AuthService } from '../services/auth.service';
+import { EmailVerificationProvider } from './email-verification.provider';
 import type { RequestContext } from './login.provider';
 import { toUserSummary } from './user.mapper';
 
@@ -22,6 +23,7 @@ export class RegisterProvider {
     @Inject(ORG_ACCESS) private readonly orgAccess: OrgAccessService,
     private readonly auth: AuthService,
     private readonly events: EventEmitter2,
+    private readonly verification: EmailVerificationProvider,
   ) {}
 
   async register(input: RegisterRequest, ctx: RequestContext = {}): Promise<AuthResult> {
@@ -41,6 +43,14 @@ export class RegisterProvider {
       passwordHash,
     });
     await this.orgAccess.addMember(signup.organizationId, user.id, 'MEMBER');
+
+    // Send a verification link (FR-AUTH-003). The account is usable immediately — verification is
+    // informational in M0 — but the link must actually be issued (it previously never was).
+    await this.verification.issueVerification({
+      organizationId: signup.organizationId,
+      userId: user.id,
+      email: user.email,
+    });
 
     this.events.emit(
       UserRegisteredEvent.eventName,

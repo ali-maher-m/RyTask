@@ -1,3 +1,4 @@
+import { RequireAuth } from '../../components/require-auth';
 import { InboxClient } from './inbox-client';
 
 /**
@@ -9,5 +10,9 @@ import { InboxClient } from './inbox-client';
 export const dynamic = 'force-dynamic';
 
 export default function InboxPage() {
-  return <InboxClient />;
+  return (
+    <RequireAuth>
+      <InboxClient />
+    </RequireAuth>
+  );
 }

@@ -10,6 +10,7 @@ import {
   seed,
 } from '@rytask/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { systemClock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { ProjectMembersRepository } from '../../projects/repositories/project-members.repository';
@@ -50,7 +51,7 @@ describe('MoveWorkItemProvider (integration)', () => {
       new ProjectMembersRepository(handle.db, tenant),
       tenant,
     );
-    provider = new MoveWorkItemProvider(repo, access, tenant);
+    provider = new MoveWorkItemProvider(repo, access, tenant, systemClock);
   });
 
   afterAll(async () => {

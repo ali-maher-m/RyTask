@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { authedFetch } from '../lib/api';
 
 /**
  * Quick-add input (US1, FR-WI-004). One line with inline tokens `@assignee #label
  * !priority ^date`; on submit it POSTs to /work-items and surfaces any `meta.unresolved`
- * tokens as a correction affordance (tokens are never silently dropped — SC-002).
+ * tokens as a correction affordance (tokens are never silently dropped — SC-002). The request
+ * carries the M0 bearer token via `authedFetch` (the M1 dev-header seam is gone).
  */
 
 interface UnresolvedToken {
@@ -17,8 +19,6 @@ interface CreatedWorkItem {
   key: string;
   title: string;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 export function QuickAdd({ projectId }: { projectId: string }) {
   const [value, setValue] = useState('');
@@ -33,9 +33,8 @@ export function QuickAdd({ projectId }: { projectId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items`, {
+      const res = await authedFetch('/work-items', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, quickAdd: value.trim() }),
       });
       if (!res.ok) {

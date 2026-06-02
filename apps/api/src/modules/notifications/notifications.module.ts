@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsController } from './controllers/notifications.controller';
+import { DueScanProcessor } from './processors/due-scan.processor';
 import { NotificationsDispatchProcessor } from './processors/notifications.dispatch.processor';
 import { NotificationsQueue } from './processors/notifications.queue';
 import { NotificationsSubscriber } from './processors/notifications.subscriber';
@@ -21,6 +22,7 @@ import { NotificationsService } from './services/notifications.service';
   providers: [
     NotificationsRepository,
     NotificationsDispatchProcessor,
+    DueScanProcessor,
     NotificationsQueue,
     NotificationsSubscriber,
     InboxProvider,

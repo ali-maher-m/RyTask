@@ -69,6 +69,9 @@ export interface UpdateWorkItemColumns {
   completedAt?: Date | null;
 }
 
+/** Default gap between board positions; a fresh card appends at `max + STEP` (research D13). */
+const POSITION_STEP = 1024;
+
 /** Thrown when the client's expected `version` no longer matches the row (FR-WI-009). */
 export class VersionConflictError extends Error {
   constructor(public readonly expected: number) {
@@ -118,6 +121,21 @@ export class WorkItemsRepository extends TenantScopedRepository {
         throw new Error(`no project_counter for project ${data.projectId}`);
       }
 
+      // Seed a board `position` so a fresh card sorts deterministically (appended to the end of
+      // its status column) instead of as NULL — board/list order by `position` (SC-005).
+      const [posRow] = await tx
+        .select({ maxPos: sql<string | null>`max(${workItems.position})` })
+        .from(workItems)
+        .where(
+          and(
+            eq(workItems.organizationId, orgId),
+            eq(workItems.projectId, data.projectId),
+            eq(workItems.statusId, data.statusId),
+            isNull(workItems.deletedAt),
+          ),
+        );
+      const nextPosition = (posRow?.maxPos != null ? Number(posRow.maxPos) : 0) + POSITION_STEP;
+
       const [item] = await tx
         .insert(workItems)
         .values({
@@ -132,6 +150,7 @@ export class WorkItemsRepository extends TenantScopedRepository {
           assigneeId: data.assigneeId ?? null,
           reporterId: data.reporterId ?? null,
           parentId: data.parentId ?? null,
+          position: String(nextPosition),
           estimateValue: data.estimateValue ?? null,
           startDate: data.startDate ?? null,
           endDate: data.endDate ?? null,
@@ -237,6 +256,34 @@ export class WorkItemsRepository extends TenantScopedRepository {
     `);
     // `depth desc` walks parent → … → root, so the result is already root-first.
     return rows.rows.map((r) => r.id);
+  }
+
+  /**
+   * Height of an item's subtree — the item counts as 1, a leaf → 1 — tenant-scoped, via a
+   * recursive CTE walking its (non-deleted) descendants. Used to keep `parentDepth +
+   * subtreeHeight` within the nesting cap when RE-parenting an existing item that may itself
+   * carry children (FR-HIER-001). Bounded by a hard depth guard so a corrupt cycle can't loop.
+   */
+  async subtreeHeight(itemId: string): Promise<number> {
+    const orgId = this.tenant.getOrgId();
+    const rows = await this.db.execute<{ height: number }>(sql`
+      with recursive subtree as (
+        select ${workItems.id} as id, 1 as depth
+          from ${workItems}
+         where ${workItems.id} = ${itemId}
+           and ${workItems.organizationId} = ${orgId}
+           and ${workItems.deletedAt} is null
+        union all
+        select w.id, s.depth + 1
+          from ${workItems} w
+          join subtree s on w.parent_id = s.id
+         where w.organization_id = ${orgId}
+           and w.deleted_at is null
+           and s.depth < 64
+      )
+      select coalesce(max(depth), 1)::int as height from subtree
+    `);
+    return rows.rows[0]?.height ?? 1;
   }
 
   /**
@@ -518,13 +565,69 @@ export class WorkItemsRepository extends TenantScopedRepository {
 
   /** The category of a status row in this org (for the completed_at rule). */
   async statusCategory(statusId: string): Promise<string | null> {
+    const info = await this.statusInfo(statusId);
+    return info?.category ?? null;
+  }
+
+  /**
+   * A status row's owning project + category in this org (or `null`). Used to assert a status
+   * actually belongs to the work item's project before assigning it — `statusCategory` alone is
+   * org-scoped, which would let a board be corrupted with another project's column.
+   */
+  async statusInfo(statusId: string): Promise<{ projectId: string; category: string } | null> {
     const orgId = this.tenant.getOrgId();
     const [row] = await this.db
-      .select({ category: statuses.category })
+      .select({ projectId: statuses.projectId, category: statuses.category })
       .from(statuses)
       .where(and(eq(statuses.id, statusId), eq(statuses.organizationId, orgId)))
       .limit(1);
-    return row?.category ?? null;
+    return row ?? null;
+  }
+
+  /**
+   * SYSTEM scan — deliberately NOT org-scoped (the scheduled due-soon/overdue job runs outside any
+   * request, like the identity global lookups). Returns every non-deleted, non-completed item with
+   * a due date on or before `today + soonDays`, across all tenants, each tagged with its
+   * `organizationId` so the dispatcher re-scopes per tenant at write time (FR-NOTIF-001).
+   */
+  async listDueAndOverdue(
+    today: string,
+    soonDays: number,
+  ): Promise<
+    Array<{
+      organizationId: string;
+      workItemId: string;
+      assigneeId: string | null;
+      dueDate: string;
+      title: string;
+      number: number;
+      keyPrefix: string;
+    }>
+  > {
+    const rows = await this.db.execute<{
+      organizationId: string;
+      workItemId: string;
+      assigneeId: string | null;
+      dueDate: string;
+      title: string;
+      number: number;
+      keyPrefix: string;
+    }>(sql`
+      select wi.organization_id as "organizationId",
+             wi.id as "workItemId",
+             wi.assignee_id as "assigneeId",
+             to_char(wi.due_date, 'YYYY-MM-DD') as "dueDate",
+             wi.title as "title",
+             wi.number as "number",
+             p.key_prefix as "keyPrefix"
+        from ${workItems} wi
+        join ${projects} p on p.id = wi.project_id
+       where wi.deleted_at is null
+         and wi.completed_at is null
+         and wi.due_date is not null
+         and wi.due_date <= (${today}::date + ${soonDays})
+    `);
+    return rows.rows;
   }
 
   /**
@@ -593,18 +696,41 @@ export class WorkItemsRepository extends TenantScopedRepository {
   /**
    * Soft-delete (trash) an item: set `deleted_at`, bump `version`, append a DELETED
    * activity row — all in one tx. Default reads (findById) already exclude deleted rows.
+   * The item's live children are promoted up to its own parent first, so no child is left
+   * pointing at a trashed parent (FR-HIER-001); a restore brings the item back as a root/leaf.
    */
   async softDelete(id: string, actorId: string | null): Promise<void> {
     const orgId = this.tenant.getOrgId();
     await this.db.transaction(async (tx) => {
       const [current] = await tx
-        .select({ version: workItems.version, deletedAt: workItems.deletedAt })
+        .select({
+          version: workItems.version,
+          deletedAt: workItems.deletedAt,
+          parentId: workItems.parentId,
+        })
         .from(workItems)
         .where(and(eq(workItems.id, id), eq(workItems.organizationId, orgId)))
         .limit(1);
       if (!current || current.deletedAt) {
         return; // already gone / not in org → idempotent no-op
       }
+      // Re-parent the trashed item's live children to its own parent (may be null → they become
+      // roots). One level up — they were already descendants of that ancestor, so no cycle, and
+      // depth only decreases. Bump their version so a concurrent edit sees the move (409).
+      await tx
+        .update(workItems)
+        .set({
+          parentId: current.parentId,
+          version: sql`${workItems.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(workItems.parentId, id),
+            eq(workItems.organizationId, orgId),
+            isNull(workItems.deletedAt),
+          ),
+        );
       await tx
         .update(workItems)
         .set({

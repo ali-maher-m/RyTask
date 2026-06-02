@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { ActivityRepository } from '../repositories/activity.repository';
 import { WorkItemWatchersRepository } from '../repositories/work-item-watchers.repository';
 import { WorkItemsRepository } from '../repositories/work-items.repository';
-import type { Watcher, WorkItemAccessService, WorkItemContext } from '../work-items.contract';
+import type {
+  DueWorkItem,
+  Watcher,
+  WorkItemAccessService,
+  WorkItemContext,
+} from '../work-items.contract';
 
 /**
  * Cross-module work-item access port (binds `WORK_ITEM_ACCESS`, Principle III). Lets the
@@ -44,6 +49,10 @@ export class WorkItemAccessServiceImpl implements WorkItemAccessService {
     return this.watchers.listForItem(workItemId);
   }
 
+  mentionGrantedItemIds(userId: string): Promise<string[]> {
+    return this.watchers.listMentionedItemIds(userId);
+  }
+
   /** A member (any role) OR a MENTIONED watcher may read the item (FR-COLLAB-002). */
   async canAccess(workItemId: string, userId: string): Promise<boolean> {
     const ctx = await this.workItems.findById(workItemId);
@@ -54,5 +63,20 @@ export class WorkItemAccessServiceImpl implements WorkItemAccessService {
 
   async recordCommented(workItemId: string, actorId: string | null): Promise<void> {
     await this.activity.append({ workItemId, actorId, action: 'COMMENTED' });
+  }
+
+  /** SYSTEM read-model for the scheduled due scan — classify each candidate + build its key. */
+  async listDueAndOverdue(today: string, soonDays: number): Promise<DueWorkItem[]> {
+    const rows = await this.workItems.listDueAndOverdue(today, soonDays);
+    return rows.map((r) => ({
+      organizationId: r.organizationId,
+      workItemId: r.workItemId,
+      assigneeId: r.assigneeId,
+      dueDate: r.dueDate,
+      title: r.title,
+      key: `${r.keyPrefix}-${r.number}`,
+      // Lexicographic compare is correct for `YYYY-MM-DD`: a past due date is OVERDUE, else DUE_SOON.
+      kind: r.dueDate < today ? 'OVERDUE' : 'DUE_SOON',
+    }));
   }
 }

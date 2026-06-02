@@ -21,6 +21,14 @@ export default mergeConfig(
       }),
     ],
     test: {
+      // Many contract specs boot the full Nest `AppModule` + supertest — each is ~one heavy process.
+      // Running them in parallel piles several apps into RAM at once (which forces swap + fan spin on
+      // smaller machines) AND starves the shared event loop, so a keep-alive HTTP socket can hang up /
+      // a response can bleed onto the next request — a flake that lands on a random test. Run the files
+      // **in succession** (one app in memory at a time, freed between files). Combined with the
+      // RedisModule `error` handler (which absorbs down-Redis connection errors) the DB/Redis-free
+      // suite is both deterministic and light on memory.
+      fileParallelism: false,
       include: ['src/**/*.spec.ts'],
       exclude: [
         '**/node_modules/**',

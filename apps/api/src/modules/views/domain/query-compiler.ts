@@ -196,11 +196,16 @@ function sortExpr(field: SortField, columns: QueryColumns): SQL | AnyColumn {
   return field === 'priority' ? priorityRankExpr(columns.priority) : sortColumn(field, columns);
 }
 
-/** ORDER BY terms for the sort keys, with `id` appended as the total-order tiebreaker. */
+/**
+ * ORDER BY terms for the sort keys, with `id` appended as the total-order tiebreaker. NULLs sort
+ * LAST in every direction so the order is total and agrees with the keyset predicate — otherwise
+ * Postgres' direction-dependent default (`asc`→nulls-last, `desc`→nulls-first) would drift from
+ * the cursor comparison and silently drop rows across page boundaries (FR-VIEW-006, SC-006).
+ */
 export function buildOrderBy(sort: SortKey[], ctx: CompileContext): SQL[] {
   const terms = sort.map((key) => {
     const dir = key.dir === 'desc' ? sql.raw('desc') : sql.raw('asc');
-    return sql`${sortExpr(key.field, ctx.columns)} ${dir}`;
+    return sql`${sortExpr(key.field, ctx.columns)} ${dir} nulls last`;
   });
   terms.push(sql`${ctx.columns.id} asc`);
   return terms;
@@ -249,9 +254,14 @@ export function cursorFromRow(row: Record<string, unknown>, sort: SortKey[]): st
 }
 
 /**
- * Lexicographic keyset predicate for "rows strictly after the cursor", matching the
- * sort directions, with `id` (ascending) as the final tiebreaker. `cursorValues` is
- * the decoded tuple aligned to `sort` plus a trailing id value. All values bound.
+ * Lexicographic keyset predicate for "rows strictly after the cursor", matching the sort
+ * directions, with `id` (ascending) as the final tiebreaker. `cursorValues` is the decoded tuple
+ * aligned to `sort` plus a trailing id value. All values bound.
+ *
+ * NULL-aware (NULLS LAST, agreeing with {@link buildOrderBy}): equality on a NULL cursor value is
+ * `IS NULL` (SQL `= NULL` is never true), a NULL row sorts after any non-null value, and a NULL
+ * cursor value has nothing strictly after it in that key. Without this, sorting by a nullable
+ * column (`dueDate`/`startDate`/`endDate`) silently dropped rows on page ≥2 (FR-VIEW-006, SC-006).
  */
 export function buildKeysetPredicate(
   sort: SortKey[],
@@ -267,18 +277,32 @@ export function buildKeysetPredicate(
     dir: key.dir,
     val: key.field === 'priority' ? priorityRank(String(cursorValues[i])) : cursorValues[i],
   }));
-  keys.push({ expr: ctx.columns.id, dir: 'asc', val: cursorValues[sort.length] });
+  keys.push({ expr: ctx.columns.id, dir: 'asc' as const, val: cursorValues[sort.length] });
+
+  const isNullish = (v: unknown): boolean => v === null || v === undefined;
+  // Equality for a prefix key (NULL-aware): `IS NULL` when the cursor value is NULL, else `= val`.
+  const eqTerm = (expr: SQL | AnyColumn, val: unknown): SQL =>
+    isNullish(val) ? sql`${expr} is null` : sql`${expr} = ${val}`;
+  // "Strictly after" in one key under NULLS LAST. A NULL cursor value sorts last, so nothing is
+  // after it (→ null term, skipped). A NULL row is after any non-null value, hence the `is null` arm.
+  const afterTerm = (expr: SQL | AnyColumn, dir: 'asc' | 'desc', val: unknown): SQL | null => {
+    if (isNullish(val)) return null;
+    const cmp = dir === 'asc' ? sql`${expr} > ${val}` : sql`${expr} < ${val}`;
+    return sql`(${cmp} or ${expr} is null)`;
+  };
 
   const orTerms: SQL[] = [];
   keys.forEach((k, i) => {
+    const after = afterTerm(k.expr, k.dir, k.val);
+    if (!after) return; // a NULL cursor value contributes no strictly-greater rows in this key
     const ands: SQL[] = [];
     for (let j = 0; j < i; j++) {
       const prev = keys[j];
-      if (prev) ands.push(sql`${prev.expr} = ${prev.val}`);
+      if (prev) ands.push(eqTerm(prev.expr, prev.val));
     }
-    ands.push(k.dir === 'asc' ? sql`${k.expr} > ${k.val}` : sql`${k.expr} < ${k.val}`);
-    const term = ands.length === 1 ? ands[0] : (and(...ands) as SQL);
-    if (term) orTerms.push(term);
+    ands.push(after);
+    orTerms.push(ands.length === 1 ? (ands[0] as SQL) : (and(...ands) as SQL));
   });
-  return orTerms.length === 1 ? orTerms[0] : or(...orTerms);
+  if (orTerms.length === 0) return undefined;
+  return orTerms.length === 1 ? orTerms[0] : (or(...orTerms) as SQL);
 }

@@ -29,6 +29,7 @@ import {
   moveWorkItemSchema,
   updateWorkItemSchema,
 } from '@rytask/contracts';
+import { IdempotencyService } from '../../../common/idempotency/idempotency.service';
 import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { VersionConflictError } from '../repositories/work-items.repository';
@@ -43,7 +44,10 @@ import { WorkItemsService } from '../services/work-items.service';
 @RequirePermission('work:read')
 @Controller('work-items')
 export class WorkItemsController {
-  constructor(private readonly service: WorkItemsService) {}
+  constructor(
+    private readonly service: WorkItemsService,
+    private readonly idempotency: IdempotencyService,
+  ) {}
 
   @Get()
   list(
@@ -80,12 +84,16 @@ export class WorkItemsController {
   @HttpCode(201)
   create(
     @Body(new ZodValidationPipe<CreateWorkItem>(createWorkItemSchema)) body: CreateWorkItem,
-    @Headers('idempotency-key') _idempotencyKey?: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<CreateWorkItemResponse> {
     if (!body.title && !body.quickAdd) {
       throw new BadRequestException('either title or quickAdd is required');
     }
-    return this.service.create(body);
+    // A client retry with the same Idempotency-Key returns the first response instead of
+    // creating a duplicate work item (no-op replay); without a key this runs normally.
+    return this.idempotency.run(idempotencyKey, 'work-items.create', () =>
+      this.service.create(body),
+    );
   }
 
   @RequirePermission('work:write')

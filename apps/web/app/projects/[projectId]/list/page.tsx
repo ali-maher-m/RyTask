@@ -1,3 +1,4 @@
+import { RequireAuth } from '../../../../components/require-auth';
 import { ListClient } from './list-client';
 
 /**
@@ -12,5 +13,9 @@ export default async function ListPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <ListClient projectId={projectId} />;
+  return (
+    <RequireAuth>
+      <ListClient projectId={projectId} />
+    </RequireAuth>
+  );
 }

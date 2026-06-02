@@ -1,4 +1,4 @@
-import { GoneException } from '@nestjs/common';
+import { ForbiddenException, GoneException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   type DbHandle,
@@ -38,7 +38,8 @@ import { InviteProvider } from './invite.provider';
  * with no membership/account side-effect. Idempotent for an already-active member (AC4).
  */
 const ctxA = { organizationId: SEED_ORG_ID, userId: SEED_USER_ID };
-const founder: Principal = { userId: SEED_USER_ID, organizationId: SEED_ORG_ID };
+// The founder is the org OWNER; the role drives the invite role-assignment ceiling (FR-RBAC-003).
+const founder: Principal = { userId: SEED_USER_ID, organizationId: SEED_ORG_ID, role: 'OWNER' };
 
 const tokenFromUrl = (url: string): string => {
   const token = url.split('/invite/')[1];
@@ -129,6 +130,17 @@ describe('Invite/AcceptInvite providers (integration)', () => {
       throw new Error('expected the invited user to exist');
     }
     expect(await tenant.run(ctxA, () => memberships.findRole(newUser.id))).toBe('MEMBER');
+  });
+
+  it('forbids an Admin from inviting at the OWNER role (escalation ceiling, FR-RBAC-003)', async () => {
+    const admin: Principal = { userId: SEED_USER_ID, organizationId: SEED_ORG_ID, role: 'ADMIN' };
+    await expect(
+      tenant.run(ctxA, () =>
+        invite.create(admin, { email: 'escalate@acme.test', role: 'OWNER', expiresInHours: 168 }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    // No invite row was created for the rejected escalation.
+    expect(await users.findByEmail('escalate@acme.test')).toBeNull();
   });
 
   it('refuses re-accepting a used invite (410, single-use)', async () => {

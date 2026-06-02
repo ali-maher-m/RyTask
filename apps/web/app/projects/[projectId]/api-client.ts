@@ -12,63 +12,26 @@ import type {
   WorkItem,
   WorkItemListResponse,
 } from '@rytask/contracts';
+import { ApiError, authedRequest } from '../../../lib/api';
 
 /**
  * Thin browser API client for the US3 Board + List pages. The hand-written `@rytask/sdk`
- * only covers health today, so these pages call `/api/v1` with `fetch` (mirroring
- * `components/quick-add.tsx`). The dev principal is still resolved from headers in M1
- * (apps/api `resolveDevPrincipal`), so the same seam is used here; M0 swaps this for a
- * real session/token. Envelopes follow openapi.yaml: single resources return
- * `{ statusCode, message, data }`; list routes return `{ data, pageInfo }`.
+ * only covers health today, so these pages call `/api/v1` with `fetch`. Every call carries the
+ * M0 bearer token and silently refreshes on a 401 (`authedRequest`) — the M1 dev-header seam
+ * (`x-user-id` …) is gone (apps/api authenticates the `Authorization` header only). Envelopes
+ * follow openapi.yaml: single resources return `{ statusCode, message, data }`; list routes
+ * return `{ data, pageInfo }`.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
-
-/** Dev principal headers (M1 seam — apps/api/src/common/auth/principal.ts). */
-const SEED_USER_ID = '0193b3a0-0000-7000-8000-000000000003';
-const SEED_ORG_ID = '0193b3a0-0000-7000-8000-000000000001';
-const SEED_WORKSPACE_ID = '0193b3a0-0000-7000-8000-000000000002';
-
-function principalHeaders(): Record<string, string> {
-  return {
-    'x-user-id': process.env.NEXT_PUBLIC_DEV_USER_ID ?? SEED_USER_ID,
-    'x-organization-id': process.env.NEXT_PUBLIC_DEV_ORG_ID ?? SEED_ORG_ID,
-    'x-workspace-id': process.env.NEXT_PUBLIC_DEV_WORKSPACE_ID ?? SEED_WORKSPACE_ID,
-  };
-}
 
 /** A single resource envelope: `{ statusCode, message, data }`. */
 interface ResourceEnvelope<T> {
   data: T;
 }
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+// Re-exported so consumers' `instanceof ApiError` checks share one identity with `lib/api`.
+export { ApiError };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}/api/v1${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...principalHeaders(),
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    throw new ApiError(res.status, `${init?.method ?? 'GET'} ${path} failed (${res.status})`);
-  }
-  if (res.status === 204) {
-    return undefined as T;
-  }
-  return (await res.json()) as T;
-}
+const request = authedRequest;
 
 /** List the project's statuses (board columns, ordered left→right). */
 export async function listStatuses(projectId: string): Promise<Status[]> {

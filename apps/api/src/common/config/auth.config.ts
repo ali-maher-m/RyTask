@@ -14,6 +14,35 @@ import { registerAs } from '@nestjs/config';
  */
 export const ACCESS_TTL_CAP_SECONDS = 900;
 
+/**
+ * The insecure HS256 secret used for zero-config self-host/dev (`docker compose up`). It is
+ * **rejected at boot in production** (see {@link assertProductionJwtSecret}) so a self-hoster
+ * who forgets `JWT_SECRET` fails fast instead of running with a globally-known signing key —
+ * which would let anyone forge access JWTs and refresh/PAT/invite/reset token hashes
+ * (NFR-SEC-002). This same secret is the HMAC key for those opaque tokens (TokenHasher).
+ */
+export const DEFAULT_DEV_JWT_SECRET = 'dev-insecure-jwt-secret-change-me';
+
+/** Minimum acceptable HS256 secret length in production (256 bits of entropy ≈ 32 chars). */
+export const MIN_PROD_JWT_SECRET_LENGTH = 32;
+
+/**
+ * Fail fast when running in production with a missing/default/weak HS256 secret. RS256
+ * deployments (PEM key-pair present) are exempt — their security rests on the private key.
+ * Throwing here crashes `bootstrap()`/`bootstrapWorker()` at config load, by design.
+ */
+export function assertProductionJwtSecret(env: NodeJS.ProcessEnv = process.env): void {
+  if (env.NODE_ENV !== 'production') return;
+  // RS256 (asymmetric) is selected by the presence of both PEM keys; the shared secret is unused.
+  if (env.JWT_PRIVATE_KEY && env.JWT_PUBLIC_KEY) return;
+  const secret = env.JWT_SECRET;
+  if (!secret || secret === DEFAULT_DEV_JWT_SECRET || secret.length < MIN_PROD_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `Refusing to start: JWT_SECRET must be set to a strong value (>= ${MIN_PROD_JWT_SECRET_LENGTH} chars) in production. The insecure default is not allowed. Set JWT_SECRET, or provide JWT_PRIVATE_KEY/JWT_PUBLIC_KEY (PEM) to use RS256.`,
+    );
+  }
+}
+
 export interface JwtConfig {
   algorithm: 'HS256' | 'RS256';
   /** HS256 shared secret. */
@@ -65,13 +94,15 @@ const bool = (value: string | undefined, fallback: boolean): boolean =>
   value === undefined ? fallback : value === 'true' || value === '1';
 
 export const authConfig = registerAs('auth', (): AuthConfig => {
+  // Fail fast on an insecure production secret before any token is ever signed/verified.
+  assertProductionJwtSecret();
   const privateKey = process.env.JWT_PRIVATE_KEY;
   const publicKey = process.env.JWT_PUBLIC_KEY;
   const algorithm: JwtConfig['algorithm'] = privateKey && publicKey ? 'RS256' : 'HS256';
   return {
     jwt: {
       algorithm,
-      secret: process.env.JWT_SECRET ?? 'dev-insecure-jwt-secret-change-me',
+      secret: process.env.JWT_SECRET ?? DEFAULT_DEV_JWT_SECRET,
       privateKey,
       publicKey,
       issuer: process.env.JWT_ISSUER ?? 'rytask',

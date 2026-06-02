@@ -124,6 +124,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/auth/request-verification': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Resend an email-verification link (uniform response — no enumeration, SC-010) (FR-AUTH-003) */
+    post: operations['requestVerification'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/auth/confirm-password-reset': {
     parameters: {
       query?: never;
@@ -821,6 +838,28 @@ export interface operations {
     };
     responses: {
       /** @description Accepted (always */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  requestVerification: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EmailBody'];
+      };
+    };
+    responses: {
+      /** @description Accepted (always; no-op if unknown or already verified) */
       202: {
         headers: {
           [name: string]: unknown;

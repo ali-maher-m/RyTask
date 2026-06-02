@@ -1,4 +1,10 @@
-import { GoneException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  GoneException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { CreateInvite, Invitation, InvitationCreated, InvitePreview } from '@rytask/contracts';
 import type { Principal } from '../../../common/auth/principal';
@@ -7,6 +13,7 @@ import { type AuthConfigType, authConfig } from '../../../common/config/auth.con
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { MAILER, type MailerPort } from '../../../common/ports/mailer.port';
 import { inviteExpiresAt, isRedeemable, normalizeInviteEmail } from '../domain/invitation.policy';
+import { canAssignRole } from '../domain/last-owner.policy';
 import { MemberInvitedEvent } from '../events/member.events';
 import { InvitationsRepository } from '../repositories/invitations.repository';
 import { OrganizationsRepository } from '../repositories/organizations.repository';
@@ -35,6 +42,11 @@ export class InviteProvider {
 
   /** Create an email or shareable-link invite; emails the link and returns the accept URL. */
   async create(principal: Principal, input: CreateInvite): Promise<InvitationCreated> {
+    // Role-assignment ceiling: an actor may never invite at a role above their own — only an
+    // OWNER may invite an OWNER (FR-RBAC-003). Mirrors the role-change guard in MemberAdminProvider.
+    if (!principal.role || !canAssignRole(principal.role, input.role)) {
+      throw new ForbiddenException('cannot invite at a role above your own');
+    }
     const now = this.clock.now();
     const email = normalizeInviteEmail(input.email ?? null);
 

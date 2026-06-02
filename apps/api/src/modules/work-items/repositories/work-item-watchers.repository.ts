@@ -44,6 +44,25 @@ export class WorkItemWatchersRepository extends TenantScopedRepository {
     return rows.map((r) => ({ userId: r.userId, reason: r.reason as WatcherReason }));
   }
 
+  /**
+   * Work-item ids the user may also see via a MENTIONED watcher (FR-COLLAB-002) even without
+   * project membership (tenant-scoped). Exposed through the work-items contract so the search
+   * module gets the mention-grant scope without reading `work_item_watchers` directly (Principle III).
+   */
+  async listMentionedItemIds(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ workItemId: workItemWatchers.workItemId })
+      .from(workItemWatchers)
+      .where(
+        this.scoped(
+          workItemWatchers,
+          eq(workItemWatchers.userId, userId),
+          eq(workItemWatchers.reason, 'MENTIONED'),
+        ),
+      );
+    return rows.map((r) => r.workItemId);
+  }
+
   /** True if the user is a MENTIONED watcher of the item (tenant-scoped, FR-COLLAB-002). */
   async isMentionedWatcher(workItemId: string, userId: string): Promise<boolean> {
     const [row] = await this.db

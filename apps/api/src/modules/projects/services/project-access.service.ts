@@ -41,6 +41,11 @@ export class ProjectAccessServiceImpl implements ProjectAccessService {
   }
 
   async accessibleProjectIds(): Promise<string[]> {
+    // An org OWNER/ADMIN can read every project (FR-PROJ-002), so their cross-project reads
+    // (My Work / list / search / views) must span the whole org — not just explicit memberships.
+    if (this.tenant.get().isOrgAdmin) {
+      return this.members.listAllProjectIds();
+    }
     return this.members.listProjectIdsForUser(this.currentUserId());
   }
 }

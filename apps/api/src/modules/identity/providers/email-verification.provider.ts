@@ -63,7 +63,26 @@ export class EmailVerificationProvider {
     ) {
       throw new GoneException('this verification link is no longer valid');
     }
+    // Atomically claim the token BEFORE acting so it can't be redeemed twice under a race (TOCTOU).
+    if (!(await this.tokens.consume(token.id, now))) {
+      throw new GoneException('this verification link is no longer valid');
+    }
     await this.users.markEmailVerified(token.userId, now);
-    await this.tokens.consume(token.id, now);
+  }
+
+  /**
+   * Resend a verification link for an account by email (US6, FR-AUTH-003). Uniform response — no
+   * account-existence signal (SC-010) — and a no-op for an unknown/inactive/already-verified user.
+   */
+  async requestVerification(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email);
+    if (!user || user.deactivatedAt !== null || user.emailVerifiedAt !== null) {
+      return;
+    }
+    await this.issueVerification({
+      organizationId: user.organizationId,
+      userId: user.id,
+      email: user.email,
+    });
   }
 }

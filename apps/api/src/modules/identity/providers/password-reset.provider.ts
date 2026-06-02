@@ -69,9 +69,13 @@ export class PasswordResetProvider {
     ) {
       throw new GoneException('this reset link is no longer valid');
     }
+    // Atomically claim the token BEFORE acting — only the request that flips consumed_at proceeds,
+    // so a token can't be redeemed twice under a race (TOCTOU). The loser gets the same 410.
+    if (!(await this.tokens.consume(token.id, now))) {
+      throw new GoneException('this reset link is no longer valid');
+    }
     const passwordHash = await this.hasher.hash(input.newPassword);
     await this.users.setPasswordHash(token.userId, passwordHash);
-    await this.tokens.consume(token.id, now);
     // A password reset invalidates every existing session (NFR-SEC).
     await this.sessions.revokeAllForUser(token.organizationId, token.userId, now);
   }

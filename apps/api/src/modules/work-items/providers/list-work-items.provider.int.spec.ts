@@ -36,6 +36,7 @@ describe('ListWorkItemsProvider (integration)', () => {
   let handle: DbHandle;
   let tenant: TenantContextService;
   let provider: ListWorkItemsProvider;
+  let repo: WorkItemsRepository;
 
   beforeAll(async () => {
     pg = await startPostgres();
@@ -43,7 +44,7 @@ describe('ListWorkItemsProvider (integration)', () => {
     await seed(pg.url);
     handle = createDb(pg.url);
     tenant = new TenantContextService();
-    const repo = new WorkItemsRepository(handle.db, tenant);
+    repo = new WorkItemsRepository(handle.db, tenant);
     const access = new ProjectAccessServiceImpl(
       new ProjectMembersRepository(handle.db, tenant),
       tenant,
@@ -113,6 +114,47 @@ describe('ListWorkItemsProvider (integration)', () => {
       provider.list({ projectId: SEED_PROJECT_ID, limit: 50 }),
     );
     expect(res.data.every((i) => i.overdue === false)).toBe(true);
+  });
+
+  it('keyset-paginates a nullable sort (dueDate) without dropping NULL-valued rows (SC-006)', async () => {
+    // Add a mix of due / no-due items so the sort column carries NULLs.
+    const mk = (title: string, dueDate: string | null) =>
+      tenant.run(CTX, () =>
+        repo.createWorkItem({
+          projectId: SEED_PROJECT_ID,
+          title,
+          statusId: SEED_STATUS_IDS.todo,
+          priority: 'NONE',
+          reporterId: SEED_USER_ID,
+          dueDate,
+        }),
+      );
+    await mk('due-a', '2026-07-01');
+    await mk('no-due-1', null);
+    await mk('due-b', '2026-07-05');
+    await mk('no-due-2', null);
+
+    // Walk every page (limit 1) sorting by the nullable dueDate; collect ids.
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    for (let guard = 0; guard < 100; guard++) {
+      const page = await tenant.run(CTX, () =>
+        provider.list({ projectId: SEED_PROJECT_ID, sort: 'dueDate', limit: 1, cursor }),
+      );
+      seen.push(...page.data.map((i) => i.id));
+      if (!page.pageInfo.hasNextPage) break;
+      cursor = page.pageInfo.nextCursor as string;
+    }
+
+    // The single-page read of everything is the ground truth; the paged walk must match it exactly
+    // — no NULL-dueDate row dropped on page ≥2 (the bug), no duplicates.
+    const all = await tenant.run(CTX, () =>
+      provider.list({ projectId: SEED_PROJECT_ID, sort: 'dueDate', limit: 100 }),
+    );
+    const allIds = all.data.map((i) => i.id);
+    expect(seen.length).toBe(allIds.length);
+    expect(new Set(seen)).toEqual(new Set(allIds));
+    expect(seen.length).toBeGreaterThanOrEqual(4); // the rows we added are all present
   });
 
   it('rejects a non-member reading the project (RBAC project:viewer)', async () => {

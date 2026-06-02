@@ -66,6 +66,9 @@ describe('CreateWorkItemProvider (integration)', () => {
     expect(r.item.priority).toBe('NONE');
     expect(r.item.assigneeId).toBeNull();
     expect(r.item.reporterId).toBe(SEED_USER_ID);
+    // A fresh card gets a non-null board position so its order is deterministic (SC-005).
+    expect(r.item.position).not.toBeNull();
+    expect(Number(r.item.position)).toBeGreaterThan(0);
 
     const log = await tenant.run(CTX, () => activityRepo.listForItem(r.item.id));
     expect(log).toHaveLength(1);

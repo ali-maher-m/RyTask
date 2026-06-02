@@ -1,3 +1,4 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import {
   type DbHandle,
   SEED_ORG_ID,
@@ -10,6 +11,7 @@ import {
   seed,
 } from '@rytask/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { systemClock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { ProjectMembersRepository } from '../../projects/repositories/project-members.repository';
@@ -45,7 +47,7 @@ describe('UpdateWorkItemProvider (integration)', () => {
       new ProjectMembersRepository(handle.db, tenant),
       tenant,
     );
-    provider = new UpdateWorkItemProvider(repo, access, tenant);
+    provider = new UpdateWorkItemProvider(repo, access, tenant, systemClock);
   });
 
   afterAll(async () => {
@@ -133,6 +135,45 @@ describe('UpdateWorkItemProvider (integration)', () => {
       provider.update(id, { version: done.item.version, statusId: SEED_STATUS_IDS.inProgress }),
     );
     expect(reopened.item.completedAt).toBeNull();
+  });
+
+  it('rejects re-parenting an item under its own descendant (cycle, 422, FR-HIER-001)', async () => {
+    // Build A → B (B is a child of A) directly via the repo, then try to make A a child of B.
+    const parent = await newItem();
+    const child = await tenant.run(CTX, () =>
+      repo.createWorkItem({
+        projectId: SEED_PROJECT_ID,
+        title: 'Child',
+        statusId: SEED_STATUS_IDS.todo,
+        priority: 'NONE',
+        reporterId: SEED_USER_ID,
+        parentId: parent.id,
+      }),
+    );
+    await expect(
+      tenant.run(CTX, () =>
+        provider.update(parent.id, { version: parent.version, parentId: child.item.id }),
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    // The parent's parentId is unchanged by the rejected cycle.
+    expect((await tenant.run(CTX, () => repo.findById(parent.id)))?.item.parentId).toBeNull();
+  });
+
+  it('rejects self-parenting (422)', async () => {
+    const { id, version } = await newItem();
+    await expect(
+      tenant.run(CTX, () => provider.update(id, { version, parentId: id })),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+  });
+
+  it('rejects a status that does not belong to the item’s project (422, FR-WF)', async () => {
+    const { id, version } = await newItem();
+    // A well-formed but non-existent (here, cross-project/unknown) status id is refused.
+    await expect(
+      tenant.run(CTX, () =>
+        provider.update(id, { version, statusId: '0193b3a0-0000-7000-8000-0000000aaaaa' }),
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
   it('rejects an inverted start/end range (400)', async () => {

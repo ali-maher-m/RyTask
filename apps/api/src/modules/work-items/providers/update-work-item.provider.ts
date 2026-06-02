@@ -1,8 +1,16 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { UpdateWorkItem } from '@rytask/contracts';
+import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { PROJECT_ACCESS, type ProjectAccessService } from '../../projects/projects.contract';
 import { type FieldDiff, diffWorkItemFields } from '../domain/activity-diff.policy';
+import { evaluateParenting } from '../domain/hierarchy.policy';
 import {
   type CreatedWorkItem,
   type FieldChange,
@@ -12,6 +20,8 @@ import {
 
 export interface UpdateWorkItemResult extends CreatedWorkItem {
   labelIds: string[];
+  /** Field names that actually changed — drives event emission (no-op edits notify no one). */
+  changedFields: string[];
 }
 
 /** Status categories that mean the work is finished (completed_at is set). */
@@ -32,6 +42,7 @@ export class UpdateWorkItemProvider {
     private readonly workItems: WorkItemsRepository,
     @Inject(PROJECT_ACCESS) private readonly access: ProjectAccessService,
     private readonly tenant: TenantContextService,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async update(id: string, input: UpdateWorkItem): Promise<UpdateWorkItemResult> {
@@ -76,12 +87,17 @@ export class UpdateWorkItemProvider {
       columns.statusId = input.statusId;
       beforeMap.statusId = before.statusId;
       afterMap.statusId = input.statusId;
-      // completed_at rule (data-model §2.5): set when entering a COMPLETED-category
-      // status, cleared when leaving it. Categories are read tenant-scoped.
-      const nextCategory = await this.workItems.statusCategory(input.statusId);
-      const enteringCompleted = UpdateWorkItemProvider.isCompletedCategory(nextCategory);
+      // The target status must belong to THIS item's project — `statusInfo` is only org-scoped,
+      // so without the project check a board could be corrupted with another project's column.
+      const status = await this.workItems.statusInfo(input.statusId);
+      if (!status || status.projectId !== before.projectId) {
+        throw new UnprocessableEntityException("status does not belong to this item's project");
+      }
+      // completed_at rule (data-model §2.5): set when entering a COMPLETED-category status,
+      // cleared when leaving it.
+      const enteringCompleted = UpdateWorkItemProvider.isCompletedCategory(status.category);
       if (enteringCompleted && !before.completedAt) {
-        columns.completedAt = new Date();
+        columns.completedAt = this.clock.now();
       } else if (!enteringCompleted && before.completedAt) {
         columns.completedAt = null;
       }
@@ -94,6 +110,12 @@ export class UpdateWorkItemProvider {
     }
     if ('parentId' in input) {
       const next = input.parentId ?? null;
+      // Re-parenting must be validated BEFORE writing (FR-HIER-001): the policy was previously
+      // only applied on add-subtask, so a PATCH could set a descendant as the parent (a cycle)
+      // or a parent in another project. Only validate an actual change to a non-null parent.
+      if (next !== null && next !== before.parentId) {
+        await this.assertValidParent({ id, projectId: before.projectId }, next);
+      }
       columns.parentId = next;
       beforeMap.parentId = before.parentId;
       afterMap.parentId = next;
@@ -135,7 +157,36 @@ export class UpdateWorkItemProvider {
     const updated = await this.workItems.updateFields(id, input.version, columns, changes, actorId);
 
     const labelIds = await this.workItems.labelIdsFor(id);
-    return { ...updated, labelIds };
+    return { ...updated, labelIds, changedFields: diffs.map((d) => d.field) };
+  }
+
+  /**
+   * Validate a (re)parenting before writing (FR-HIER-001): the parent must exist, live in the
+   * same project, and not create a self/cycle link or exceed the nesting depth (the item may
+   * carry its own subtree). Rejections map to 422 (UnprocessableEntity).
+   */
+  private async assertValidParent(
+    item: { id: string; projectId: string },
+    parentId: string,
+  ): Promise<void> {
+    const parent = await this.workItems.findById(parentId);
+    if (!parent) {
+      throw new UnprocessableEntityException('parent work item not found');
+    }
+    if (parent.item.projectId !== item.projectId) {
+      throw new UnprocessableEntityException(
+        'a sub-task must be in the same project as its parent',
+      );
+    }
+    const decision = evaluateParenting({
+      itemId: item.id,
+      parentId,
+      parentAncestorIds: await this.workItems.ancestorIds(parentId),
+      subtreeHeight: await this.workItems.subtreeHeight(item.id),
+    });
+    if (!decision.ok) {
+      throw new UnprocessableEntityException(decision.message);
+    }
   }
 
   /** Whether a status category means the item is completed (used by the move path, US3). */

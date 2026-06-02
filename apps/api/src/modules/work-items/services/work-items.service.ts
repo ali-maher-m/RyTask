@@ -12,10 +12,14 @@ import type {
   WorkItemListResponse,
 } from '@rytask/contracts';
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
+import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { PROJECT_ACCESS, type ProjectAccessService } from '../../projects/projects.contract';
+import { extractMentions } from '../domain/markdown';
 import { isOverdue } from '../domain/overdue.policy';
 import { toWorkItemDto } from '../domain/work-item.mapper';
+import { WorkItemChangedEvent } from '../events/work-item.changed.event';
 import { WorkItemCreatedEvent } from '../events/work-item.created.event';
+import { WorkItemMentionedEvent } from '../events/work-item.mentioned.event';
 import { type AddLabelInput, AddLabelProvider } from '../providers/add-label.provider';
 import { AddSubtaskProvider } from '../providers/add-subtask.provider';
 import { CreateWorkItemProvider } from '../providers/create-work-item.provider';
@@ -26,6 +30,7 @@ import { MyWorkProvider } from '../providers/my-work.provider';
 import { RemoveLabelProvider } from '../providers/remove-label.provider';
 import { UpdateWorkItemProvider } from '../providers/update-work-item.provider';
 import { ActivityRepository } from '../repositories/activity.repository';
+import { WorkItemWatchersRepository } from '../repositories/work-item-watchers.repository';
 import { WorkItemsRepository } from '../repositories/work-items.repository';
 
 /**
@@ -51,6 +56,8 @@ export class WorkItemsService {
     @Inject(PROJECT_ACCESS) private readonly access: ProjectAccessService,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly events: EventEmitter2,
+    private readonly tenant: TenantContextService,
+    private readonly watchers: WorkItemWatchersRepository,
   ) {}
 
   async create(input: CreateWorkItem): Promise<CreateWorkItemResponse> {
@@ -65,6 +72,7 @@ export class WorkItemsService {
         item.assigneeId,
       ),
     );
+    await this.notifyDescriptionMentions(item);
     return { data: toWorkItemDto(item, keyPrefix, { labelIds }), meta: { unresolved } };
   }
 
@@ -88,6 +96,7 @@ export class WorkItemsService {
         item.assigneeId,
       ),
     );
+    await this.notifyDescriptionMentions(item);
     return { data: toWorkItemDto(item, keyPrefix, { labelIds }), meta: { unresolved } };
   }
 
@@ -117,7 +126,14 @@ export class WorkItemsService {
   }
 
   async update(id: string, input: UpdateWorkItem): Promise<{ data: WorkItem }> {
-    const { item, keyPrefix, labelIds } = await this.updateProvider.update(id, input);
+    const { item, keyPrefix, labelIds, changedFields } = await this.updateProvider.update(
+      id,
+      input,
+    );
+    this.emitChanged(item, changedFields);
+    if (changedFields.includes('description')) {
+      await this.notifyDescriptionMentions(item);
+    }
     return { data: toWorkItemDto(item, keyPrefix, { labelIds }) };
   }
 
@@ -132,8 +148,65 @@ export class WorkItemsService {
 
   /** Board move: change status and/or fractional position (US3, FR-VIEW-001). */
   async move(id: string, input: MoveWorkItem): Promise<{ data: WorkItem }> {
-    const { item, keyPrefix, labelIds } = await this.moveProvider.move(id, input);
+    const { item, keyPrefix, labelIds, changedFields } = await this.moveProvider.move(id, input);
+    this.emitChanged(item, changedFields);
     return { data: toWorkItemDto(item, keyPrefix, { labelIds }) };
+  }
+
+  /**
+   * Publish a `work-item.changed` event for an edit/move so notifications can fan out
+   * STATUS_CHANGED (to watchers) and ASSIGNED (to a new assignee) — FR-NOTIF-001. A no-op edit
+   * (no changed fields) emits nothing. The actor is the acting user (suppressed from their own
+   * notifications); the post-change `version` is the per-change dedupe bucket.
+   */
+  private emitChanged(
+    item: { id: string; organizationId: string; assigneeId: string | null; version: number },
+    changedFields: string[],
+  ): void {
+    if (changedFields.length === 0) return;
+    this.events.emit(
+      WorkItemChangedEvent.eventName,
+      new WorkItemChangedEvent(
+        item.id,
+        item.organizationId,
+        this.tenant.getUserId() ?? null,
+        item.assigneeId,
+        item.version,
+        changedFields,
+      ),
+    );
+  }
+
+  /**
+   * Resolve @mentions in a work item's markdown description, grant the mentioned users MENTIONED
+   * read access, and notify the newly-mentioned ones (US2, FR-COLLAB-002) — descriptions now
+   * notify just like comments. Only users not already mentioned on the item are notified, so a
+   * later edit doesn't re-notify; the actor never notifies themselves.
+   */
+  private async notifyDescriptionMentions(item: {
+    id: string;
+    organizationId: string;
+    projectId: string;
+    description: string | null;
+    version: number;
+  }): Promise<void> {
+    if (!item.description) return;
+    const handles = extractMentions(item.description);
+    if (handles.length === 0) return;
+    const actorId = this.tenant.getUserId() ?? null;
+    const resolved = await this.watchers.resolveMentions(handles, item.projectId);
+    const alreadyMentioned = new Set(
+      (await this.watchers.listForItem(item.id))
+        .filter((w) => w.reason === 'MENTIONED')
+        .map((w) => w.userId),
+    );
+    const fresh = resolved.filter((userId) => userId !== actorId && !alreadyMentioned.has(userId));
+    if (fresh.length === 0) return;
+    await this.watchers.addMentioned(item.id, fresh);
+    this.events.emit(
+      WorkItemMentionedEvent.eventName,
+      new WorkItemMentionedEvent(item.organizationId, item.id, actorId, item.version, fresh),
+    );
   }
 
   /**

@@ -59,9 +59,18 @@ export class OneTimeTokensRepository extends TenantScopedRepository {
     return row ?? null;
   }
 
-  /** Mark a token consumed by PK (single-use; the secret already proved access). */
-  async consume(id: string, at: Date): Promise<void> {
-    await this.db.update(oneTimeTokens).set({ consumedAt: at }).where(eq(oneTimeTokens.id, id));
+  /**
+   * Atomically claim a token (single-use). The conditional `WHERE … consumed_at IS NULL` makes
+   * consumption a compare-and-set, so two concurrent confirm/verify requests with the same token
+   * can't both succeed (TOCTOU): returns `true` only for the request that flipped the row.
+   */
+  async consume(id: string, at: Date): Promise<boolean> {
+    const rows = await this.db
+      .update(oneTimeTokens)
+      .set({ consumedAt: at })
+      .where(and(eq(oneTimeTokens.id, id), isNull(oneTimeTokens.consumedAt)))
+      .returning({ id: oneTimeTokens.id });
+    return rows.length > 0;
   }
 
   /** Tenant-scoped list of a user's live (unconsumed, unexpired) tokens for a purpose. */

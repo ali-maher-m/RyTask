@@ -16,6 +16,19 @@ import { type Page, expect, test } from '@playwright/test';
 const PROJECT_ID = '0193b3a0-0000-7000-8000-000000000010'; // SEED_PROJECT_ID
 const BOARD_PATH = `/projects/${PROJECT_ID}/board`;
 
+// The M1 surfaces are auth-gated (M0): sign in as the seeded founder before driving the board.
+const FOUNDER_EMAIL = 'founder@rytask.local';
+const FOUNDER_PASSWORD = 'rytask-dev-password';
+
+/** Sign in through the real login screen so the bearer token is stored before navigating. */
+async function signIn(page: Page): Promise<void> {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(FOUNDER_EMAIL);
+  await page.getByLabel('Password').fill(FOUNDER_PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'RyTask' })).toBeVisible();
+}
+
 /**
  * Drag a card onto a target column using pointer events (works with @dnd-kit). The
  * columns expose only their cards as droppables (SortableContext), so we aim for an
@@ -61,6 +74,9 @@ test('capture → track → view: quick-add, open detail, drag on the board, per
   page,
 }) => {
   const title = `Ship the board ${Date.now()}`;
+
+  // ── auth (M0): sign in so the gated M1 board loads with a real bearer token ────
+  await signIn(page);
 
   // ── US1: quick-add an item ────────────────────────────────────────────────────
   await page.goto(BOARD_PATH);

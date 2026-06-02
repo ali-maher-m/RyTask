@@ -113,4 +113,25 @@ describe('DeleteRestoreWorkItemProvider (integration)', () => {
     expect(res.item.id).toBe(id);
     expect(res.item.deletedAt).toBeNull();
   });
+
+  it('promotes a trashed parent’s live children up a level (no dangling parent, FR-HIER-001)', async () => {
+    const parentId = await newItem();
+    const child = await tenant.run(CTX, () =>
+      repo.createWorkItem({
+        projectId: SEED_PROJECT_ID,
+        title: 'Surviving child',
+        statusId: SEED_STATUS_IDS.todo,
+        priority: 'NONE',
+        reporterId: SEED_USER_ID,
+        parentId,
+      }),
+    );
+
+    await tenant.run(CTX, () => provider.delete(parentId));
+
+    // The child is still live and no longer points at the trashed parent (promoted to root here).
+    const fresh = await tenant.run(CTX, () => repo.findById(child.item.id));
+    expect(fresh).not.toBeNull();
+    expect(fresh?.item.parentId).toBeNull();
+  });
 });

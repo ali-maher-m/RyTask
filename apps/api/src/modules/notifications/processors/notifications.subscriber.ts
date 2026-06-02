@@ -11,6 +11,8 @@ import { NotificationsQueue } from './notifications.queue';
  *
  * Consumed events (named to match the emitters so no work-items internals are imported):
  *   - `work-item.created`  → ASSIGNED to the assignee (if any).
+ *   - `work-item.changed`  → STATUS_CHANGED to watchers and/or ASSIGNED to a new assignee.
+ *   - `work-item.mentioned`→ MENTIONED to users @mentioned in the item's description.
  *   - `comment.created`    → COMMENTED to every watcher (author suppressed in the policy).
  *   - `user.mentioned`     → MENTIONED to the resolved mentioned users.
  */
@@ -37,6 +39,86 @@ export class NotificationsSubscriber {
       entityId: event.workItemId,
       actorId: event.actorId,
       recipientIds: [event.assigneeId],
+      payload: ctx ? { title: ctx.title, key: ctx.key } : {},
+    });
+  }
+
+  /**
+   * A work item was edited or moved: notify its watchers of a status change (STATUS_CHANGED) and
+   * a newly-assigned user of their assignment (ASSIGNED). Each kind uses a per-change bucket
+   * (`status:`/`assign:` + the new version) so every transition produces exactly one row per
+   * recipient and replays collapse on the unique `dedupe_key`. The actor is suppressed by the
+   * policy, so an editor never notifies themselves (FR-NOTIF-001).
+   */
+  @OnEvent('work-item.changed')
+  async onWorkItemChanged(event: {
+    workItemId: string;
+    organizationId: string;
+    actorId: string | null;
+    assigneeId: string | null;
+    version: number;
+    changedFields: readonly string[];
+  }): Promise<void> {
+    const statusChanged = event.changedFields.includes('statusId');
+    const assigneeChanged = event.changedFields.includes('assigneeId');
+    if (!statusChanged && !(assigneeChanged && event.assigneeId)) return;
+
+    const ctx = await this.workItems.getItemContext(event.workItemId);
+    const payload = ctx ? { title: ctx.title, key: ctx.key } : {};
+
+    if (statusChanged) {
+      const watchers = await this.workItems.listWatchers(event.workItemId);
+      const recipientIds = watchers.map((w) => w.userId);
+      if (recipientIds.length > 0) {
+        await this.queue.enqueue({
+          organizationId: event.organizationId,
+          type: 'STATUS_CHANGED',
+          entityType: 'work_item',
+          entityId: event.workItemId,
+          actorId: event.actorId,
+          recipientIds,
+          bucket: `status:${event.version}`,
+          payload,
+        });
+      }
+    }
+
+    if (assigneeChanged && event.assigneeId) {
+      await this.queue.enqueue({
+        organizationId: event.organizationId,
+        type: 'ASSIGNED',
+        entityType: 'work_item',
+        entityId: event.workItemId,
+        actorId: event.actorId,
+        recipientIds: [event.assigneeId],
+        bucket: `assign:${event.version}`,
+        payload,
+      });
+    }
+  }
+
+  /**
+   * A work item's description @mentioned one or more users → MENTIONED notification (FR-COLLAB-002).
+   * The `desc:`+version bucket fires once per edit; the actor is suppressed by the policy.
+   */
+  @OnEvent('work-item.mentioned')
+  async onWorkItemMentioned(event: {
+    organizationId: string;
+    workItemId: string;
+    actorId: string | null;
+    version: number;
+    mentionedUserIds: string[];
+  }): Promise<void> {
+    if (event.mentionedUserIds.length === 0) return;
+    const ctx = await this.workItems.getItemContext(event.workItemId);
+    await this.queue.enqueue({
+      organizationId: event.organizationId,
+      type: 'MENTIONED',
+      entityType: 'work_item',
+      entityId: event.workItemId,
+      actorId: event.actorId,
+      recipientIds: event.mentionedUserIds,
+      bucket: `desc:${event.version}`,
       payload: ctx ? { title: ctx.title, key: ctx.key } : {},
     });
   }

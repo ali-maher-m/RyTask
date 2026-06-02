@@ -21,7 +21,11 @@ import {
   USER_PROVISIONING,
   type UserProvisioningService,
 } from '../../identity/identity.contract';
-import { adminCannotActOnOwner, wouldRemoveLastOwner } from '../domain/last-owner.policy';
+import {
+  adminCannotActOnOwner,
+  canAssignRole,
+  wouldRemoveLastOwner,
+} from '../domain/last-owner.policy';
 import { RoleChangedEvent } from '../events/member.events';
 import { MembershipsRepository } from '../repositories/memberships.repository';
 import { OrganizationsRepository } from '../repositories/organizations.repository';
@@ -90,6 +94,12 @@ export class MemberAdminProvider {
       throw new NotFoundException('member not found');
     }
     this.assertCanAct(actor, targetRole);
+    // Role-assignment ceiling: an actor may never grant a role above their own — in particular,
+    // only an OWNER may confer OWNER (FR-RBAC-003). Without this an ADMIN could promote a member
+    // to OWNER and seize the Owner-only `org:transfer`/`org:delete` capability.
+    if (!actor.role || !canAssignRole(actor.role, newRole)) {
+      throw new ForbiddenException('cannot assign a role above your own');
+    }
     if (
       wouldRemoveLastOwner({
         targetCurrentRole: targetRole,

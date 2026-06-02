@@ -154,20 +154,16 @@ describe('No secrets in storage / logs / URLs (integration)', () => {
     expect(blob).not.toContain(rotated.refreshToken);
   });
 
-  it('keeps secrets out of URLs (cookieless bearer auth)', async () => {
+  it('delivers secrets only in the response body as opaque tokens (cookieless bearer auth)', async () => {
     const result = await login.login({ email: FOUNDER, password: SEED_USER_PASSWORD });
-    // The credential-bearing routes carry no secret in their path or query string; tokens are
-    // returned in the response body and replayed in the Authorization header, never in a URL.
-    const authUrls = [
-      '/api/v1/auth/login',
-      '/api/v1/auth/refresh',
-      '/api/v1/auth/logout',
-      '/api/v1/auth/whoami',
-    ];
-    for (const url of authUrls) {
-      expect(url).not.toContain(result.accessToken);
-      expect(url).not.toContain(result.refreshToken);
-      expect(url).not.toContain(SEED_USER_PASSWORD);
-    }
+    // Tokens travel in the response BODY (and are replayed in the Authorization header), never in a
+    // URL — so the property to verify is that the body carries real, opaque secrets that embed
+    // neither the password nor each other. (This is a provider-level suite; the contract tests
+    // assert the routes themselves are POST-with-body with no token in the path.)
+    expect(result.accessToken.length).toBeGreaterThan(20);
+    expect(result.refreshToken).toMatch(/^rytask_rt_/); // generated opaque secret, not the password
+    expect(result.accessToken).not.toContain(SEED_USER_PASSWORD);
+    expect(result.refreshToken).not.toContain(SEED_USER_PASSWORD);
+    expect(result.refreshToken).not.toContain(result.accessToken);
   });
 });

@@ -15,11 +15,16 @@ import { TenantContextService } from '../../../common/tenancy/tenant-context.ser
 import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { type StartedRedis, startRedis } from '../../../common/testing/redis';
 import { NotificationsRepository } from '../repositories/notifications.repository';
+import type { DueScanProcessor } from './due-scan.processor';
 import {
   type NotificationJobData,
   NotificationsDispatchProcessor,
 } from './notifications.dispatch.processor';
 import { NotificationsQueue } from './notifications.queue';
+
+// The due-scan path is exercised by its own unit spec; here a stub satisfies the constructor —
+// the round-trip only enqueues `dispatch` jobs, never the repeatable `due-scan` job.
+const stubDueScan = { computeJobs: async () => [] } as unknown as DueScanProcessor;
 
 /**
  * PROCESSOR integration test against REAL PostgreSQL + REAL Redis (T103, §14.1). Proves:
@@ -101,7 +106,7 @@ describe('NotificationsDispatchProcessor (processor integration)', () => {
     const connection = new Redis(redis.url, { maxRetriesPerRequest: null });
     const prevWorker = process.env.WORKER;
     process.env.WORKER = '1';
-    const queue = new NotificationsQueue(connection, processor);
+    const queue = new NotificationsQueue(connection, processor, stubDueScan);
     queue.onModuleInit(); // starts the Worker (WORKER=1)
 
     try {

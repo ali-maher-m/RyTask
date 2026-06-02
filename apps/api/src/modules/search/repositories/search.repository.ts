@@ -196,20 +196,4 @@ export class SearchRepository extends TenantScopedRepository {
       projectId: null,
     }));
   }
-
-  /**
-   * Work-item ids the principal may also see via a MENTIONED watcher (FR-COLLAB-002) even
-   * without project membership — folded into the search access scope. Tenant-scoped to
-   * `work_item_watchers` (owned by work-items) read read-only here for the access decision.
-   */
-  async mentionGrantedItemIds(userId: string): Promise<string[]> {
-    const rows = await this.db.execute<{ work_item_id: string }>(sql`
-      select work_item_id
-        from work_item_watchers
-       where organization_id = ${this.tenant.getOrgId()}
-         and user_id = ${userId}
-         and reason = 'MENTIONED'
-    `);
-    return rows.rows.map((r) => r.work_item_id);
-  }
 }

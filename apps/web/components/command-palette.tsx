@@ -4,6 +4,7 @@ import type { SearchEnvelope, SearchResult, SearchResultType } from '@rytask/con
 import { Command } from 'cmdk';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { authedRequest } from '../lib/api';
 
 /**
  * Global Cmd/Ctrl-K command palette (US8, T123, FR-SRCH-001/FR-SRCH-004). Opens on
@@ -13,26 +14,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  * matches — Enter on the "Create work item" affordance. The dialog is a Radix focus-trapped
  * modal (cmdk `Command.Dialog`): arrow keys move the active item, Enter selects, Escape closes,
  * so it is fully keyboard-accessible for axe. Like the rest of `apps/web`, the hand-written
- * `@rytask/sdk` only covers health today, so this calls `/api/v1` with `fetch`, resolving the
- * dev principal from headers (M1 seam — apps/api `resolveDevPrincipal`), mirroring
- * `components/quick-add.tsx` and `app/projects/[projectId]/api-client.ts`.
+ * `@rytask/sdk` only covers health today, so this calls `/api/v1` via `authedRequest` — which
+ * attaches the M0 bearer token and silently refreshes on a 401 (the M1 dev-header seam is gone).
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
-
-/** Dev principal headers (M1 seam — apps/api/src/common/auth/principal.ts). */
-const SEED_USER_ID = '0193b3a0-0000-7000-8000-000000000003';
-const SEED_ORG_ID = '0193b3a0-0000-7000-8000-000000000001';
-const SEED_WORKSPACE_ID = '0193b3a0-0000-7000-8000-000000000002';
-
-function principalHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    'x-user-id': process.env.NEXT_PUBLIC_DEV_USER_ID ?? SEED_USER_ID,
-    'x-organization-id': process.env.NEXT_PUBLIC_DEV_ORG_ID ?? SEED_ORG_ID,
-    'x-workspace-id': process.env.NEXT_PUBLIC_DEV_WORKSPACE_ID ?? SEED_WORKSPACE_ID,
-  };
-}
 
 /** Debounce window for the search query (keystroke → fetch). */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -83,14 +67,7 @@ const EMPTY_STATE: SearchState = { results: [], loading: false, error: false };
  */
 async function runSearch(q: string, signal: AbortSignal): Promise<SearchResult[]> {
   const params = new URLSearchParams({ q, limit: '20' });
-  const res = await fetch(`${API_BASE}/api/v1/search?${params.toString()}`, {
-    headers: principalHeaders(),
-    signal,
-  });
-  if (!res.ok) {
-    throw new Error(`Search failed (${res.status})`);
-  }
-  const body = (await res.json()) as SearchEnvelope;
+  const body = await authedRequest<SearchEnvelope>(`/search?${params.toString()}`, { signal });
   return body.data ?? [];
 }
 

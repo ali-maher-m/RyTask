@@ -6,7 +6,10 @@ import { PASSWORD_HASHER, type PasswordHasher } from '../../../common/ports/pass
 import { SESSION_ISSUER, type SessionIssuer } from '../../identity/identity.contract';
 import { firstRunAvailable, orgSlug, starterKeyPrefix } from '../domain/bootstrap.policy';
 import { OrganizationCreatedEvent } from '../events/organization-created.event';
-import { BootstrapRepository } from '../repositories/bootstrap.repository';
+import {
+  AlreadyBootstrappedError,
+  BootstrapRepository,
+} from '../repositories/bootstrap.repository';
 
 /**
  * First-run onboarding provider (US1, FR-AUTH-010, research D7). Atomically creates the
@@ -36,17 +39,26 @@ export class BootstrapFirstRunProvider {
     }
 
     const passwordHash = await this.hasher.hash(input.ownerPassword);
-    const created = await this.repo.bootstrap({
-      organizationName: input.organizationName,
-      orgSlug: orgSlug(input.organizationName),
-      settings: { allowPublicSignup: false },
-      ownerName: input.ownerName,
-      ownerEmail: input.ownerEmail,
-      ownerPasswordHash: passwordHash,
-      starterProjectName: 'Getting Started',
-      starterKeyPrefix: starterKeyPrefix(input.organizationName),
-      now: this.clock.now(),
-    });
+    let created: Awaited<ReturnType<BootstrapRepository['bootstrap']>>;
+    try {
+      created = await this.repo.bootstrap({
+        organizationName: input.organizationName,
+        orgSlug: orgSlug(input.organizationName),
+        settings: { allowPublicSignup: false },
+        ownerName: input.ownerName,
+        ownerEmail: input.ownerEmail,
+        ownerPasswordHash: passwordHash,
+        starterProjectName: 'Getting Started',
+        starterKeyPrefix: starterKeyPrefix(input.organizationName),
+        now: this.clock.now(),
+      });
+    } catch (err) {
+      // Lost the first-run race to a concurrent setup — same 409 as the fast-path check.
+      if (err instanceof AlreadyBootstrappedError) {
+        throw new ConflictException('already bootstrapped');
+      }
+      throw err;
+    }
 
     this.events.emit(
       OrganizationCreatedEvent.eventName,

@@ -24,7 +24,10 @@ import { TenantContextService } from '../../../common/tenancy/tenant-context.ser
 import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { ProjectMembersRepository } from '../../projects/repositories/project-members.repository';
 import { ProjectAccessServiceImpl } from '../../projects/services/project-access.service';
+import { ActivityRepository } from '../../work-items/repositories/activity.repository';
+import { WorkItemWatchersRepository } from '../../work-items/repositories/work-item-watchers.repository';
 import { WorkItemsRepository } from '../../work-items/repositories/work-items.repository';
+import { WorkItemAccessServiceImpl } from '../../work-items/services/work-item-access.service';
 import { SearchRepository } from '../repositories/search.repository';
 import { SearchProvider } from './search.provider';
 
@@ -68,7 +71,12 @@ describe('SearchProvider (integration)', () => {
     const searchRepo = new SearchRepository(handle.db, tenant);
     const members = new ProjectMembersRepository(handle.db, tenant);
     const access = new ProjectAccessServiceImpl(members, tenant);
-    provider = new SearchProvider(searchRepo, access, tenant);
+    const workItemAccess = new WorkItemAccessServiceImpl(
+      workItems,
+      new WorkItemWatchersRepository(handle.db, tenant),
+      new ActivityRepository(handle.db, tenant),
+    );
+    provider = new SearchProvider(searchRepo, access, tenant, workItemAccess);
 
     // ── accessible work item in SEED_PROJECT: title + description FTS hits ───────────
     const accessible = await tenant.run(CTX, () =>

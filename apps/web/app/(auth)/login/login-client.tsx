@@ -9,8 +9,18 @@ import { ApiError, login, storeSession } from '../../../lib/api';
  * Sign-in form (US2, T059). Email + password → `POST /auth/login` → tokens stored → into the app.
  * Invalid credentials surface as a single generic message (no account-existence signal — no
  * enumeration). Repeated failures may be throttled server-side (429), shown plainly. Every field
- * is labelled for accessibility; errors live in a `role="alert"` region.
+ * is labelled for accessibility; errors live in a `role="alert"` region. After signing in the
+ * user returns to the page the auth gate (`RequireAuth`) bounced them from (`?next=`), defaulting
+ * to the app home. Only same-origin relative paths are honored (no open redirect).
  */
+
+/** The post-login destination from `?next=`, restricted to a same-origin path (`/…`, not `//…`). */
+function safeNext(): string {
+  if (typeof window === 'undefined') return '/';
+  const next = new URLSearchParams(window.location.search).get('next');
+  return next?.startsWith('/') && !next.startsWith('//') ? next : '/';
+}
+
 export function LoginClient() {
   const router = useRouter();
   const formId = useId();
@@ -27,7 +37,7 @@ export function LoginClient() {
     try {
       const result = await login({ email: email.trim(), password });
       storeSession(result);
-      router.push('/');
+      router.push(safeNext());
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
         setError('Too many attempts. Please wait a few minutes and try again.');

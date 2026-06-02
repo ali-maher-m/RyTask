@@ -1,3 +1,4 @@
+import { RequireAuth } from '../../../../components/require-auth';
 import { BoardClient } from './board-client';
 
 /**
@@ -12,5 +13,9 @@ export default async function BoardPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <BoardClient projectId={projectId} />;
+  return (
+    <RequireAuth>
+      <BoardClient projectId={projectId} />
+    </RequireAuth>
+  );
 }

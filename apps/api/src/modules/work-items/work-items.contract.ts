@@ -45,8 +45,29 @@ export interface WorkItemAccessService {
   listWatchers(workItemId: string): Promise<Watcher[]>;
   /** True if the user may read the item — a member (any role) OR a MENTIONED watcher (FR-COLLAB-002). */
   canAccess(workItemId: string, userId: string): Promise<boolean>;
+  /** Work-item ids the user may also see via a MENTIONED watcher — the search mention-grant scope. */
+  mentionGrantedItemIds(userId: string): Promise<string[]>;
   /** Append a COMMENTED activity row (same owning module as the item). */
   recordCommented(workItemId: string, actorId: string | null): Promise<void>;
+  /**
+   * SYSTEM read-model for the due-soon/overdue notification scan (FR-NOTIF-001): every non-deleted,
+   * non-completed item with a due date on or before `today + soonDays`, across ALL tenants (the
+   * scheduled scan runs outside any request). The caller re-scopes per `organizationId` when it
+   * dispatches, so tenant isolation holds at write time.
+   */
+  listDueAndOverdue(today: string, soonDays: number): Promise<DueWorkItem[]>;
+}
+
+/** A due-soon/overdue item surfaced by the scheduled scan (FR-NOTIF-001). */
+export interface DueWorkItem {
+  organizationId: string;
+  workItemId: string;
+  assigneeId: string | null;
+  /** ISO `YYYY-MM-DD`. */
+  dueDate: string;
+  title: string;
+  key: string;
+  kind: 'DUE_SOON' | 'OVERDUE';
 }
 
 /** Minimal item context the collaboration modules need (no internal row shape leaked). */

@@ -2,6 +2,7 @@
 
 import type { AddSubtask, WorkItem, WorkItemListResponse } from '@rytask/contracts';
 import { useCallback, useEffect, useId, useState } from 'react';
+import { authedFetch } from '../lib/api';
 
 /**
  * Sub-task tree (US6, T100, FR-HIER-001). A nested, expand/collapse tree of a work item's
@@ -21,8 +22,6 @@ import { useCallback, useEffect, useId, useState } from 'react';
  * Accessibility (axe): the tree uses native <details>/<summary> disclosure, every picker is
  * associated with a <label> via a stable useId, and the overdue badge carries descriptive text.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 /** The single-resource envelope `{ data }` used by the subtask POST and date PATCH. */
 interface DataEnvelope<T> {
@@ -88,7 +87,7 @@ function SubtaskNode({ item: initial, depth, onChange }: SubtaskNodeProps) {
 
   const loadChildren = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${id}/subtasks`);
+      const res = await authedFetch(`/work-items/${id}/subtasks`);
       if (!res.ok) {
         setError(`Load sub-tasks failed (${res.status})`);
         return;
@@ -121,9 +120,8 @@ function SubtaskNode({ item: initial, depth, onChange }: SubtaskNodeProps) {
       setError(null);
       setConflict(false);
       try {
-        const res = await fetch(`${API_BASE}/api/v1/work-items/${item.id}`, {
+        const res = await authedFetch(`/work-items/${item.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ version: item.version, [field]: next }),
         });
         if (res.status === 409) {
@@ -159,9 +157,8 @@ function SubtaskNode({ item: initial, depth, onChange }: SubtaskNodeProps) {
     setError(null);
     try {
       const payload: AddSubtask = { title };
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${item.id}/subtasks`, {
+      const res = await authedFetch(`/work-items/${item.id}/subtasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {

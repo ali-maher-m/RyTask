@@ -8,6 +8,7 @@ import {
   type WorkItem,
 } from '@rytask/contracts';
 import { useCallback, useEffect, useId, useState } from 'react';
+import { authedFetch } from '../lib/api';
 
 /**
  * Item-detail panel (US2, T044). Shows and edits a single work item: a markdown
@@ -25,8 +26,6 @@ import { useCallback, useEffect, useId, useState } from 'react';
  * Every PATCH carries the work item's current `version`; a 409 surfaces a "changed elsewhere"
  * message rather than clobbering. Unresolved/optimistic state is never silently dropped.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 /** The single-resource envelope `{ data, meta? }` used by create/get/update routes. */
 interface DataEnvelope<T> {
@@ -98,7 +97,7 @@ export function ItemDetail({ item, labels = [], onChange, onDeleted, onClose }: 
 
   const loadActivity = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${id}/activity`);
+      const res = await authedFetch(`/work-items/${id}/activity`);
       if (!res.ok) return;
       const body = (await res.json()) as { data: ActivityEntry[] };
       setActivity(body.data ?? []);
@@ -122,9 +121,8 @@ export function ItemDetail({ item, labels = [], onChange, onDeleted, onClose }: 
       setError(null);
       setConflict(false);
       try {
-        const res = await fetch(`${API_BASE}/api/v1/work-items/${current.id}`, {
+        const res = await authedFetch(`/work-items/${current.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ version: current.version, ...patchBody }),
         });
         if (res.status === 409) {
@@ -186,9 +184,8 @@ export function ItemDetail({ item, labels = [], onChange, onDeleted, onClose }: 
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${current.id}/labels`, {
+      const res = await authedFetch(`/work-items/${current.id}/labels`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ labelId }),
       });
       if (!res.ok) {
@@ -211,7 +208,7 @@ export function ItemDetail({ item, labels = [], onChange, onDeleted, onClose }: 
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${current.id}/labels/${labelId}`, {
+      const res = await authedFetch(`/work-items/${current.id}/labels/${labelId}`, {
         method: 'DELETE',
       });
       if (!res.ok && res.status !== 204) {
@@ -234,7 +231,7 @@ export function ItemDetail({ item, labels = [], onChange, onDeleted, onClose }: 
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${current.id}`, { method: 'DELETE' });
+      const res = await authedFetch(`/work-items/${current.id}`, { method: 'DELETE' });
       if (!res.ok && res.status !== 204) {
         setError(`Delete failed (${res.status})`);
         return;
@@ -251,7 +248,7 @@ export function ItemDetail({ item, labels = [], onChange, onDeleted, onClose }: 
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${current.id}/restore`, {
+      const res = await authedFetch(`/work-items/${current.id}/restore`, {
         method: 'POST',
       });
       if (!res.ok) {

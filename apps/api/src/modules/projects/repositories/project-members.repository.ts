@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type Database, projectMembers, users } from '@rytask/db';
+import { type Database, projectMembers, projects, users } from '@rytask/db';
 import { asc, eq } from 'drizzle-orm';
 import { DB } from '../../../common/database/database.module';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
@@ -43,6 +43,19 @@ export class ProjectMembersRepository extends TenantScopedRepository {
       .from(projectMembers)
       .where(this.scoped(projectMembers, eq(projectMembers.userId, userId)));
     return rows.map((r) => r.projectId);
+  }
+
+  /**
+   * Every project id in the org (tenant-scoped) — the accessible set for an org OWNER/ADMIN, who
+   * may read any project (FR-PROJ-002) even without an explicit membership. Reads the `projects`
+   * table (same module) so a project with no members is still included.
+   */
+  async listAllProjectIds(): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(this.scoped(projects));
+    return rows.map((r) => r.id);
   }
 
   /** Add (or no-op upsert) a membership row. */

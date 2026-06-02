@@ -2,9 +2,11 @@ import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import {
   type ConfirmPasswordResetRequest,
   type RequestPasswordResetRequest,
+  type RequestVerificationRequest,
   type VerifyEmailRequest,
   confirmPasswordResetSchema,
   requestPasswordResetSchema,
+  requestVerificationSchema,
   verifyEmailSchema,
 } from '@rytask/contracts';
 import { Public } from '../../../common/rbac/decorators';
@@ -42,6 +44,16 @@ export class AuthRecoveryController {
     body: RequestPasswordResetRequest,
   ): Promise<void> {
     return this.reset.requestReset(body);
+  }
+
+  @Public()
+  @Post('request-verification')
+  @HttpCode(202)
+  requestVerification(
+    @Body(new ZodValidationPipe<RequestVerificationRequest>(requestVerificationSchema))
+    body: RequestVerificationRequest,
+  ): Promise<void> {
+    return this.verification.requestVerification(body.email);
   }
 
   @Public()

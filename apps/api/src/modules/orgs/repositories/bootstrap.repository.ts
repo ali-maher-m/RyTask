@@ -52,6 +52,17 @@ export interface BootstrapResult {
   projectId: string;
 }
 
+/** Thrown when a concurrent first-run won the race; the provider maps it to 409. */
+export class AlreadyBootstrappedError extends Error {
+  constructor() {
+    super('already bootstrapped');
+    this.name = 'AlreadyBootstrappedError';
+  }
+}
+
+/** Fixed advisory-lock key serializing concurrent first-run attempts (one instance = one org). */
+const BOOTSTRAP_LOCK_KEY = 991_001;
+
 /**
  * First-run provisioning repository (research D7). Creates the entire initial tenant —
  * organization, default workspace, owner user (+ OWNER membership), and a starter project
@@ -74,6 +85,15 @@ export class BootstrapRepository extends TenantScopedRepository {
 
   async bootstrap(input: BootstrapInput): Promise<BootstrapResult> {
     return this.db.transaction(async (tx): Promise<BootstrapResult> => {
+      // Serialize concurrent first-run attempts (the outer isAvailable() is only a fast-path) and
+      // re-check the single-org invariant INSIDE the tx + lock, so two simultaneous POST /setup
+      // requests can't both create an organization. The xact lock releases at commit/rollback.
+      await tx.execute(sql`select pg_advisory_xact_lock(${BOOTSTRAP_LOCK_KEY})`);
+      const [existing] = await tx.select({ count: sql<string>`count(*)` }).from(organizations);
+      if (Number(existing?.count ?? 0) > 0) {
+        throw new AlreadyBootstrappedError();
+      }
+
       const [org] = await tx
         .insert(organizations)
         .values({ name: input.organizationName, slug: input.orgSlug, settings: input.settings })

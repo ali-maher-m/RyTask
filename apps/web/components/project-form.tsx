@@ -2,34 +2,18 @@
 
 import type { CreateProject, Project, ProjectMember, UpdateProject } from '@rytask/contracts';
 import { useState } from 'react';
+import { authedRequest } from '../lib/api';
 
 /**
  * Project create / settings form (US4, T075, FR-PROJ-001). Captures a project's name, key
  * prefix, icon, color, and lead. In `create` mode it POSTs `CreateProject`; in `edit` mode it
- * PATCHes `UpdateProject` (only changed fields) for the existing project. The dev principal is
- * resolved from headers in M1 (apps/api `resolveDevPrincipal`), mirroring
- * `app/projects/[projectId]/api-client.ts` and `components/quick-add.tsx`. The key prefix is
- * immutable after creation (the key sequence is anchored to it), so it is read-only in edit
- * mode. The lead is chosen from the project's members (edit) or left unset (create, set later
- * in settings). Every field has an associated label for axe; submit/validation errors surface
- * in a `role="alert"` region.
+ * PATCHes `UpdateProject` (only changed fields) for the existing project. Requests carry the M0
+ * bearer token via `authedRequest` (the M1 dev-header seam is gone). The key prefix is immutable
+ * after creation (the key sequence is anchored to it), so it is read-only in edit mode. The lead
+ * is chosen from the project's members (edit) or left unset (create, set later in settings).
+ * Every field has an associated label for axe; submit/validation errors surface in a
+ * `role="alert"` region.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
-
-/** Dev principal headers (M1 seam — apps/api/src/common/auth/principal.ts). */
-const SEED_USER_ID = '0193b3a0-0000-7000-8000-000000000003';
-const SEED_ORG_ID = '0193b3a0-0000-7000-8000-000000000001';
-const SEED_WORKSPACE_ID = '0193b3a0-0000-7000-8000-000000000002';
-
-function principalHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    'x-user-id': process.env.NEXT_PUBLIC_DEV_USER_ID ?? SEED_USER_ID,
-    'x-organization-id': process.env.NEXT_PUBLIC_DEV_ORG_ID ?? SEED_ORG_ID,
-    'x-workspace-id': process.env.NEXT_PUBLIC_DEV_WORKSPACE_ID ?? SEED_WORKSPACE_ID,
-  };
-}
 
 /** Key prefix rule (projects.contract `keyPrefixSchema`): A then 1–9 of [A-Z0-9]. */
 const KEY_PREFIX_RE = /^[A-Z][A-Z0-9]{1,9}$/;
@@ -246,23 +230,17 @@ function buildUpdate(project: Project, fields: FormFields): UpdateProject {
 }
 
 async function postProject(body: CreateProject): Promise<Project> {
-  const res = await fetch(`${API_BASE}/api/v1/projects`, {
+  const json = await authedRequest<{ data: Project }>('/projects', {
     method: 'POST',
-    headers: principalHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Create failed (${res.status}).`);
-  const json = (await res.json()) as { data: Project };
   return json.data;
 }
 
 async function patchProject(id: string, body: UpdateProject): Promise<Project> {
-  const res = await fetch(`${API_BASE}/api/v1/projects/${id}`, {
+  const json = await authedRequest<{ data: Project }>(`/projects/${id}`, {
     method: 'PATCH',
-    headers: principalHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`Update failed (${res.status}).`);
-  const json = (await res.json()) as { data: Project };
   return json.data;
 }

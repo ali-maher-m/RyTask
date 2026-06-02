@@ -1,8 +1,14 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { CreateWorkItem, Priority, UnresolvedToken } from '@rytask/contracts';
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { PROJECT_ACCESS, type ProjectAccessService } from '../../projects/projects.contract';
+import { evaluateParenting } from '../domain/hierarchy.policy';
 import { parseQuickAdd } from '../domain/quick-add.parser';
 import { LabelsRepository } from '../repositories/labels.repository';
 import { type CreatedWorkItem, WorkItemsRepository } from '../repositories/work-items.repository';
@@ -35,6 +41,12 @@ export class CreateWorkItemProvider {
     }
     // RBAC: create requires project:member (org admins bypass).
     await this.access.assertRole(projectId, 'MEMBER');
+
+    // An explicit parent (direct POST /work-items with parentId) must be validated like a
+    // sub-task: it was previously written unchecked, allowing a cross-project or over-deep parent.
+    if (input.parentId) {
+      await this.assertValidNewParent(projectId, input.parentId);
+    }
 
     const unresolved: UnresolvedToken[] = [];
     let title = input.title?.trim() ?? '';
@@ -95,5 +107,32 @@ export class CreateWorkItemProvider {
     });
 
     return { ...created, labelIds: [...new Set(labelIds)], unresolved };
+  }
+
+  /**
+   * Validate an explicit `parentId` on a fresh create (FR-HIER-001): the parent must exist and
+   * live in the same project, and the new leaf must stay within the nesting depth. A new item can
+   * never self-parent or cycle, so only existence/project/depth apply. The add-subtask path
+   * validates too; this gates a direct `POST /work-items` that carries a `parentId`.
+   */
+  private async assertValidNewParent(projectId: string, parentId: string): Promise<void> {
+    const parent = await this.workItems.findById(parentId);
+    if (!parent) {
+      throw new UnprocessableEntityException('parent work item not found');
+    }
+    if (parent.item.projectId !== projectId) {
+      throw new UnprocessableEntityException(
+        'a sub-task must be in the same project as its parent',
+      );
+    }
+    const decision = evaluateParenting({
+      itemId: `new:${parentId}`,
+      parentId,
+      parentAncestorIds: await this.workItems.ancestorIds(parentId),
+      subtreeHeight: 1,
+    });
+    if (!decision.ok) {
+      throw new UnprocessableEntityException(decision.message);
+    }
   }
 }

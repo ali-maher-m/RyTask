@@ -1,5 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type { MoveWorkItem } from '@rytask/contracts';
+import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { PROJECT_ACCESS, type ProjectAccessService } from '../../projects/projects.contract';
 import {
@@ -10,6 +16,8 @@ import {
 
 export interface MoveWorkItemResult extends CreatedWorkItem {
   labelIds: string[];
+  /** Field names that actually changed (e.g. `statusId`, `position`) — drives event emission. */
+  changedFields: string[];
 }
 
 /** Default gap when placing relative to a single neighbour (research D13). */
@@ -29,6 +37,7 @@ export class MoveWorkItemProvider {
     private readonly workItems: WorkItemsRepository,
     @Inject(PROJECT_ACCESS) private readonly access: ProjectAccessService,
     private readonly tenant: TenantContextService,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async move(id: string, input: MoveWorkItem): Promise<MoveWorkItemResult> {
@@ -53,13 +62,17 @@ export class MoveWorkItemProvider {
         newValue: input.statusId,
         action: 'STATUS_CHANGED',
       });
-      const nextCategory = await this.workItems.statusCategory(input.statusId as string);
-      if (nextCategory == null) {
-        throw new BadRequestException('target status does not exist in this project');
+      // The target status must belong to THIS item's project (statusInfo is org-scoped) — without
+      // the project check a card could be dropped into another project's column.
+      const status = await this.workItems.statusInfo(input.statusId as string);
+      if (!status || status.projectId !== before.projectId) {
+        throw new UnprocessableEntityException(
+          "target status does not belong to this item's project",
+        );
       }
-      const enteringCompleted = nextCategory === 'COMPLETED';
+      const enteringCompleted = status.category === 'COMPLETED';
       if (enteringCompleted && !before.completedAt) {
-        columns.completedAt = new Date();
+        columns.completedAt = this.clock.now();
       } else if (!enteringCompleted && before.completedAt) {
         columns.completedAt = null;
       }
@@ -81,13 +94,13 @@ export class MoveWorkItemProvider {
       // Nothing actually changed; still version-checked to honour optimistic concurrency.
       const labelIds = await this.workItems.labelIdsFor(id);
       const moved = await this.workItems.moveItem(id, input.version, {}, [], null);
-      return { ...moved, labelIds };
+      return { ...moved, labelIds, changedFields: [] };
     }
 
     const actorId = this.tenant.getUserId() ?? null;
     const moved = await this.workItems.moveItem(id, input.version, columns, changes, actorId);
     const labelIds = await this.workItems.labelIdsFor(id);
-    return { ...moved, labelIds };
+    return { ...moved, labelIds, changedFields: changes.map((c) => c.field) };
   }
 
   /**

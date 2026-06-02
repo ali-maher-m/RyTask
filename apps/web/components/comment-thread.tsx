@@ -2,6 +2,7 @@
 
 import type { Comment, CommentEnvelope, CommentListResponse } from '@rytask/contracts';
 import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { ApiError, authedRequest } from '../lib/api';
 
 /**
  * Comment thread (US7, T115, FR-COLLAB-001/002, D9/D15). Threaded markdown comments with
@@ -10,27 +11,13 @@ import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
  *   GET  /work-items/{id}/comments — list (cursor-paginated `{ data, pageInfo }`)
  *   POST /work-items/{id}/comments — post a comment; optional `parentId` for a threaded reply
  *
- * A posted `@mention` notifies the mentioned user and grants them context access to this item
+ * Requests carry the M0 bearer token via `authedRequest` (the M1 dev-header seam is gone). A
+ * posted `@mention` notifies the mentioned user and grants them context access to this item
  * (FR-COLLAB-002); the server resolves handles → `mentions` user ids on the returned comment.
  * Markdown rendering here is intentionally minimal (no third-party renderer): paragraphs,
  * inline code via backticks, and highlighted `@mention` spans. Every control has an accessible
  * name for axe.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
-
-/** Dev principal headers (M1 seam — apps/api/src/common/auth/principal.ts). */
-const SEED_USER_ID = '0193b3a0-0000-7000-8000-000000000003';
-const SEED_ORG_ID = '0193b3a0-0000-7000-8000-000000000001';
-const SEED_WORKSPACE_ID = '0193b3a0-0000-7000-8000-000000000002';
-
-function principalHeaders(): Record<string, string> {
-  return {
-    'x-user-id': process.env.NEXT_PUBLIC_DEV_USER_ID ?? SEED_USER_ID,
-    'x-organization-id': process.env.NEXT_PUBLIC_DEV_ORG_ID ?? SEED_ORG_ID,
-    'x-workspace-id': process.env.NEXT_PUBLIC_DEV_WORKSPACE_ID ?? SEED_WORKSPACE_ID,
-  };
-}
 
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
@@ -170,18 +157,15 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/work-items/${workItemId}/comments`, {
-        headers: { 'Content-Type': 'application/json', ...principalHeaders() },
-      });
-      if (!res.ok) {
-        setError(`Failed to load comments (${res.status})`);
-        return;
-      }
-      const json = (await res.json()) as CommentListResponse;
+      const json = await authedRequest<CommentListResponse>(`/work-items/${workItemId}/comments`);
       setComments(json.data ?? []);
       setError(null);
-    } catch {
-      setError('Network error while loading comments');
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? `Failed to load comments (${e.status})`
+          : 'Network error while loading comments',
+      );
     }
   }, [workItemId]);
 
@@ -196,20 +180,18 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
       setBusy(true);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/v1/work-items/${workItemId}/comments`, {
+        const json = await authedRequest<CommentEnvelope>(`/work-items/${workItemId}/comments`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...principalHeaders() },
           body: JSON.stringify(parentId ? { body: trimmed, parentId } : { body: trimmed }),
         });
-        if (!res.ok) {
-          setError(`Failed to post comment (${res.status})`);
-          return false;
-        }
-        const json = (await res.json()) as CommentEnvelope;
         setComments((prev) => [...(prev ?? []), json.data]);
         return true;
-      } catch {
-        setError('Network error while posting comment');
+      } catch (e) {
+        setError(
+          e instanceof ApiError
+            ? `Failed to post comment (${e.status})`
+            : 'Network error while posting comment',
+        );
         return false;
       } finally {
         setBusy(false);

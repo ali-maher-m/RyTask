@@ -32,3 +32,25 @@ export function wouldRemoveLastOwner(params: {
 /** An `ADMIN` may not change/remove an `OWNER` (rbac-matrix note ²); only an Owner can. */
 export const adminCannotActOnOwner = (actorRole: Role, targetRole: Role): boolean =>
   actorRole === 'ADMIN' && targetRole === 'OWNER';
+
+/**
+ * Privilege rank for the role-assignment ceiling (FR-RBAC-003). Higher = more privileged. Used
+ * only to compare an actor's role against a role they are trying to grant; it is NOT a general
+ * authorization mechanism (permissions live in `common/rbac`).
+ */
+const ROLE_RANK: Record<Role, number> = {
+  OWNER: 5,
+  ADMIN: 4,
+  MEMBER: 3,
+  VIEWER: 2,
+  GUEST: 1,
+};
+
+/**
+ * May `actorRole` grant (via invite or role-change) `targetRole`? Only when the target role is no
+ * more privileged than the actor's own — so an `ADMIN` can assign up to `ADMIN` but never
+ * `OWNER`, and only an `OWNER` may confer `OWNER`. This closes the privilege-escalation gap where
+ * an Admin (holding `members:write`/`members:invite`) could otherwise mint Owners (FR-RBAC-003).
+ */
+export const canAssignRole = (actorRole: Role, targetRole: Role): boolean =>
+  ROLE_RANK[targetRole] <= ROLE_RANK[actorRole];

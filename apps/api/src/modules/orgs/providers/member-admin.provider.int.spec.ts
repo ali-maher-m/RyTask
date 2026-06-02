@@ -97,6 +97,19 @@ describe('MemberAdminProvider (integration)', () => {
     expect(ids).toContain(memberUserId);
   });
 
+  it('forbids an Admin from promoting a member to OWNER (escalation ceiling, FR-RBAC-003)', async () => {
+    const founderAsAdmin: Principal = {
+      userId: SEED_USER_ID,
+      organizationId: SEED_ORG_ID,
+      role: 'ADMIN',
+    };
+    await expect(
+      tenant.run(ctxA, () => provider.setMemberRole(founderAsAdmin, memberUserId, 'OWNER')),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    // The target's role is unchanged by the rejected promotion.
+    expect(await tenant.run(ctxA, () => memberships.findRole(memberUserId))).toBe('MEMBER');
+  });
+
   it('promotes a member, then blocks demoting the last owner (409, SC-015)', async () => {
     const updated = await tenant.run(ctxA, () =>
       provider.setMemberRole(founderOwner, memberUserId, 'ADMIN'),

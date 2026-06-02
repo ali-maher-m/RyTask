@@ -8,6 +8,7 @@ import { AuthGuard } from './common/guards/auth.guard';
 import { RbacGuard } from './common/guards/rbac.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { ThrottleGuard } from './common/guards/throttle.guard';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { PortsModule } from './common/ports/ports.module';
 import { RedisModule } from './common/redis/redis.module';
 import { TenancyModule } from './common/tenancy/tenancy.module';
@@ -30,6 +31,7 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     RedisModule,
     TenancyModule,
     PortsModule,
+    IdempotencyModule,
     HealthModule,
     // M0 bounded contexts (data-model §4): identity + orgs. @Global; expose cross-module ports.
     IdentityModule,

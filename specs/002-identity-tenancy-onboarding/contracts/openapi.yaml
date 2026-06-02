@@ -113,6 +113,16 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EmailBody' } } } }
       responses: { '202': { description: Accepted (always, regardless of account existence) } }
 
+  /auth/request-verification:
+    post:
+      tags: [auth]
+      summary: Resend an email-verification link (uniform response — no enumeration, SC-010) (FR-AUTH-003)
+      operationId: requestVerification
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EmailBody' } } } }
+      responses: { '202': { description: Accepted (always; no-op if unknown or already verified) } }
+
   /auth/confirm-password-reset:
     post:
       tags: [auth]

@@ -54,6 +54,14 @@ export const requestPasswordResetSchema = z
   .strict();
 export type RequestPasswordResetRequest = z.infer<typeof requestPasswordResetSchema>;
 
+/** POST /auth/request-verification — resend an email-verification link (uniform, no enumeration). */
+export const requestVerificationSchema = z
+  .object({
+    email: emailSchema,
+  })
+  .strict();
+export type RequestVerificationRequest = z.infer<typeof requestVerificationSchema>;
+
 /** POST /auth/confirm-password-reset — consume a PASSWORD_RESET token + set new password. */
 export const confirmPasswordResetSchema = z
   .object({

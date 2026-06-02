@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { SearchQuery, SearchResult } from '@rytask/contracts';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { PROJECT_ACCESS, type ProjectAccessService } from '../../projects/projects.contract';
+import { WORK_ITEM_ACCESS, type WorkItemAccessService } from '../../work-items/work-items.contract';
 import { buildSearchPlan } from '../domain/search-query';
 import { SearchRepository } from '../repositories/search.repository';
 
@@ -19,13 +20,16 @@ export class SearchProvider {
     private readonly repo: SearchRepository,
     @Inject(PROJECT_ACCESS) private readonly access: ProjectAccessService,
     private readonly tenant: TenantContextService,
+    @Inject(WORK_ITEM_ACCESS) private readonly workItemAccess: WorkItemAccessService,
   ) {}
 
   async search(query: SearchQuery): Promise<SearchResult[]> {
     const principalId = this.tenant.getUserId() ?? '';
     const [accessibleProjectIds, mentionGrantedItemIds] = await Promise.all([
       this.access.accessibleProjectIds(),
-      principalId ? this.repo.mentionGrantedItemIds(principalId) : Promise.resolve([]),
+      // Mention-grant scope comes through the work-items contract — search never reads
+      // `work_item_watchers` (owned by work-items) directly (Principle III).
+      principalId ? this.workItemAccess.mentionGrantedItemIds(principalId) : Promise.resolve([]),
     ]);
 
     const plan = buildSearchPlan({
