@@ -1,5 +1,6 @@
 import { createDb } from './client';
 import {
+  memberships,
   organizations,
   projectCounters,
   projectMembers,
@@ -23,6 +24,16 @@ export const SEED_ORG_ID = '0193b3a0-0000-7000-8000-000000000001';
 export const SEED_WORKSPACE_ID = '0193b3a0-0000-7000-8000-000000000002';
 export const SEED_USER_ID = '0193b3a0-0000-7000-8000-000000000003';
 export const SEED_PROJECT_ID = '0193b3a0-0000-7000-8000-000000000010';
+
+/**
+ * Dev credentials for the seeded founder (research D16). The hash is a real argon2id hash of
+ * {@link SEED_USER_PASSWORD}, precomputed so `packages/db` needs no argon2 dependency; the
+ * API's verifier reads the salt/params from the hash string. Keeps `docker compose up` a
+ * working signed-in-Owner demo and lets login tests sign in (`founder@rytask.local`).
+ */
+export const SEED_USER_PASSWORD = 'rytask-dev-password';
+const SEED_USER_PASSWORD_HASH =
+  '$argon2id$v=19$m=19456,t=2,p=1$CRsLoRcApM4Y9sKytJ8WAA$bLEYxElsrPq0XE6q199OUBDo0LDSCS1bioYiTXYpwZ0';
 
 /** Status ids (fixed) — exported so tests can target the seeded statuses. */
 export const SEED_STATUS_IDS = {
@@ -62,6 +73,18 @@ export async function seed(
         organizationId: SEED_ORG_ID,
         email: 'founder@rytask.local',
         name: 'Founder',
+        passwordHash: SEED_USER_PASSWORD_HASH,
+        emailVerifiedAt: new Date(),
+      })
+      .onConflictDoNothing();
+
+    // The founder is the OWNER of the org (M0, FR-RBAC-001) so RBAC + the demo work.
+    await db
+      .insert(memberships)
+      .values({
+        organizationId: SEED_ORG_ID,
+        userId: SEED_USER_ID,
+        role: 'OWNER',
       })
       .onConflictDoNothing();
 

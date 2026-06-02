@@ -8,6 +8,7 @@ import type {
 } from '@rytask/contracts';
 import { SEED_ORG_ID, SEED_USER_ID, SEED_WORKSPACE_ID } from '@rytask/db';
 import request from 'supertest';
+import { withPrincipal } from '../../../common/testing/with-principal';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../../../app.module';
 import { NotificationsService } from '../services/notifications.service';
@@ -68,9 +69,7 @@ describe('NotificationsController (contract)', () => {
   const authed = (method: 'get' | 'patch', path: string): request.Test =>
     request(app.getHttpServer())
       [method](`/api/v1${path}`)
-      .set('x-user-id', SEED_USER_ID)
-      .set('x-organization-id', SEED_ORG_ID)
-      .set('x-workspace-id', SEED_WORKSPACE_ID);
+      .set('authorization', withPrincipal({ userId: SEED_USER_ID, organizationId: SEED_ORG_ID, workspaceId: SEED_WORKSPACE_ID, role: 'OWNER' }));
 
   it('GET /notifications → 200 { data, pageInfo }', async () => {
     const res = await authed('get', '/notifications').send();

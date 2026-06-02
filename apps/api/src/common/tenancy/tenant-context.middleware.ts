@@ -1,25 +1,31 @@
 import { Injectable, type NestMiddleware } from '@nestjs/common';
-import { type Principal, type RequestWithPrincipal, resolveDevPrincipal } from '../auth/principal';
+import type { RequestWithPrincipal } from '../auth/principal';
+import { TokenVerifier } from '../../modules/identity/services/token-verifier.service';
 import { TenantContextService } from './tenant-context.service';
 
 type Next = () => void;
 
 /**
- * Establishes the per-request tenant context in AsyncLocalStorage (§4.2). Middleware
- * is the correct mechanism: it wraps the entire downstream (guards → handler) inside
- * `tenant.run()` so every repository auto-scopes to the principal's org.
+ * Establishes the per-request tenant context in AsyncLocalStorage (§4.2, research D4).
+ * Middleware is the correct mechanism: it wraps the entire downstream (guards → handler)
+ * inside `tenant.run()` so every repository auto-scopes to the principal's org.
  *
- * M1 resolves the principal via the dev seam (`resolveDevPrincipal`); M0 replaces this
- * with verified-token resolution (research D0). Unauthenticated requests pass through
- * with no context — tenant-scoped repositories then fail loudly (and M0's AuthGuard
- * will 401 before they are reached).
+ * M0/US2: verifies the bearer credential (JWT/PAT) via {@link TokenVerifier} and attaches
+ * the principal. The M1 dev-header seam (`resolveDevPrincipal`) is **gone** from the runtime
+ * (research D16) — tests use the `withPrincipal()` helper (a real token) instead.
+ * Unauthenticated requests pass through with no context; `AuthGuard` then 401s (unless `@Public`).
  */
 @Injectable()
 export class TenantContextMiddleware implements NestMiddleware {
-  constructor(private readonly tenant: TenantContextService) {}
+  constructor(
+    private readonly tenant: TenantContextService,
+    private readonly verifier: TokenVerifier,
+  ) {}
 
-  use(req: RequestWithPrincipal, _res: unknown, next: Next): void {
-    const principal: Principal | undefined = req.principal ?? resolveDevPrincipal(req);
+  async use(req: RequestWithPrincipal, _res: unknown, next: Next): Promise<void> {
+    const raw = req.headers.authorization;
+    const authHeader = Array.isArray(raw) ? raw[0] : raw;
+    const principal = await this.verifier.verify(authHeader);
     if (!principal) {
       next();
       return;

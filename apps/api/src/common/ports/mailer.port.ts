@@ -9,6 +9,9 @@ export interface MailerPort {
   send(message: MailMessage): Promise<void>;
 }
 
+/** DI token for the Mailer port. */
+export const MAILER = Symbol('MAILER');
+
 /** No-op dev adapter — logs instead of sending. M0 wires a real SMTP adapter. */
 export const noopMailer: MailerPort = {
   async send(message: MailMessage): Promise<void> {

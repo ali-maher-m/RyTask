@@ -20,6 +20,18 @@ export const statusCategoryEnum = pgEnum('status_category', [
 // Project membership role (M1 subset; org roles come from M0).
 export const projectRoleEnum = pgEnum('project_role', ['ADMIN', 'MEMBER', 'VIEWER']);
 
+// FR-RBAC-001 (M0) — built-in org roles, ordered most→least privileged (ordinal can drive UI).
+export const roleEnum = pgEnum('role_type', ['OWNER', 'ADMIN', 'MEMBER', 'GUEST', 'VIEWER']);
+
+// FR-AUTH-007 (M0) — credential type. PAT/MCP issued in M0; OAUTH reserved for v2 social login.
+export const tokenTypeEnum = pgEnum('token_type', ['PAT', 'OAUTH', 'MCP']);
+
+// FR-AUTH-003 (M0) — single-use email tokens. (api_tokens are separate, long-lived, listable.)
+export const oneTimeTokenPurposeEnum = pgEnum('one_time_token_purpose', [
+  'EMAIL_VERIFY',
+  'PASSWORD_RESET',
+]);
+
 // FR-VIEW-001/002 — saved view surface kinds for M1.
 export const viewKindEnum = pgEnum('view_kind', ['BOARD', 'LIST']);
 

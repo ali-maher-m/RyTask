@@ -15,13 +15,32 @@ import { uuidv7 } from 'uuidv7';
 import {
   activityActionEnum,
   notificationTypeEnum,
+  oneTimeTokenPurposeEnum,
   priorityEnum,
   projectRoleEnum,
+  roleEnum,
   statusCategoryEnum,
+  tokenTypeEnum,
   viewKindEnum,
   viewScopeEnum,
   watcherReasonEnum,
 } from './enums';
+
+/**
+ * Organization settings (M0, FR-TEN-004) stored as `organizations.settings` jsonb and
+ * re-exported through `@rytask/contracts` for the API DTO. All fields optional with
+ * product defaults applied at read time; `allowPublicSignup` gates self-registration (D8).
+ */
+export interface OrgSettings {
+  timezone?: string;
+  locale?: string;
+  weekStart?: 'SUNDAY' | 'MONDAY';
+  /** ISO weekday numbers 0(Sun)–6(Sat). */
+  workingDays?: number[];
+  workingHours?: { start: string; end: string };
+  logoUrl?: string | null;
+  allowPublicSignup?: boolean;
+}
 
 /**
  * Drizzle schema — the SINGLE SOURCE OF TRUTH for the data model (ARCHITECTURE §5, §16.1).
@@ -58,7 +77,10 @@ export const organizations = pgTable(
     id: primaryId(),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    // M0 (FR-TEN-004): org settings; (FR-TEN-006/D14): Owner-only soft-delete marker.
+    settings: jsonb('settings').$type<OrgSettings>().notNull().default({}),
     ...timestamps,
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => [uniqueIndex('organizations_slug_unique').on(t.slug)],
 );
@@ -91,11 +113,143 @@ export const users = pgTable(
       .references(() => organizations.id, { onDelete: 'cascade' }),
     email: text('email').notNull(),
     name: text('name').notNull(),
+    // M0 auth columns (FR-AUTH-001/003). `password_hash` null reserved for SSO-only (v2).
+    passwordHash: text('password_hash'),
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
     index('users_org_idx').on(t.organizationId),
     uniqueIndex('users_org_email_unique').on(t.organizationId, t.email),
+  ],
+);
+
+// ──────────────────────────────────────────────── identity & orgs context (M0)
+
+/** Role-bearing record linking a user to an organization (FR-RBAC-001, ARCHITECTURE §5.2). */
+export const memberships = pgTable(
+  'memberships',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').references(() => workspaces.id, { onDelete: 'set null' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: roleEnum('role').notNull().default('MEMBER'),
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index('memberships_org_idx').on(t.organizationId),
+    uniqueIndex('memberships_org_user_unique').on(t.organizationId, t.userId),
+    index('memberships_org_role_idx').on(t.organizationId, t.role),
+  ],
+);
+
+/** Refresh-credential sessions: rotation lineage by `family_id`; access tokens are NOT stored (FR-AUTH-002). */
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    familyId: uuid('family_id').notNull(),
+    refreshTokenHash: text('refresh_token_hash').notNull(),
+    userAgent: text('user_agent'),
+    ip: text('ip'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('sessions_org_user_idx').on(t.organizationId, t.userId),
+    index('sessions_token_hash_idx').on(t.refreshTokenHash),
+    index('sessions_family_idx').on(t.familyId),
+  ],
+);
+
+/** Long-lived, named, scoped PAT/MCP credentials; secret stored only as a hash (FR-AUTH-007). */
+export const apiTokens = pgTable(
+  'api_tokens',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: tokenTypeEnum('type').notNull().default('PAT'),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('api_tokens_org_idx').on(t.organizationId),
+    index('api_tokens_token_hash_idx').on(t.tokenHash),
+  ],
+);
+
+/** Pending offer to join at a role; single-use; revocable (FR-AUTH-011). Email null for link invites. */
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').references(() => workspaces.id, { onDelete: 'set null' }),
+    email: text('email'),
+    role: roleEnum('role').notNull().default('MEMBER'),
+    tokenHash: text('token_hash').notNull(),
+    invitedByUserId: uuid('invited_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('invitations_org_idx').on(t.organizationId),
+    index('invitations_token_hash_idx').on(t.tokenHash),
+    // Partial unique (organization_id, lower(email)) WHERE accepted_at IS NULL AND
+    // revoked_at IS NULL AND email IS NOT NULL — one live email-invite per address;
+    // emitted at the SQL layer in the migration (drizzle-kit can't express the predicate).
+  ],
+);
+
+/** Single-use, time-limited email tokens for verification & password reset (FR-AUTH-003). */
+export const oneTimeTokens = pgTable(
+  'one_time_tokens',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    purpose: oneTimeTokenPurposeEnum('purpose').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('ott_org_user_idx').on(t.organizationId, t.userId),
+    index('ott_token_hash_idx').on(t.tokenHash),
   ],
 );
 
@@ -412,6 +566,11 @@ export const schema = {
   organizations,
   workspaces,
   users,
+  memberships,
+  sessions,
+  apiTokens,
+  invitations,
+  oneTimeTokens,
   projects,
   projectMembers,
   projectCounters,
@@ -433,6 +592,19 @@ export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Membership = typeof memberships.$inferSelect;
+export type NewMembership = typeof memberships.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+export type ApiToken = typeof apiTokens.$inferSelect;
+export type NewApiToken = typeof apiTokens.$inferInsert;
+export type Invitation = typeof invitations.$inferSelect;
+export type NewInvitation = typeof invitations.$inferInsert;
+export type OneTimeToken = typeof oneTimeTokens.$inferSelect;
+export type NewOneTimeToken = typeof oneTimeTokens.$inferInsert;
+export type RoleType = (typeof roleEnum.enumValues)[number];
+export type TokenType = (typeof tokenTypeEnum.enumValues)[number];
+export type OneTimeTokenPurpose = (typeof oneTimeTokenPurposeEnum.enumValues)[number];
 
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;

@@ -8,6 +8,7 @@ export {
   SEED_ORG_ID,
   SEED_WORKSPACE_ID,
   SEED_USER_ID,
+  SEED_USER_PASSWORD,
   SEED_PROJECT_ID,
   SEED_STATUS_IDS,
 } from './seed';

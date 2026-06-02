@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { CreateWorkItemResponse, WorkItem } from '@rytask/contracts';
 import { SEED_ORG_ID, SEED_PROJECT_ID, SEED_USER_ID, SEED_WORKSPACE_ID } from '@rytask/db';
 import request from 'supertest';
+import { withPrincipal } from '../../../common/testing/with-principal';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../../../app.module';
 import { VersionConflictError } from '../repositories/work-items.repository';
@@ -100,9 +101,7 @@ describe('WorkItemsController (contract)', () => {
   const post = () =>
     request(app.getHttpServer())
       .post('/api/v1/work-items')
-      .set('x-user-id', SEED_USER_ID)
-      .set('x-organization-id', SEED_ORG_ID)
-      .set('x-workspace-id', SEED_WORKSPACE_ID);
+      .set('authorization', withPrincipal({ userId: SEED_USER_ID, organizationId: SEED_ORG_ID, workspaceId: SEED_WORKSPACE_ID, role: 'OWNER' }));
 
   it('title-only body → 201 with { data, meta.unresolved }', async () => {
     const res = await post().send({ projectId: SEED_PROJECT_ID, title: 'A new task' });
@@ -129,9 +128,7 @@ describe('WorkItemsController (contract)', () => {
   const authed = (method: 'patch' | 'delete' | 'post' | 'get', path: string): request.Test =>
     request(app.getHttpServer())
       [method](`/api/v1${path}`)
-      .set('x-user-id', SEED_USER_ID)
-      .set('x-organization-id', SEED_ORG_ID)
-      .set('x-workspace-id', SEED_WORKSPACE_ID);
+      .set('authorization', withPrincipal({ userId: SEED_USER_ID, organizationId: SEED_ORG_ID, workspaceId: SEED_WORKSPACE_ID, role: 'OWNER' }));
 
   it('PATCH /work-items/{id} with a valid version → 200 { data }', async () => {
     const res = await authed('patch', `/work-items/${ITEM_ID}`).send({

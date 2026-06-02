@@ -114,12 +114,18 @@ drizzle-kit migrate         # planned: transactional migrations (never db:push i
 Until code lands, the actionable "commands" are the Spec Kit skills above and the scripts in `.specify/scripts/bash/`.
 
 <!-- SPECKIT START -->
-Active feature: **M1 — Core Work Loop** (`001-core-work-loop`). For technologies, project
-structure, shell commands, and the design decisions driving the current work, read the plan and
-its artifacts in `specs/001-core-work-loop/`:
-- `plan.md` — technical context, Constitution Check, project structure, complexity tracking
-- `research.md` — design decisions D0–D18 (keys, quick-add, query engine, search, MCP parity, …)
-- `data-model.md` — the M1 Drizzle enums + 13 tables (extends `packages/db/src/tables.ts`)
-- `contracts/` — REST OpenAPI (`/api/v1`), the filter DSL, and the MCP tool catalog
-- `quickstart.md` — run/seed/test the M1 slice
+Active feature: **M0 — Identity, Tenancy & Onboarding** (`002-identity-tenancy-onboarding`). M0 is the
+**foundation** M1 was already built against: it **populates the stub guards** (`AuthGuard`, `TenantGuard`,
+`RbacGuard`, `ThrottleGuard`) and replaces `resolveDevPrincipal` with real JWT/PAT verification + org
+resolution, then adds two bounded contexts (`identity`, `orgs`). For technologies, project structure,
+shell commands, and the design decisions driving the current work, read the plan and its artifacts in
+`specs/002-identity-tenancy-onboarding/`:
+- `plan.md` — technical context, Constitution Check (M0 *implements* Principles II & VI), structure, C1
+- `research.md` — design decisions D0–D17 (retrofit seams, identity model, sessions, RBAC, onboarding, …)
+- `data-model.md` — extends `organizations`/`users`; adds `memberships`, `sessions`, `api_tokens`, `invitations`, `one_time_tokens`
+- `contracts/` — REST OpenAPI (`/api/v1` auth/orgs/members/invites), the RBAC matrix, and the MCP catalog
+- `quickstart.md` — run/seed/test the M0 slice; migrating off the M1 dev-header seam
+
+The already-implemented **M1 — Core Work Loop** (`specs/001-core-work-loop/`) is the downstream consumer:
+M0 must not break its contract (`users.organizationId`, `project_members`, `TenantScopedRepository`).
 <!-- SPECKIT END -->

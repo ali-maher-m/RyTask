@@ -1,0 +1,461 @@
+openapi: 3.1.0
+info:
+  title: RyTask API — M0 Identity, Tenancy & Onboarding
+  version: 0.2.0
+  description: >
+    M0 slice of /api/v1. The REST API + domain events are the contract (Principle IV); the UI and MCP
+    server are clients. Every non-public route declares `x-rbac` (the permission RbacGuard enforces,
+    default-deny). The org is resolved server-side from the verified principal only (Principle II).
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+
+tags:
+  - name: setup
+  - name: auth
+  - name: api-tokens
+  - name: orgs
+  - name: workspaces
+  - name: memberships
+  - name: invites
+
+paths:
+  /setup:
+    get:
+      tags: [setup]
+      summary: First-run availability (true only while 0 organizations exist)
+      operationId: getSetupState
+      security: []
+      x-rbac: public
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SetupState' } } } }
+    post:
+      tags: [setup]
+      summary: Bootstrap the initial org + owner + workspace + starter project (FR-AUTH-010)
+      operationId: bootstrap
+      security: []
+      x-rbac: public-bootstrap   # allowed only when 0 orgs; otherwise 409
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BootstrapRequest' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResult' } } } }
+        '409': { description: Already bootstrapped }
+        '422': { $ref: '#/components/responses/Validation' }
+
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Register (only when org allowPublicSignup=true; otherwise invite-only) (FR-AUTH-001)
+      operationId: register
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RegisterRequest' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResult' } } } }
+        '403': { description: Public signup disabled }
+        '409': { description: Email already registered }
+        '422': { $ref: '#/components/responses/Validation' }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Email + password sign-in → access + rotating refresh (FR-AUTH-001/002)
+      operationId: login
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResult' } } } }
+        '401': { description: Invalid credentials (generic — no account-existence signal) }
+        '429': { description: Throttled / brute-force lockout (SC-011) }
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate the refresh token → new access + refresh; reuse revokes the family (FR-AUTH-002)
+      operationId: refresh
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RefreshRequest' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResult' } } } }
+        '401': { description: Invalid/rotated/revoked refresh token }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the current session/family (FR-AUTH-002)
+      operationId: logout
+      x-rbac: self
+      responses: { '204': { description: No Content } }
+
+  /auth/verify-email:
+    post:
+      tags: [auth]
+      summary: Consume an EMAIL_VERIFY one-time token (FR-AUTH-003)
+      operationId: verifyEmail
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TokenBody' } } } }
+      responses:
+        '204': { description: Verified }
+        '410': { description: Expired or already used }
+
+  /auth/request-password-reset:
+    post:
+      tags: [auth]
+      summary: Request a password reset (uniform response — no enumeration, SC-010) (FR-AUTH-003)
+      operationId: requestPasswordReset
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EmailBody' } } } }
+      responses: { '202': { description: Accepted (always, regardless of account existence) } }
+
+  /auth/confirm-password-reset:
+    post:
+      tags: [auth]
+      summary: Consume a PASSWORD_RESET token and set a new password (FR-AUTH-003)
+      operationId: confirmPasswordReset
+      security: []
+      x-rbac: public
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetConfirm' } } } }
+      responses:
+        '204': { description: Password changed }
+        '410': { description: Expired or already used }
+
+  /auth/whoami:
+    get:
+      tags: [auth]
+      summary: Current principal — user, org, role, scopes, accessible workspaces (FR-INT-MCP-001)
+      operationId: whoami
+      x-rbac: self
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WhoAmI' } } } }
+        '401': { description: Unauthenticated }
+
+  /api-tokens:
+    get:
+      tags: [api-tokens]
+      summary: List the caller's Personal Access Tokens (FR-AUTH-007)
+      operationId: listApiTokens
+      x-rbac: tokens:read
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ApiToken' } } } } } }
+    post:
+      tags: [api-tokens]
+      summary: Mint a PAT — secret returned ONCE (FR-AUTH-007, SC-012)
+      operationId: createApiToken
+      x-rbac: tokens:write
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateApiToken' } } } }
+      responses: { '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ApiTokenSecret' } } } } }
+  /api-tokens/{id}:
+    delete:
+      tags: [api-tokens]
+      summary: Revoke a PAT (FR-AUTH-007)
+      operationId: revokeApiToken
+      x-rbac: tokens:write
+      parameters: [{ $ref: '#/components/parameters/IdPath' }]
+      responses: { '204': { description: Revoked }, '404': { description: Not found } }
+
+  /orgs/current:
+    get:
+      tags: [orgs]
+      summary: Current organization + settings (FR-TEN-004)
+      operationId: getCurrentOrg
+      x-rbac: org:read
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Organization' } } } } }
+    patch:
+      tags: [orgs]
+      summary: Update organization settings (Admin+) (FR-TEN-004)
+      operationId: updateOrgSettings
+      x-rbac: org:settings:write
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OrgSettings' } } } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Organization' } } } }, '403': { $ref: '#/components/responses/Forbidden' } }
+    delete:
+      tags: [orgs]
+      summary: Soft-delete the organization (Owner only) (FR-RBAC-003, FR-TEN-006)
+      operationId: deleteOrg
+      x-rbac: org:delete
+      responses: { '204': { description: Soft-deleted }, '403': { $ref: '#/components/responses/Forbidden' } }
+
+  /orgs/current/transfer-ownership:
+    post:
+      tags: [orgs]
+      summary: Transfer ownership to another member (Owner only) (FR-RBAC-003)
+      operationId: transferOwnership
+      x-rbac: org:transfer
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TransferOwnership' } } } }
+      responses:
+        '204': { description: Transferred }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Target not an eligible member }
+
+  /workspaces:
+    get:
+      tags: [workspaces]
+      summary: List workspaces in the org (FR-TEN-002)
+      operationId: listWorkspaces
+      x-rbac: workspace:read
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Workspace' } } } } } }
+  /workspaces/{id}:
+    get:
+      tags: [workspaces]
+      summary: Get a workspace (FR-TEN-002)
+      operationId: getWorkspace
+      x-rbac: workspace:read
+      parameters: [{ $ref: '#/components/parameters/IdPath' }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Workspace' } } } }, '404': { $ref: '#/components/responses/NotFound' } }
+
+  /memberships:
+    get:
+      tags: [memberships]
+      summary: List members and their roles (FR-RBAC-001)
+      operationId: listMemberships
+      x-rbac: members:read
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Membership' } } } } } }
+  /memberships/{userId}:
+    patch:
+      tags: [memberships]
+      summary: Change a member's role (Admin+; last-owner protected) (FR-RBAC-001)
+      operationId: setMemberRole
+      x-rbac: members:write
+      parameters: [{ name: userId, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SetRole' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Membership' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Would remove the last Owner (SC-015) }
+    delete:
+      tags: [memberships]
+      summary: Remove a member; revokes their sessions & tokens (Admin+) (FR-RBAC-001)
+      operationId: removeMember
+      x-rbac: members:write
+      parameters: [{ name: userId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: Removed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Would remove the last Owner (SC-015) }
+
+  /invites:
+    get:
+      tags: [invites]
+      summary: List pending invitations (FR-AUTH-011)
+      operationId: listInvites
+      x-rbac: members:read
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Invitation' } } } } } }
+    post:
+      tags: [invites]
+      summary: Invite by email or create a shareable link, with a pre-assigned role (Admin+) (FR-AUTH-011)
+      operationId: createInvite
+      x-rbac: members:invite
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateInvite' } } } }
+      responses: { '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/InvitationCreated' } } } } }
+  /invites/{token}:
+    get:
+      tags: [invites]
+      summary: Preview an invitation (org name, role) before accepting (public)
+      operationId: previewInvite
+      security: []
+      x-rbac: public
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/InvitePreview' } } } }
+        '410': { description: Expired, used, or revoked }
+  /invites/{token}/accept:
+    post:
+      tags: [invites]
+      summary: Accept an invitation → membership at the pre-assigned role (public, token-bearing) (FR-AUTH-011)
+      operationId: acceptInvite
+      security: []
+      x-rbac: public
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/AcceptInvite' } } } }
+      responses:
+        '200': { description: Joined, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResult' } } } }
+        '410': { description: Expired, used, or revoked (no membership created) }
+  /invites/{id}/_revoke:
+    delete:
+      tags: [invites]
+      summary: Revoke a pending invitation (Admin+) (FR-AUTH-011)
+      operationId: revokeInvite
+      x-rbac: members:invite
+      parameters: [{ $ref: '#/components/parameters/IdPath' }]
+      responses: { '204': { description: Revoked }, '404': { $ref: '#/components/responses/NotFound' } }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT-or-PAT }
+  parameters:
+    IdPath: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Validation: { description: Validation error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Forbidden: { description: Authenticated but not permitted (default-deny, SC-005), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    NotFound: { description: Not found or cross-tenant (existence never leaked), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties: { code: { type: string }, message: { type: string }, details: { type: object } }
+    SetupState:
+      type: object
+      properties: { available: { type: boolean, description: true only while 0 orgs exist } }
+    BootstrapRequest:
+      type: object
+      required: [organizationName, ownerName, ownerEmail, ownerPassword]
+      properties:
+        organizationName: { type: string }
+        ownerName: { type: string }
+        ownerEmail: { type: string, format: email }
+        ownerPassword: { type: string, format: password, minLength: 8 }
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties: { name: { type: string }, email: { type: string, format: email }, password: { type: string, format: password, minLength: 8 } }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties: { email: { type: string, format: email }, password: { type: string, format: password } }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties: { refreshToken: { type: string } }
+    TokenBody:
+      type: object
+      required: [token]
+      properties: { token: { type: string } }
+    EmailBody:
+      type: object
+      required: [email]
+      properties: { email: { type: string, format: email } }
+    PasswordResetConfirm:
+      type: object
+      required: [token, newPassword]
+      properties: { token: { type: string }, newPassword: { type: string, format: password, minLength: 8 } }
+    AuthResult:
+      type: object
+      required: [accessToken, refreshToken, expiresIn, user]
+      properties:
+        accessToken: { type: string, description: signed JWT, TTL <= 15 min }
+        refreshToken: { type: string, description: opaque, rotating }
+        expiresIn: { type: integer, description: access-token lifetime in seconds (<= 900) }
+        user: { $ref: '#/components/schemas/UserSummary' }
+    WhoAmI:
+      type: object
+      required: [user, organizationId, role, scopes]
+      properties:
+        user: { $ref: '#/components/schemas/UserSummary' }
+        organizationId: { type: string, format: uuid }
+        activeWorkspaceId: { type: string, format: uuid, nullable: true }
+        role: { $ref: '#/components/schemas/Role' }
+        scopes: { type: array, items: { type: string }, description: PAT scopes (empty for UI sessions) }
+        workspaces: { type: array, items: { $ref: '#/components/schemas/Workspace' } }
+    UserSummary:
+      type: object
+      required: [id, email, name, emailVerified]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        emailVerified: { type: boolean }
+    Role:
+      type: string
+      enum: [OWNER, ADMIN, MEMBER, GUEST, VIEWER]
+    ApiToken:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [PAT, MCP] }
+        scopes: { type: array, items: { type: string } }
+        lastUsedAt: { type: string, format: date-time, nullable: true }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    ApiTokenSecret:
+      allOf:
+        - $ref: '#/components/schemas/ApiToken'
+        - type: object
+          required: [secret]
+          properties: { secret: { type: string, description: shown ONCE; store immediately (SC-002) } }
+    CreateApiToken:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [PAT, MCP], default: PAT }
+        scopes: { type: array, items: { type: string } }
+        expiresAt: { type: string, format: date-time, nullable: true }
+    Organization:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        settings: { $ref: '#/components/schemas/OrgSettings' }
+    OrgSettings:
+      type: object
+      properties:
+        timezone: { type: string, example: 'America/New_York' }
+        locale: { type: string, example: 'en-US' }
+        weekStart: { type: string, enum: [SUNDAY, MONDAY] }
+        workingDays: { type: array, items: { type: integer, minimum: 0, maximum: 6 } }
+        workingHours: { type: object, properties: { start: { type: string }, end: { type: string } } }
+        logoUrl: { type: string, nullable: true }
+        allowPublicSignup: { type: boolean, default: false }
+    TransferOwnership:
+      type: object
+      required: [toUserId]
+      properties:
+        toUserId: { type: string, format: uuid }
+        demoteSelfTo: { $ref: '#/components/schemas/Role' }
+    Workspace:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+    Membership:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        user: { $ref: '#/components/schemas/UserSummary' }
+        role: { $ref: '#/components/schemas/Role' }
+        deactivatedAt: { type: string, format: date-time, nullable: true }
+    SetRole:
+      type: object
+      required: [role]
+      properties: { role: { $ref: '#/components/schemas/Role' } }
+    CreateInvite:
+      type: object
+      required: [role]
+      properties:
+        email: { type: string, format: email, nullable: true, description: omit for a shareable-link invite }
+        role: { $ref: '#/components/schemas/Role' }
+        workspaceId: { type: string, format: uuid, nullable: true }
+        expiresInHours: { type: integer, default: 168 }
+    InvitationCreated:
+      allOf:
+        - $ref: '#/components/schemas/Invitation'
+        - type: object
+          properties: { acceptUrl: { type: string, description: shareable link (link invites) } }
+    Invitation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email, nullable: true }
+        role: { $ref: '#/components/schemas/Role' }
+        invitedByUserId: { type: string, format: uuid, nullable: true }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    InvitePreview:
+      type: object
+      properties:
+        organizationName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        email: { type: string, format: email, nullable: true }
+    AcceptInvite:
+      type: object
+      description: name+password required only when the invitee has no account yet
+      properties:
+        name: { type: string }
+        password: { type: string, format: password, minLength: 8 }
