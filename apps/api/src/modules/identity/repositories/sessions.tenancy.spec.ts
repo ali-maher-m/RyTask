@@ -9,8 +9,8 @@ import {
   users,
 } from '@rytask/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
+import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { SessionsRepository } from './sessions.repository';
 
 /**
@@ -68,7 +68,7 @@ describe('sessions tenancy isolation', () => {
   it('lists only its own active sessions', async () => {
     const a = await tenant.run(ctxA, () => repo.listActiveForUser(SEED_USER_ID));
     expect(a).toHaveLength(1);
-    expect(a[0]!.organizationId).toBe(SEED_ORG_ID);
+    expect(a[0]?.organizationId).toBe(SEED_ORG_ID);
 
     // Org A can never see org B's user sessions (scoped query).
     expect(await tenant.run(ctxA, () => repo.listActiveForUser(USER_B))).toHaveLength(0);

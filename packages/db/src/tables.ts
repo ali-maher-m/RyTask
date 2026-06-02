@@ -215,7 +215,9 @@ export const invitations = pgTable(
     email: text('email'),
     role: roleEnum('role').notNull().default('MEMBER'),
     tokenHash: text('token_hash').notNull(),
-    invitedByUserId: uuid('invited_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    invitedByUserId: uuid('invited_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),

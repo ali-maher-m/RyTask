@@ -28,6 +28,12 @@ export default mergeConfig(
         '**/*.int.spec.ts',
         '**/*.tenancy.spec.ts',
         '**/*.e2e.spec.ts',
+        // US5 cross-cutting suites boot the app against a REAL Postgres → integration config.
+        '**/tenant-isolation.suite.spec.ts',
+        '**/cross-tenant-id-probe.spec.ts',
+        '**/single-org-no-migration.spec.ts',
+        // Security suite that signs in against a REAL Postgres → integration config.
+        '**/no-secrets-in-logs.spec.ts',
       ],
     },
   }),

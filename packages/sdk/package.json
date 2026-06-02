@@ -13,7 +13,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "gen:sdk": "openapi-typescript ../../specs/001-core-work-loop/contracts/openapi.yaml -o src/generated.ts && biome format --write src/generated.ts"
+    "gen:sdk": "pnpm gen:sdk:m1 && pnpm gen:sdk:m0",
+    "gen:sdk:m1": "openapi-typescript ../../specs/001-core-work-loop/contracts/openapi.yaml -o src/generated.ts && biome format --write src/generated.ts",
+    "gen:sdk:m0": "openapi-typescript ../../specs/002-identity-tenancy-onboarding/contracts/openapi.yaml -o src/generated-identity.ts && biome format --write src/generated-identity.ts"
   },
   "dependencies": {
     "@rytask/contracts": "workspace:*"

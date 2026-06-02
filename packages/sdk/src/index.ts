@@ -1,18 +1,38 @@
 import type { HealthStatus, Readiness } from '@rytask/contracts';
 import type { components } from './generated';
+import type { components as identityComponents } from './generated-identity';
 
 /**
  * Typed RyTask SDK.
  *
- * The REST surface types are GENERATED from the OpenAPI contract
- * (`specs/001-core-work-loop/contracts/openapi.yaml`) by `openapi-typescript`.
- * Regenerate with `pnpm --filter @rytask/sdk gen:sdk` whenever the contract changes;
- * `src/generated.ts` is a build artifact — do not edit it by hand.
+ * The REST surface types are GENERATED from the OpenAPI contracts by `openapi-typescript`:
+ * the M1 core work loop (`specs/001-core-work-loop/contracts/openapi.yaml` → `generated.ts`)
+ * and the M0 identity/tenancy surface
+ * (`specs/002-identity-tenancy-onboarding/contracts/openapi.yaml` → `generated-identity.ts`).
+ * Regenerate with `pnpm --filter @rytask/sdk gen:sdk` whenever a contract changes; both
+ * generated files are build artifacts — do not edit them by hand.
  */
 export type { components, operations, paths } from './generated';
+export type {
+  components as identityComponents,
+  operations as identityOperations,
+  paths as identityPaths,
+} from './generated-identity';
 
 /** All response/request schema objects from the OpenAPI contract, keyed by name. */
 export type Schemas = components['schemas'];
+
+/** M0 identity/tenancy schema objects (auth, orgs, members, invites, tokens), keyed by name. */
+export type IdentitySchemas = identityComponents['schemas'];
+
+/** Convenience aliases for the M0 identity/tenancy DTOs (mirror `identityComponents.schemas`). */
+export type AuthResult = IdentitySchemas['AuthResult'];
+export type WhoAmI = IdentitySchemas['WhoAmI'];
+export type Organization = IdentitySchemas['Organization'];
+export type Membership = IdentitySchemas['Membership'];
+export type Invitation = IdentitySchemas['Invitation'];
+export type ApiToken = IdentitySchemas['ApiToken'];
+export type ApiTokenSecret = IdentitySchemas['ApiTokenSecret'];
 
 /** JSON body of a named OpenAPI response component (e.g. `WorkItemEnvelope`). */
 export type ResponseJson<Name extends keyof components['responses']> =

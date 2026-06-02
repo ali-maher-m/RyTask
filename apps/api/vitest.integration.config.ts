@@ -20,7 +20,16 @@ export default mergeConfig(
     ],
     test: {
       // Tenancy-isolation specs also use real Postgres → run under the integration suite.
-      include: ['src/**/*.int.spec.ts', 'src/**/*.tenancy.spec.ts'],
+      // The US5 cross-cutting suites boot the whole app against a real Postgres too.
+      include: [
+        'src/**/*.int.spec.ts',
+        'src/**/*.tenancy.spec.ts',
+        'src/common/testing/tenant-isolation.suite.spec.ts',
+        'src/common/testing/cross-tenant-id-probe.spec.ts',
+        'src/common/testing/single-org-no-migration.spec.ts',
+        // Drives a real sign-in/refresh against real Postgres to inspect stored secrets + logs.
+        'src/common/testing/no-secrets-in-logs.spec.ts',
+      ],
     },
   }),
 );

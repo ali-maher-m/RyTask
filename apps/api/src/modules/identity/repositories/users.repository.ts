@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { type Database, type User, users } from '@rytask/db';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { DB } from '../../../common/database/database.module';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { TenantScopedRepository } from '../../../common/tenancy/tenant-scoped.repository';
@@ -35,6 +35,14 @@ export class UsersRepository extends TenantScopedRepository {
   async findById(id: string): Promise<User | null> {
     const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return row ?? null;
+  }
+
+  /** Global find-by-ids (PKs) — for hydrating a member list (US8). */
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.db.select().from(users).where(inArray(users.id, ids));
   }
 
   /** Insert a user (org explicit — bootstrap/register run before ALS). */

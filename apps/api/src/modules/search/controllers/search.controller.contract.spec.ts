@@ -3,9 +3,9 @@ import { Test } from '@nestjs/testing';
 import type { SearchEnvelope, SearchResult } from '@rytask/contracts';
 import { SEED_ORG_ID, SEED_USER_ID, SEED_WORKSPACE_ID } from '@rytask/db';
 import request from 'supertest';
-import { withPrincipal } from '../../../common/testing/with-principal';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../../../app.module';
+import { withPrincipal } from '../../../common/testing/with-principal';
 import { SearchService } from '../services/search.service';
 
 /**
@@ -57,7 +57,15 @@ describe('SearchController (contract)', () => {
   const authed = (path: string): request.Test =>
     request(app.getHttpServer())
       .get(`/api/v1${path}`)
-      .set('authorization', withPrincipal({ userId: SEED_USER_ID, organizationId: SEED_ORG_ID, workspaceId: SEED_WORKSPACE_ID, role: 'OWNER' }));
+      .set(
+        'authorization',
+        withPrincipal({
+          userId: SEED_USER_ID,
+          organizationId: SEED_ORG_ID,
+          workspaceId: SEED_WORKSPACE_ID,
+          role: 'OWNER',
+        }),
+      );
 
   it('GET /search?q=… → 200 { data: SearchResult[] }', async () => {
     const res = await authed('/search?q=capture').send();

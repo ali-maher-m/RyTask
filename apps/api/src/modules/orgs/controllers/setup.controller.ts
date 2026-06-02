@@ -1,5 +1,10 @@
 import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
-import { type AuthResult, type BootstrapRequest, type SetupState, bootstrapSchema } from '@rytask/contracts';
+import {
+  type AuthResult,
+  type BootstrapRequest,
+  type SetupState,
+  bootstrapSchema,
+} from '@rytask/contracts';
 import { Public } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { BootstrapFirstRunProvider } from '../providers/bootstrap-first-run.provider';

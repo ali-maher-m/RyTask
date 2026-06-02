@@ -4,6 +4,12 @@
  * INVARIANT (ADR-006, FR-INT-MCP-009): every service use case ("capability")
  * must have a matching MCP tool here. `scripts/check-mcp-parity.ts` enforces 100%
  * parity in CI. Empty at the scaffold stage (no capabilities yet); M0+ grows it.
+ *
+ * M0 registers the identity/orgs **domain** tool definitions (transport is deferred to the
+ * MCP milestone, Complexity C1) so the surface can't drift. Credential-acquisition /
+ * session-bootstrap flows (register/login/refresh/logout/verify/reset/bootstrap) are
+ * **intentionally excluded** (research D11): an MCP client authenticates by PAT and never
+ * performs them, so they are absent from `serviceCapabilities` by design — not a parity gap.
  */
 export interface McpToolDefinition {
   /** Tool name as exposed over MCP, e.g. 'work_items.create'. */
@@ -12,6 +18,11 @@ export interface McpToolDefinition {
   description: string;
   /** The service capability id this tool maps to (the parity key). */
   capability: string;
+  /**
+   * Destructive/irreversible action — the MCP transport (when it lands) requires an explicit
+   * dry-run / confirmation flag before executing (mcp-tools.md §Safety, FR-INT-MCP-010).
+   */
+  destructive?: boolean;
 }
 
 export const mcpTools: McpToolDefinition[] = [
@@ -200,6 +211,87 @@ export const mcpTools: McpToolDefinition[] = [
     description:
       'Full-text search across work items, comments, projects, labels, and users (ranked, permission-scoped).',
     capability: 'search.query',
+  },
+  // M0 — identity context (FR-INT-MCP-001). An MCP client authenticates by PAT that resolves
+  // to a user principal; the agent acts as that user with min(scope, role). Credential flows
+  // (login/register/refresh/verify/reset/bootstrap) are excluded by design (research D11).
+  {
+    name: 'whoami',
+    description: 'Resolve the current principal: user, org, role, scopes, accessible workspaces.',
+    capability: 'identity.whoami',
+  },
+  // M0 — orgs: workspaces (FR-INT-MCP-003). Same OrgsService as REST.
+  {
+    name: 'list_workspaces',
+    description: 'List workspaces in the current organization.',
+    capability: 'workspaces.list',
+  },
+  {
+    name: 'get_workspace',
+    description: 'Get a single workspace by id.',
+    capability: 'workspaces.get',
+  },
+  {
+    name: 'set_active_workspace',
+    description: 'Set the active workspace for the session/principal.',
+    capability: 'workspaces.setActive',
+  },
+  // M0 — orgs: settings + ownership (FR-TEN-004, FR-RBAC-003). Same OrgsService as REST.
+  {
+    name: 'get_org_settings',
+    description: 'Read the organization settings (timezone, locale, week start, working hours…).',
+    capability: 'orgs.settings.get',
+  },
+  {
+    name: 'update_org_settings',
+    description: 'Update organization settings (Owner/Admin).',
+    capability: 'orgs.settings.update',
+  },
+  {
+    name: 'transfer_ownership',
+    description: 'Transfer organization ownership to another member (Owner only).',
+    capability: 'orgs.transferOwnership',
+    destructive: true,
+  },
+  // M0 — orgs: membership (FR-RBAC-001, FR-AUTH-011). Same membership service as REST.
+  {
+    name: 'list_members',
+    description: 'List members of the organization and their roles.',
+    capability: 'members.list',
+  },
+  {
+    name: 'invite_member',
+    description: 'Invite a member by email or shareable link, with a pre-assigned role (Admin+).',
+    capability: 'members.invite',
+  },
+  {
+    name: 'set_member_role',
+    description: "Change a member's role (Admin+; last-owner protected).",
+    capability: 'members.setRole',
+  },
+  {
+    name: 'remove_member',
+    description:
+      'Remove a member; revokes their sessions and tokens (Admin+; last-owner protected).',
+    capability: 'members.remove',
+    destructive: true,
+  },
+  // M0 — identity: personal access tokens (FR-AUTH-007). Same identity service as REST.
+  {
+    name: 'list_api_tokens',
+    description: 'List the holder’s own personal access tokens (never the secret).',
+    capability: 'apiTokens.list',
+  },
+  {
+    name: 'create_api_token',
+    description: 'Mint a scoped personal access token (secret returned once).',
+    capability: 'apiTokens.create',
+  },
+  {
+    name: 'revoke_api_token',
+    description: 'Revoke one of the holder’s own personal access tokens.',
+    capability: 'apiTokens.revoke',
+    destructive: true,
   },
 ];
 

@@ -54,6 +54,24 @@ const serviceCapabilities: string[] = [
   'notifications.update',
   // US8 — search (contracts/mcp-tools.md)
   'search.query',
+  // M0 — identity + orgs domain capabilities (specs/002.../contracts/mcp-tools.md). Credential
+  // flows (auth.register/login/refresh/logout/verifyEmail/request|confirmPasswordReset,
+  // orgs.bootstrap) are EXCLUDED by design (research D11) — an agent authenticates by PAT and
+  // never performs them, so their absence here is correct, not a parity gap.
+  'identity.whoami',
+  'workspaces.list',
+  'workspaces.get',
+  'workspaces.setActive',
+  'orgs.settings.get',
+  'orgs.settings.update',
+  'orgs.transferOwnership',
+  'members.list',
+  'members.invite',
+  'members.setRole',
+  'members.remove',
+  'apiTokens.list',
+  'apiTokens.create',
+  'apiTokens.revoke',
 ];
 
 function main(): void {

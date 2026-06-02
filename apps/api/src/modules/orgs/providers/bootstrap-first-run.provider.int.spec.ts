@@ -20,11 +20,11 @@ import { authConfig } from '../../../common/config/auth.config';
 import { Argon2Hasher } from '../../../common/ports/argon2-hasher.adapter';
 import { systemClock } from '../../../common/ports/clock.port';
 import { systemIdGenerator } from '../../../common/ports/id-generator.port';
-import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
+import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
+import { SessionsRepository } from '../../identity/repositories/sessions.repository';
 import { AuthService } from '../../identity/services/auth.service';
 import { TokenSigner } from '../../identity/services/token-signer.service';
-import { SessionsRepository } from '../../identity/repositories/sessions.repository';
 import { BootstrapRepository } from '../repositories/bootstrap.repository';
 import { BootstrapFirstRunProvider } from './bootstrap-first-run.provider';
 
@@ -90,7 +90,10 @@ describe('BootstrapFirstRunProvider (integration)', () => {
     // Exactly one org, with seeded settings + a slug.
     const orgs = await handle.db.select().from(organizations);
     expect(orgs).toHaveLength(1);
-    const org = orgs[0]!;
+    const org = orgs[0];
+    if (!org) {
+      throw new Error('expected exactly one organization');
+    }
     expect(org.name).toBe('Acme Inc');
     expect(org.slug).toBe('acme-inc');
     expect(org.settings).toEqual({ allowPublicSignup: false });
@@ -100,23 +103,35 @@ describe('BootstrapFirstRunProvider (integration)', () => {
     expect(owner?.passwordHash).toMatch(/^\$argon2id\$/);
     expect(owner?.passwordHash).not.toContain('super-secret-pw');
     expect(owner?.emailVerifiedAt).not.toBeNull();
+    if (!owner) {
+      throw new Error('expected the owner user');
+    }
 
     // OWNER membership.
     const [membership] = await handle.db
       .select()
       .from(memberships)
-      .where(eq(memberships.userId, owner!.id));
+      .where(eq(memberships.userId, owner.id));
     expect(membership?.role).toBe('OWNER');
 
     // Default workspace.
-    const ws = await handle.db.select().from(workspaces).where(eq(workspaces.organizationId, org.id));
+    const ws = await handle.db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.organizationId, org.id));
     expect(ws).toHaveLength(1);
-    expect(ws[0]!.slug).toBe('default');
+    expect(ws[0]?.slug).toBe('default');
 
     // Starter project + counter + 6 statuses + owner ADMIN project membership.
-    const projs = await handle.db.select().from(projects).where(eq(projects.organizationId, org.id));
+    const projs = await handle.db
+      .select()
+      .from(projects)
+      .where(eq(projects.organizationId, org.id));
     expect(projs).toHaveLength(1);
-    const project = projs[0]!;
+    const project = projs[0];
+    if (!project) {
+      throw new Error('expected exactly one starter project');
+    }
     // "Acme Inc" → "ACMEINC" → first 5 chars (starterKeyPrefix caps at 5).
     expect(project.keyPrefix).toBe('ACMEI');
     expect(project.keyPrefix).toMatch(/^[A-Z][A-Z0-9]{1,9}$/);

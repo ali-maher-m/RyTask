@@ -31,7 +31,9 @@ export class ThrottleGuard implements CanActivate {
     if (context.getType() !== 'http') {
       return true;
     }
-    const req = context.switchToHttp().getRequest<RequestWithPrincipal & { url?: string; ip?: string }>();
+    const req = context
+      .switchToHttp()
+      .getRequest<RequestWithPrincipal & { url?: string; ip?: string }>();
     const isAuthRoute = (req.url ?? '').includes('/auth/');
     const limit = isAuthRoute
       ? this.config.throttle.authMaxRequests

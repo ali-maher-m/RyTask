@@ -105,3 +105,26 @@ export const permissionsForRole = (role: Role): ReadonlySet<Permission> => ROLE_
 /** Pure: does `role` hold `permission`? (default-deny — unknown role/permission → false). */
 export const roleHasPermission = (role: Role, permission: string): boolean =>
   ROLE_PERMISSIONS[role]?.has(permission as Permission) ?? false;
+
+/** A PAT scope granting the holder's full role (no additional restriction). */
+export const SCOPE_WILDCARD = '*';
+
+/**
+ * Effective PAT/MCP permission = token scope ∩ holder's role (research D5, FR-RBAC-009). A
+ * permission must be held by the role; a non-empty, non-wildcard scope list further restricts
+ * to the listed permissions. An empty scope list (UI sessions) or the `*` wildcard means
+ * "full role". Out-of-scope or beyond-role → denied.
+ */
+export const patHasPermission = (
+  role: Role,
+  scopes: readonly string[],
+  permission: string,
+): boolean => {
+  if (!roleHasPermission(role, permission)) {
+    return false; // beyond-role → denied even if scope would allow.
+  }
+  if (scopes.length === 0 || scopes.includes(SCOPE_WILDCARD)) {
+    return true; // full delegation (UI session, or a token minted with no scope restriction).
+  }
+  return scopes.includes(permission); // scope ∩ role → out-of-scope denied even if role allows.
+};

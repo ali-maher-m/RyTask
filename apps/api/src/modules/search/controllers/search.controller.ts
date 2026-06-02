@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { type SearchEnvelope, type SearchQuery, searchQuerySchema } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { SearchService } from '../services/search.service';
 
@@ -9,6 +10,7 @@ import { SearchService } from '../services/search.service';
  * `authenticated` (any signed-in principal); the result set is itself permission-scoped in
  * the provider, so no project role is required to call it. Returns the `{ data }` envelope.
  */
+@RequirePermission('work:read')
 @Controller('search')
 export class SearchController {
   constructor(private readonly service: SearchService) {}

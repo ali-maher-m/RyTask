@@ -5,6 +5,7 @@ import {
   type LabelListResponse,
   createLabelSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { LabelsService } from '../services/labels.service';
 
@@ -13,6 +14,7 @@ import { LabelsService } from '../services/labels.service';
  * Labels are workspace-scoped; the tenant/workspace is resolved from the principal. The
  * `.strict()` create schema rejects unknown fields → 400.
  */
+@RequirePermission('work:read')
 @Controller('labels')
 export class LabelsController {
   constructor(private readonly service: LabelsService) {}
@@ -22,6 +24,7 @@ export class LabelsController {
     return this.service.list();
   }
 
+  @RequirePermission('work:write')
   @Post()
   @HttpCode(201)
   create(

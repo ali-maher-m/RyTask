@@ -1,6 +1,6 @@
 import { Injectable, type NestMiddleware } from '@nestjs/common';
-import type { RequestWithPrincipal } from '../auth/principal';
 import { TokenVerifier } from '../../modules/identity/services/token-verifier.service';
+import type { RequestWithPrincipal } from '../auth/principal';
 import { TenantContextService } from './tenant-context.service';
 
 type Next = () => void;

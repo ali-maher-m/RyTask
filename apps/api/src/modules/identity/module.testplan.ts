@@ -61,7 +61,40 @@ export const testPlan: ModuleTestPlan = {
       file: 'controllers/auth.controller.contract.spec.ts',
     },
     { kind: 'tenancy', target: 'sessions', file: 'repositories/sessions.tenancy.spec.ts' },
-    // Appended per user story (US6, US7).
+    {
+      kind: 'integration',
+      target: 'brute-force lockout',
+      file: 'providers/brute-force.int.spec.ts',
+    },
+    // US6 — recovery (verify-email + password reset)
+    {
+      kind: 'integration',
+      target: 'PasswordResetProvider',
+      file: 'providers/password-reset.provider.int.spec.ts',
+    },
+    {
+      kind: 'contract',
+      target: 'AuthRecoveryController',
+      file: 'controllers/auth-recovery.controller.contract.spec.ts',
+    },
+    {
+      kind: 'tenancy',
+      target: 'one_time_tokens',
+      file: 'repositories/one-time-tokens.tenancy.spec.ts',
+    },
+    // US7 — personal access tokens
+    { kind: 'unit', target: 'scope.policy', file: 'domain/scope.policy.spec.ts' },
+    {
+      kind: 'integration',
+      target: 'ApiTokensProvider',
+      file: 'providers/api-tokens.provider.int.spec.ts',
+    },
+    {
+      kind: 'contract',
+      target: 'ApiTokensController',
+      file: 'controllers/api-tokens.controller.contract.spec.ts',
+    },
+    { kind: 'tenancy', target: 'api_tokens', file: 'repositories/api-tokens.tenancy.spec.ts' },
   ],
 };
 

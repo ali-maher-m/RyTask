@@ -18,3 +18,14 @@ export class UserLoggedInEvent {
     public readonly organizationId: string,
   ) {}
 }
+
+/** A Personal Access Token (PAT/MCP) was minted (US7, FR-AUTH-007; audit seam D15). */
+export class TokenIssuedEvent {
+  static readonly eventName = 'token.issued';
+  constructor(
+    public readonly organizationId: string,
+    public readonly userId: string,
+    public readonly tokenId: string,
+    public readonly type: string,
+  ) {}
+}

@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   type Database,
-  type Organization,
   type OrgSettings,
+  type Organization,
   type User,
   type Workspace,
   memberships,

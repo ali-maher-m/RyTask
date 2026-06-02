@@ -17,6 +17,7 @@ import {
   listNotificationsQuerySchema,
   updateNotificationSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { NotificationsService } from '../services/notifications.service';
 
@@ -26,6 +27,7 @@ import { NotificationsService } from '../services/notifications.service';
  * may only see/mutate their own notifications. The tenant/principal is resolved
  * server-side, never from the body.
  */
+@RequirePermission('self')
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly service: NotificationsService) {}

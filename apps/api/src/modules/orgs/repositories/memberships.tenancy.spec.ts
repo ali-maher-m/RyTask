@@ -10,8 +10,8 @@ import {
   users,
 } from '@rytask/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
+import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { MembershipsRepository } from './memberships.repository';
 
 /**

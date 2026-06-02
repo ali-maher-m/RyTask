@@ -74,7 +74,33 @@ export const testPlan: ModuleTestPlan = {
       file: 'controllers/setup.controller.contract.spec.ts',
     },
     { kind: 'tenancy', target: 'memberships', file: 'repositories/memberships.tenancy.spec.ts' },
-    // Appended per user story (US3, US4, US8).
+    // US3 — invitations
+    { kind: 'unit', target: 'invitation.policy', file: 'domain/invitation.policy.spec.ts' },
+    {
+      kind: 'integration',
+      target: 'InviteProvider',
+      file: 'providers/invite.provider.int.spec.ts',
+    },
+    {
+      kind: 'contract',
+      target: 'InvitesController',
+      file: 'controllers/invites.controller.contract.spec.ts',
+    },
+    { kind: 'tenancy', target: 'invitations', file: 'repositories/invitations.tenancy.spec.ts' },
+    // US4 — RBAC enforcement
+    { kind: 'unit', target: 'role.policy', file: 'domain/role.policy.spec.ts' },
+    // US8 — member + org administration
+    { kind: 'unit', target: 'last-owner.policy', file: 'domain/last-owner.policy.spec.ts' },
+    {
+      kind: 'integration',
+      target: 'MemberAdminProvider',
+      file: 'providers/member-admin.provider.int.spec.ts',
+    },
+    {
+      kind: 'contract',
+      target: 'MembershipsController',
+      file: 'controllers/member-admin.controller.contract.spec.ts',
+    },
   ],
 };
 

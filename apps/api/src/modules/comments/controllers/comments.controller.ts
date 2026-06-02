@@ -14,6 +14,7 @@ import {
   type CreateComment,
   createCommentSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { CommentsService } from '../services/comments.service';
 
@@ -24,6 +25,7 @@ import { CommentsService } from '../services/comments.service';
  * tenant/principal is resolved server-side, never from the body. `Idempotency-Key` is
  * accepted now; the replay store is wired later.
  */
+@RequirePermission('work:read')
 @Controller('work-items/:itemId/comments')
 export class CommentsController {
   constructor(private readonly service: CommentsService) {}
@@ -33,6 +35,7 @@ export class CommentsController {
     return this.service.list(itemId);
   }
 
+  @RequirePermission('work:write')
   @Post()
   @HttpCode(201)
   create(

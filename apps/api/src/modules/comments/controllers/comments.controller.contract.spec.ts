@@ -3,9 +3,9 @@ import { Test } from '@nestjs/testing';
 import type { Comment, CommentEnvelope, CommentListResponse } from '@rytask/contracts';
 import { SEED_ORG_ID, SEED_USER_ID, SEED_WORKSPACE_ID } from '@rytask/db';
 import request from 'supertest';
-import { withPrincipal } from '../../../common/testing/with-principal';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../../../app.module';
+import { withPrincipal } from '../../../common/testing/with-principal';
 import { CommentsService } from '../services/comments.service';
 
 /**
@@ -57,7 +57,15 @@ describe('CommentsController (contract)', () => {
   const authed = (method: 'get' | 'post', path: string): request.Test =>
     request(app.getHttpServer())
       [method](`/api/v1${path}`)
-      .set('authorization', withPrincipal({ userId: SEED_USER_ID, organizationId: SEED_ORG_ID, workspaceId: SEED_WORKSPACE_ID, role: 'OWNER' }));
+      .set(
+        'authorization',
+        withPrincipal({
+          userId: SEED_USER_ID,
+          organizationId: SEED_ORG_ID,
+          workspaceId: SEED_WORKSPACE_ID,
+          role: 'OWNER',
+        }),
+      );
 
   it('GET /work-items/{id}/comments → 200 { data, pageInfo }', async () => {
     const res = await authed('get', `/work-items/${ITEM_ID}/comments`).send();

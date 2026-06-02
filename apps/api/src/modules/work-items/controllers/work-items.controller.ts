@@ -29,6 +29,7 @@ import {
   moveWorkItemSchema,
   updateWorkItemSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { VersionConflictError } from '../repositories/work-items.repository';
 import { WorkItemsService } from '../services/work-items.service';
@@ -39,6 +40,7 @@ import { WorkItemsService } from '../services/work-items.service';
  * principal (never the body). A stale optimistic `version` (VersionConflictError) maps to
  * HTTP 409 (FR-WI-009). `Idempotency-Key` is accepted now; the replay store is wired later.
  */
+@RequirePermission('work:read')
 @Controller('work-items')
 export class WorkItemsController {
   constructor(private readonly service: WorkItemsService) {}
@@ -56,6 +58,7 @@ export class WorkItemsController {
     return this.service.get(id);
   }
 
+  @RequirePermission('work:write')
   @Post(':id/move')
   @HttpCode(200)
   async move(
@@ -72,6 +75,7 @@ export class WorkItemsController {
     }
   }
 
+  @RequirePermission('work:write')
   @Post()
   @HttpCode(201)
   create(
@@ -84,6 +88,7 @@ export class WorkItemsController {
     return this.service.create(body);
   }
 
+  @RequirePermission('work:write')
   @Patch(':id')
   async update(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -99,12 +104,14 @@ export class WorkItemsController {
     }
   }
 
+  @RequirePermission('work:write')
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
     await this.service.delete(id);
   }
 
+  @RequirePermission('work:write')
   @Post(':id/restore')
   @HttpCode(200)
   restore(@Param('id', new ParseUUIDPipe()) id: string): Promise<{ data: WorkItem }> {
@@ -116,6 +123,7 @@ export class WorkItemsController {
     return this.service.listSubtasks(id);
   }
 
+  @RequirePermission('work:write')
   @Post(':id/subtasks')
   @HttpCode(201)
   addSubtask(
@@ -133,6 +141,7 @@ export class WorkItemsController {
     return this.service.listActivity(id);
   }
 
+  @RequirePermission('work:write')
   @Post(':id/labels')
   @HttpCode(201)
   addLabel(
@@ -145,6 +154,7 @@ export class WorkItemsController {
     return this.service.addLabel(id, { labelId: body.labelId, name: body.name });
   }
 
+  @RequirePermission('work:write')
   @Delete(':id/labels/:labelId')
   @HttpCode(204)
   async removeLabel(

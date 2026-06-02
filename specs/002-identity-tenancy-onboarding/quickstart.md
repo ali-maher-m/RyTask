@@ -34,9 +34,10 @@ curl -s localhost:3001/api/v1/auth/whoami -H "authorization: Bearer $ACCESS"
 curl -s localhost:3001/api/v1/invites -H "authorization: Bearer $ACCESS" \
   -H 'content-type: application/json' -d '{"email":"sam@example.com","role":"MEMBER"}'
 
-# Mint a PAT for API/MCP (secret shown ONCE)
+# Mint a PAT for API/MCP (secret shown ONCE). Scopes are permission ids (rbac-matrix.md);
+# effective permission = scope ∩ role. Omit scopes (or use ["*"]) to delegate the full role.
 curl -s localhost:3001/api/v1/api-tokens -H "authorization: Bearer $ACCESS" \
-  -H 'content-type: application/json' -d '{"name":"ci","type":"PAT","scopes":["issues:read"]}'
+  -H 'content-type: application/json' -d '{"name":"ci","type":"PAT","scopes":["work:read"]}'
 ```
 
 ## 3. What "done" looks like (maps to Success Criteria)

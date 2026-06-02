@@ -21,19 +21,21 @@ import {
   createProjectSchema,
   updateProjectSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { ProjectsService } from '../services/projects.service';
 
 /**
- * Projects REST surface under /api/v1 (contracts/openapi.yaml, FR-PROJ-001/002). Reads
- * require project VIEWER, mutations ADMIN — except create, which is open to any org member.
- * RBAC + the create transaction + the duplicate-prefix → 409 mapping all live in the
- * providers. Tenant/org/workspace come from the principal (never the body).
+ * Projects REST surface under /api/v1 (contracts/openapi.yaml, FR-PROJ-001/002). The M0
+ * `@RequirePermission` is the coarse org gate (`work:read`/`work:write` — VIEWER read-only,
+ * SC-006); finer project-role enforcement (VIEWER/MEMBER/ADMIN) + the org-admin bypass stay
+ * in `ProjectAccessService`. Tenant/org/workspace come from the principal (never the body).
  */
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly service: ProjectsService) {}
 
+  @RequirePermission('work:read')
   @Get()
   list(
     @Query('cursor') cursor?: string,
@@ -47,6 +49,7 @@ export class ProjectsController {
     });
   }
 
+  @RequirePermission('work:write')
   @Post()
   @HttpCode(201)
   create(
@@ -55,11 +58,13 @@ export class ProjectsController {
     return this.service.create(body);
   }
 
+  @RequirePermission('work:read')
   @Get(':projectId')
   get(@Param('projectId', new ParseUUIDPipe()) projectId: string): Promise<ProjectResponse> {
     return this.service.get(projectId);
   }
 
+  @RequirePermission('work:write')
   @Patch(':projectId')
   update(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
@@ -68,12 +73,14 @@ export class ProjectsController {
     return this.service.update(projectId, body);
   }
 
+  @RequirePermission('work:write')
   @Delete(':projectId')
   @HttpCode(204)
   async remove(@Param('projectId', new ParseUUIDPipe()) projectId: string): Promise<void> {
     await this.service.delete(projectId);
   }
 
+  @RequirePermission('work:read')
   @Get(':projectId/members')
   listMembers(
     @Param('projectId', new ParseUUIDPipe()) projectId: string,
@@ -81,6 +88,7 @@ export class ProjectsController {
     return this.service.listMembers(projectId);
   }
 
+  @RequirePermission('work:write')
   @Post(':projectId/members')
   @HttpCode(201)
   async addMember(

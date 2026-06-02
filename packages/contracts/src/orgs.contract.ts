@@ -17,10 +17,7 @@ export const orgSettingsSchema = z
     locale: z.string().min(2).max(35).optional(),
     weekStart: z.enum(['SUNDAY', 'MONDAY']).optional(),
     workingDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
-    workingHours: z
-      .object({ start: z.string(), end: z.string() })
-      .strict()
-      .optional(),
+    workingHours: z.object({ start: z.string(), end: z.string() }).strict().optional(),
     logoUrl: z.string().url().nullable().optional(),
     allowPublicSignup: z.boolean().optional(),
   })

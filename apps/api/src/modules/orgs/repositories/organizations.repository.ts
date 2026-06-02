@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type Database, type Organization, type OrgSettings, organizations } from '@rytask/db';
+import { type Database, type OrgSettings, type Organization, organizations } from '@rytask/db';
 import { eq, sql } from 'drizzle-orm';
 import { DB } from '../../../common/database/database.module';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
@@ -19,14 +19,16 @@ export class OrganizationsRepository extends TenantScopedRepository {
 
   /** Global org count for the first-run bootstrap gate (no tenant context). */
   async countAll(): Promise<number> {
-    const [row] = await this.db
-      .select({ count: sql<string>`count(*)` })
-      .from(organizations);
+    const [row] = await this.db.select({ count: sql<string>`count(*)` }).from(organizations);
     return Number(row?.count ?? 0);
   }
 
   /** Insert an organization (bootstrap; org explicit). */
-  async create(data: { name: string; slug: string; settings?: OrgSettings }): Promise<Organization> {
+  async create(data: {
+    name: string;
+    slug: string;
+    settings?: OrgSettings;
+  }): Promise<Organization> {
     const [row] = await this.db
       .insert(organizations)
       .values({ name: data.name, slug: data.slug, settings: data.settings ?? {} })
@@ -40,6 +42,16 @@ export class OrganizationsRepository extends TenantScopedRepository {
   /** The first (single-org M0) organization, global — for the public-signup gate. */
   async first(): Promise<Organization | null> {
     const [row] = await this.db.select().from(organizations).limit(1);
+    return row ?? null;
+  }
+
+  /** Global find-by-id — for the public invite preview (runs pre-ALS; D8). */
+  async findById(id: string): Promise<Organization | null> {
+    const [row] = await this.db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, id))
+      .limit(1);
     return row ?? null;
   }
 

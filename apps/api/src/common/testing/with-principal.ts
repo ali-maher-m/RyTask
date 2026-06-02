@@ -1,7 +1,7 @@
 import type { Role } from '@rytask/contracts';
+import { TokenSigner } from '../../modules/identity/services/token-signer.service';
 import { authConfig } from '../config/auth.config';
 import { isOrgAdminRole } from '../rbac/permissions';
-import { TokenSigner } from '../../modules/identity/services/token-signer.service';
 
 /**
  * Test-only principal helper (research D16). Mints a **real** access token for a seeded

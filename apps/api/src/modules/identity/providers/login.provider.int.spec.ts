@@ -15,16 +15,17 @@ import { authConfig } from '../../../common/config/auth.config';
 import { Argon2Hasher } from '../../../common/ports/argon2-hasher.adapter';
 import { systemClock } from '../../../common/ports/clock.port';
 import { systemIdGenerator } from '../../../common/ports/id-generator.port';
-import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
-import { AccessServiceImpl } from '../../orgs/services/access.service';
+import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
 import { MembershipsRepository } from '../../orgs/repositories/memberships.repository';
 import { OrganizationsRepository } from '../../orgs/repositories/organizations.repository';
 import { WorkspacesRepository } from '../../orgs/repositories/workspaces.repository';
-import { AuthService } from '../services/auth.service';
-import { TokenSigner } from '../services/token-signer.service';
+import { AccessServiceImpl } from '../../orgs/services/access.service';
 import { SessionsRepository } from '../repositories/sessions.repository';
 import { UsersRepository } from '../repositories/users.repository';
+import { AuthService } from '../services/auth.service';
+import { BruteForceService } from '../services/brute-force.service';
+import { TokenSigner } from '../services/token-signer.service';
 import { LoginProvider } from './login.provider';
 import { LogoutProvider } from './logout.provider';
 import { RefreshProvider } from './refresh.provider';
@@ -70,7 +71,23 @@ describe('Login/Refresh/Logout providers (integration)', () => {
       systemIdGenerator,
       cfg,
     );
-    login = new LoginProvider(users, new Argon2Hasher(cfg), access, auth, new EventEmitter2());
+    // No Redis in this suite → BruteForceService fails open (no lockout); the dedicated
+    // brute-force.int.spec.ts exercises the real Redis-backed lockout.
+    const noopRedis = {
+      get: async () => null,
+      incr: async () => 1,
+      expire: async () => 1,
+      del: async () => 1,
+    } as unknown as import('ioredis').default;
+    const bruteForce = new BruteForceService(noopRedis, cfg);
+    login = new LoginProvider(
+      users,
+      new Argon2Hasher(cfg),
+      access,
+      auth,
+      bruteForce,
+      new EventEmitter2(),
+    );
     refresh = new RefreshProvider(sessions, users, tokenHasher, access, auth, systemClock);
     logout = new LogoutProvider(sessions, tenant, systemClock);
   });
@@ -81,7 +98,10 @@ describe('Login/Refresh/Logout providers (integration)', () => {
   });
 
   it('logs in a seeded user → access + refresh + verified user', async () => {
-    const result = await login.login({ email: 'founder@rytask.local', password: SEED_USER_PASSWORD });
+    const result = await login.login({
+      email: 'founder@rytask.local',
+      password: SEED_USER_PASSWORD,
+    });
     expect(result.accessToken).toBeTypeOf('string');
     expect(result.refreshToken).toMatch(/^rytask_rt_/);
     expect(result.user.email).toBe('founder@rytask.local');

@@ -20,6 +20,7 @@ import {
   reorderStatusesSchema,
   updateStatusSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { StatusesService } from '../services/statuses.service';
 
@@ -30,6 +31,7 @@ import { StatusesService } from '../services/statuses.service';
  * reads require project VIEWER; every mutation requires project ADMIN. Deleting a status
  * that still has items requires `reassignTo` (else 409). Tenant/org from the principal.
  */
+@RequirePermission('work:read')
 @Controller()
 export class StatusesController {
   constructor(private readonly service: StatusesService) {}
@@ -39,6 +41,7 @@ export class StatusesController {
     return this.service.list(projectId);
   }
 
+  @RequirePermission('work:write')
   @Post('projects/:projectId/statuses')
   @HttpCode(201)
   create(
@@ -48,6 +51,7 @@ export class StatusesController {
     return this.service.create(projectId, body);
   }
 
+  @RequirePermission('work:write')
   @Post('projects/:projectId/statuses/reorder')
   @HttpCode(200)
   reorder(
@@ -57,6 +61,7 @@ export class StatusesController {
     return this.service.reorder(projectId, body);
   }
 
+  @RequirePermission('work:write')
   @Patch('statuses/:statusId')
   update(
     @Param('statusId', new ParseUUIDPipe()) statusId: string,
@@ -65,6 +70,7 @@ export class StatusesController {
     return this.service.update(statusId, body);
   }
 
+  @RequirePermission('work:write')
   @Delete('statuses/:statusId')
   @HttpCode(204)
   async remove(

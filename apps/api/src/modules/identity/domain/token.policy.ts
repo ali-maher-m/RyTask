@@ -17,10 +17,7 @@ export type RefreshDecision =
   | { action: 'revoke-family'; reason: 'reuse' };
 
 /** Decide what to do when a refresh token is presented. */
-export function evaluateRefresh(
-  session: RefreshSessionState | null,
-  now: Date,
-): RefreshDecision {
+export function evaluateRefresh(session: RefreshSessionState | null, now: Date): RefreshDecision {
   if (!session) {
     return { action: 'reject', reason: 'unknown' };
   }

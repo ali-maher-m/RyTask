@@ -18,6 +18,7 @@ import {
   saveViewSchema,
   updateViewSchema,
 } from '@rytask/contracts';
+import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
 import { ViewsService } from '../services/views.service';
 
@@ -28,6 +29,7 @@ import { ViewsService } from '../services/views.service';
  * visible only to their owner; SHARED views to project members. Smart views are not rows
  * (D7) — they live on `GET /work-items?smart=`. Tenant/org from the principal.
  */
+@RequirePermission('work:read')
 @Controller('views')
 export class ViewsController {
   constructor(private readonly service: ViewsService) {}
@@ -37,6 +39,7 @@ export class ViewsController {
     return this.service.list(projectId);
   }
 
+  @RequirePermission('work:write')
   @Post()
   @HttpCode(201)
   save(
@@ -45,6 +48,7 @@ export class ViewsController {
     return this.service.save(body);
   }
 
+  @RequirePermission('work:write')
   @Patch(':id')
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -53,6 +57,7 @@ export class ViewsController {
     return this.service.update(id, body);
   }
 
+  @RequirePermission('work:write')
   @Delete(':id')
   @HttpCode(204)
   async remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {

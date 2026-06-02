@@ -4,11 +4,11 @@ import { TokenHasher } from '../../../common/auth/token-hasher';
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { ORG_ACCESS, type OrgAccessService } from '../../orgs/orgs.contract';
 import { evaluateRefresh } from '../domain/token.policy';
-import { AuthService } from '../services/auth.service';
 import { SessionsRepository } from '../repositories/sessions.repository';
 import { UsersRepository } from '../repositories/users.repository';
-import { toUserSummary } from './user.mapper';
+import { AuthService } from '../services/auth.service';
 import type { RequestContext } from './login.provider';
+import { toUserSummary } from './user.mapper';
 
 /**
  * Rotate a refresh token (US2, FR-AUTH-002, SC-003). Valid token → issue a new access +

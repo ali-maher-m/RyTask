@@ -102,7 +102,7 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 - [X] T031 [P] [US1] Integration test (real Postgres) for the first-run provider in `apps/api/src/modules/orgs/providers/bootstrap-first-run.provider.int.spec.ts` (atomic org+owner+membership+workspace+starter-project+statuses; idempotent re-run → 409).
 - [X] T032 [P] [US1] Contract test for `apps/api/src/modules/orgs/controllers/setup.controller.contract.spec.ts` (`GET /setup`, `POST /setup`; 409 after bootstrap).
 - [X] T033 [P] [US1] Tenancy-isolation spec for `memberships` in `apps/api/src/modules/orgs/repositories/memberships.tenancy.spec.ts`.
-- [ ] T034 [P] [US1] Playwright + axe e2e for the wizard in `apps/web/e2e/setup.e2e.spec.ts` (≤5 steps to a usable, owned workspace; no jargon — SC-001).
+- [X] T034 [P] [US1] Playwright + axe e2e for the wizard in `apps/web/e2e/setup.e2e.spec.ts` (≤5 steps to a usable, owned workspace; no jargon — SC-001).
 
 ### Implementation for User Story 1
 
@@ -112,7 +112,7 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 - [X] T038 [US1] Implement `SetupController` in `apps/api/src/modules/orgs/controllers/setup.controller.ts` (`@Public` `GET /setup` + `POST /setup`, gated by `BootstrapPolicy` → 409) and wire `OrgsService` (depends on T036).
 - [X] T039 [US1] Implement `OrgsController` `GET /orgs/current` + `WorkspacesController` `GET /workspaces` / `GET /workspaces/{id}` in `apps/api/src/modules/orgs/controllers/`, annotated `@RequirePermission('org:read')` / `'workspace:read'` (catalog from T014/T015; enforcement arrives in US4).
 - [X] T040 [US1] Emit the `OrganizationCreated`/`first-run` domain event from the bootstrap provider via `@nestjs/event-emitter` (audit seam, research D15).
-- [ ] T041 [P] [US1] Build the first-run wizard UI in `apps/web/app/setup/` (name, email, password, org name → usable workspace; Albert/Marissa-test copy, no jargon).
+- [X] T041 [P] [US1] Build the first-run wizard UI in `apps/web/app/setup/` (name, email, password, org name → usable workspace; Albert/Marissa-test copy, no jargon).
 
 **Checkpoint**: A clean instance bootstraps to a signed-in Owner with a starter project; `/setup` self-closes. US1 is demonstrable independently against stub guards.
 
@@ -131,8 +131,8 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 - [X] T044 [P] [US2] Integration test in `apps/api/src/modules/identity/providers/login.provider.int.spec.ts` (login → access+refresh; refresh rotates + invalidates prior; logout revokes; reuse rejected — SC-003).
 - [X] T045 [P] [US2] Contract test in `apps/api/src/modules/identity/controllers/auth.controller.contract.spec.ts` (`/auth/register|login|refresh|logout|whoami`; invalid creds → generic 401, no enumeration).
 - [X] T046 [P] [US2] Tenancy-isolation spec for `sessions` in `apps/api/src/modules/identity/repositories/sessions.tenancy.spec.ts`.
-- [ ] T047 [P] [US2] Integration test in `apps/api/src/modules/identity/providers/brute-force.int.spec.ts` (failed-login lockout per `(email, IP)` after threshold — SC-011).
-- [ ] T048 [P] [US2] Security test in `apps/api/src/common/testing/no-secrets-in-logs.spec.ts` (no plaintext password/access/refresh token in storage, logs, or URLs — SC-002).
+- [X] T047 [P] [US2] Integration test in `apps/api/src/modules/identity/providers/brute-force.int.spec.ts` (failed-login lockout per `(email, IP)` after threshold — SC-011).
+- [X] T048 [P] [US2] Security test in `apps/api/src/common/testing/no-secrets-in-logs.spec.ts` (no plaintext password/access/refresh token in storage, logs, or URLs — SC-002).
 
 ### Implementation for User Story 2
 
@@ -146,7 +146,7 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 - [X] T056 [US2] **Fill `ThrottleGuard`** (`apps/api/src/common/guards/throttle.guard.ts`): Redis token buckets keyed by principal/IP, **stricter on `/auth/*`**, plus the failed-login lockout from T047 (research D12).
 - [X] T057 [US2] Migrate existing **M1** integration/contract tests off the dev header to `withPrincipal()` (T028) across `apps/api/src/modules/*/**.spec.ts`, adding project-role fixtures where a test asserts the non-admin fallback (quickstart §5). Confirm the M1 suite is green under genuine auth.
 - [X] T058 [P] [US2] Emit `UserRegistered` / `UserLoggedIn` events in `apps/api/src/modules/identity/events/` (audit seam, D15).
-- [ ] T059 [P] [US2] Build the `login` + `register` screens in `apps/web/app/(auth)/` with silent token refresh.
+- [X] T059 [P] [US2] Build the `login` + `register` screens in `apps/web/app/(auth)/` with silent token refresh.
 
 **Checkpoint**: Sessions are real and secure; the whole app now requires a verified principal (401 otherwise); M1 + M0 suites pass under genuine auth.
 
@@ -160,19 +160,19 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 ### Tests for User Story 3 (MANDATORY — Constitution Principle V) ⚠️
 
-- [ ] T060 [P] [US3] Unit test in `apps/api/src/modules/orgs/domain/invitation.policy.spec.ts` (state machine pending→accepted/revoked/expired; idempotent for an existing member — US3 AC3/AC4).
-- [ ] T061 [P] [US3] Integration test in `apps/api/src/modules/orgs/providers/invite.provider.int.spec.ts` (email + link invite → accept → membership at role; expired/used/revoked → refused, no membership — SC-004).
-- [ ] T062 [P] [US3] Contract test in `apps/api/src/modules/orgs/controllers/invites.controller.contract.spec.ts` (`POST/GET /invites`, public `GET /invites/{token}` + `POST /invites/{token}/accept`, `DELETE /invites/{id}/_revoke`).
-- [ ] T063 [P] [US3] Tenancy-isolation spec for `invitations` in `apps/api/src/modules/orgs/repositories/invitations.tenancy.spec.ts`.
+- [X] T060 [P] [US3] Unit test in `apps/api/src/modules/orgs/domain/invitation.policy.spec.ts` (state machine pending→accepted/revoked/expired; idempotent for an existing member — US3 AC3/AC4).
+- [X] T061 [P] [US3] Integration test in `apps/api/src/modules/orgs/providers/invite.provider.int.spec.ts` (email + link invite → accept → membership at role; expired/used/revoked → refused, no membership — SC-004).
+- [X] T062 [P] [US3] Contract test in `apps/api/src/modules/orgs/controllers/invites.controller.contract.spec.ts` (`POST/GET /invites`, public `GET /invites/{token}` + `POST /invites/{token}/accept`, `DELETE /invites/{id}/_revoke`).
+- [X] T063 [P] [US3] Tenancy-isolation spec for `invitations` in `apps/api/src/modules/orgs/repositories/invitations.tenancy.spec.ts`.
 
 ### Implementation for User Story 3
 
-- [ ] T064 [P] [US3] Implement `InvitationPolicy` in `apps/api/src/modules/orgs/domain/invitation.policy.ts` (research D8).
-- [ ] T065 [P] [US3] Implement the `invitations` repository in `apps/api/src/modules/orgs/repositories/invitations.repository.ts` (create, find-by-token-hash, list-pending, revoke, mark-accepted) on `TenantScopedRepository`.
-- [ ] T066 [US3] Implement the `invite-member` (email via `Mailer` port + shareable link), `accept-invite` (create user/membership at role; idempotent), `revoke-invite`, and `list-invites` providers in `apps/api/src/modules/orgs/providers/` (depends on T064, T065).
-- [ ] T067 [US3] Implement `InvitesController` in `apps/api/src/modules/orgs/controllers/invites.controller.ts` — `@RequirePermission('members:invite')` on create/revoke, `'members:read'` on list, `@Public()` on preview + accept (token-bearing).
-- [ ] T068 [P] [US3] Emit `MemberInvited` / `MemberJoined` events in `apps/api/src/modules/orgs/events/` (audit seam, D15).
-- [ ] T069 [P] [US3] Build the accept-invite landing in `apps/web/app/invite/[token]/` (preview role + org, then register/sign-in to join — non-technical, no training).
+- [X] T064 [P] [US3] Implement `InvitationPolicy` in `apps/api/src/modules/orgs/domain/invitation.policy.ts` (research D8).
+- [X] T065 [P] [US3] Implement the `invitations` repository in `apps/api/src/modules/orgs/repositories/invitations.repository.ts` (create, find-by-token-hash, list-pending, revoke, mark-accepted) on `TenantScopedRepository`.
+- [X] T066 [US3] Implement the `invite-member` (email via `Mailer` port + shareable link), `accept-invite` (create user/membership at role; idempotent), `revoke-invite`, and `list-invites` providers in `apps/api/src/modules/orgs/providers/` (depends on T064, T065).
+- [X] T067 [US3] Implement `InvitesController` in `apps/api/src/modules/orgs/controllers/invites.controller.ts` — `@RequirePermission('members:invite')` on create/revoke, `'members:read'` on list, `@Public()` on preview + accept (token-bearing).
+- [X] T068 [P] [US3] Emit `MemberInvited` / `MemberJoined` events in `apps/api/src/modules/orgs/events/` (audit seam, D15).
+- [X] T069 [P] [US3] Build the accept-invite landing in `apps/web/app/invite/[token]/` (preview role + org, then register/sign-in to join — non-technical, no training).
 
 **Checkpoint**: A teammate can be invited (email or link) and lands at the pre-assigned role; bad invites are refused cleanly.
 
@@ -186,18 +186,18 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 ### Tests for User Story 4 (MANDATORY — Constitution Principle V) ⚠️
 
-- [ ] T070 [P] [US4] Unit test in `apps/api/src/modules/orgs/domain/role.policy.spec.ts` (role→permission resolution incl. Viewer read-only and Owner-only, matching `rbac-matrix.md`).
-- [ ] T071 [P] [US4] Unit test in `apps/api/src/common/rbac/rbac.guard.spec.ts` (default-deny when no satisfiable permission; `@Public` bypass; `@Roles` honored).
-- [ ] T072 [US4] Authorization-matrix test in `apps/api/src/common/testing/authz-matrix.spec.ts` — role × representative route over M0 **and** M1 surfaces, asserting every row of both tables in `rbac-matrix.md` (Viewer-mutation 403, Owner-only 403/409 — SC-005/006/007). (Depends on US1/US2/US3 routes.)
-- [ ] T073 [P] [US4] Flagship Playwright + axe e2e in `apps/web/e2e/signup-invite-accept-rbac.e2e.spec.ts` (sign up → invite → accept → role-gated actions — research D17).
+- [X] T070 [P] [US4] Unit test in `apps/api/src/modules/orgs/domain/role.policy.spec.ts` (role→permission resolution incl. Viewer read-only and Owner-only, matching `rbac-matrix.md`).
+- [X] T071 [P] [US4] Unit test in `apps/api/src/common/rbac/rbac.guard.spec.ts` (default-deny when no satisfiable permission; `@Public` bypass; `@Roles` honored).
+- [X] T072 [US4] Authorization-matrix test in `apps/api/src/common/testing/authz-matrix.spec.ts` — role × representative route over M0 **and** M1 surfaces, asserting every row of both tables in `rbac-matrix.md` (Viewer-mutation 403, Owner-only 403/409 — SC-005/006/007). (Depends on US1/US2/US3 routes.)
+- [X] T073 [P] [US4] Flagship Playwright + axe e2e in `apps/web/e2e/signup-invite-accept-rbac.e2e.spec.ts` (sign up → invite → accept → role-gated actions — research D17).
 
 ### Implementation for User Story 4
 
-- [ ] T074 [P] [US4] Implement `RolePolicy` in `apps/api/src/modules/orgs/domain/role.policy.ts` (research D6).
-- [ ] T075 [US4] Implement the `AccessService` (role resolution + `isOrgAdmin`) in `apps/api/src/modules/orgs/services/access.service.ts`, exposed via the orgs contract for cross-context reads (data-model §4) — used by the guard and `TokenVerifier`.
-- [ ] T076 [US4] **Fill `RbacGuard`** (`apps/api/src/common/guards/rbac.guard.ts`): read `@RequirePermission`/`@Roles` metadata, resolve the principal's permissions via `RolePolicy`/`AccessService`, **default-deny**, apply the org-admin bypass / project-role fallback to M1 routes (research D6). (Scope∩role for PATs is layered in US7.)
-- [ ] T077 [US4] Retrofit `@RequirePermission` onto the existing **M1** controllers per `rbac-matrix.md` §"Retrofit": `projects`, `statuses`, `work-items`, `labels`, `comments`, `views`, `search`, `notifications` controllers under `apps/api/src/modules/*/controllers/`.
-- [ ] T078 [US4] Emit `RoleChanged` event scaffolding in `apps/api/src/modules/orgs/events/` (consumed when role changes land in US8; audit seam D15).
+- [X] T074 [P] [US4] Implement `RolePolicy` in `apps/api/src/modules/orgs/domain/role.policy.ts` (research D6).
+- [X] T075 [US4] Implement the `AccessService` (role resolution + `isOrgAdmin`) in `apps/api/src/modules/orgs/services/access.service.ts`, exposed via the orgs contract for cross-context reads (data-model §4) — used by the guard and `TokenVerifier`.
+- [X] T076 [US4] **Fill `RbacGuard`** (`apps/api/src/common/guards/rbac.guard.ts`): read `@RequirePermission`/`@Roles` metadata, resolve the principal's permissions via `RolePolicy`/`AccessService`, **default-deny**, apply the org-admin bypass / project-role fallback to M1 routes (research D6). (Scope∩role for PATs is layered in US7.)
+- [X] T077 [US4] Retrofit `@RequirePermission` onto the existing **M1** controllers per `rbac-matrix.md` §"Retrofit": `projects`, `statuses`, `work-items`, `labels`, `comments`, `views`, `search`, `notifications` controllers under `apps/api/src/modules/*/controllers/`.
+- [X] T078 [US4] Emit `RoleChanged` event scaffolding in `apps/api/src/modules/orgs/events/` (consumed when role changes land in US8; audit seam D15).
 
 **Checkpoint**: Every route is default-deny and role-enforced server-side; the authorization matrix and flagship e2e pass; M1 routes are now genuinely RBAC-gated.
 
@@ -211,14 +211,14 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 ### Tests for User Story 5 (MANDATORY — Constitution Principle V) ⚠️
 
-- [ ] T079 [US5] Cross-tenant isolation **suite** in `apps/api/src/common/testing/tenant-isolation.suite.spec.ts` — two orgs under **real principals** (`withPrincipal()`), asserting every M0 **and** M1 read/list/search/get-by-id as A returns/affects 0 B-rows (FR-TEST-007, SC-008).
-- [ ] T080 [P] [US5] Integration test in `apps/api/src/common/testing/cross-tenant-id-probe.spec.ts` (referencing another org's resource by id → 404, never 403/leak — contracts README error table).
-- [ ] T081 [P] [US5] Single-org end-to-end + no-migration assertion test in `apps/api/src/common/testing/single-org-no-migration.spec.ts` (FR-TEN-003, SC-009).
+- [X] T079 [US5] Cross-tenant isolation **suite** in `apps/api/src/common/testing/tenant-isolation.suite.spec.ts` — two orgs under **real principals** (`withPrincipal()`), asserting every M0 **and** M1 read/list/search/get-by-id as A returns/affects 0 B-rows (FR-TEST-007, SC-008).
+- [X] T080 [P] [US5] Integration test in `apps/api/src/common/testing/cross-tenant-id-probe.spec.ts` (referencing another org's resource by id → 404, never 403/leak — contracts README error table).
+- [X] T081 [P] [US5] Single-org end-to-end + no-migration assertion test in `apps/api/src/common/testing/single-org-no-migration.spec.ts` (FR-TEN-003, SC-009).
 
 ### Implementation for User Story 5
 
-- [ ] T082 [US5] **Fill `TenantGuard`** (`apps/api/src/common/guards/tenant.guard.ts`): assert the principal is an active member of the resolved org and that an ALS context is present (established by the middleware in T055); 401/403 otherwise (research D10). Org is **never** read from body/query/header (Principle II).
-- [ ] T083 [P] [US5] Audit/confirm org-leading composite indexes on all five new tables (T007) and that each tenant-scoped repo extends `TenantScopedRepository` with no raw/unscoped Drizzle access (Principle II); fix any gaps.
+- [X] T082 [US5] **Fill `TenantGuard`** (`apps/api/src/common/guards/tenant.guard.ts`): assert the principal is an active member of the resolved org and that an ALS context is present (established by the middleware in T055); 401/403 otherwise (research D10). Org is **never** read from body/query/header (Principle II).
+- [X] T083 [P] [US5] Audit/confirm org-leading composite indexes on all five new tables (T007) and that each tenant-scoped repo extends `TenantScopedRepository` with no raw/unscoped Drizzle access (Principle II); fix any gaps.
 
 **Checkpoint**: Cross-tenant isolation is proven across M0 + M1; single-org works with the boundary fully enforced; a second org needs no schema change.
 
@@ -232,16 +232,16 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 ### Tests for User Story 6 (MANDATORY — Constitution Principle V) ⚠️
 
-- [ ] T084 [P] [US6] Integration test in `apps/api/src/modules/identity/providers/password-reset.provider.int.spec.ts` (single-use + expiry rejection; unknown-email uniform response — SC-010).
-- [ ] T085 [P] [US6] Contract test in `apps/api/src/modules/identity/controllers/auth-recovery.controller.contract.spec.ts` (`/auth/verify-email`, `/auth/request-password-reset`, `/auth/confirm-password-reset`).
-- [ ] T086 [P] [US6] Tenancy-isolation spec for `one_time_tokens` in `apps/api/src/modules/identity/repositories/one-time-tokens.tenancy.spec.ts`.
+- [X] T084 [P] [US6] Integration test in `apps/api/src/modules/identity/providers/password-reset.provider.int.spec.ts` (single-use + expiry rejection; unknown-email uniform response — SC-010).
+- [X] T085 [P] [US6] Contract test in `apps/api/src/modules/identity/controllers/auth-recovery.controller.contract.spec.ts` (`/auth/verify-email`, `/auth/request-password-reset`, `/auth/confirm-password-reset`).
+- [X] T086 [P] [US6] Tenancy-isolation spec for `one_time_tokens` in `apps/api/src/modules/identity/repositories/one-time-tokens.tenancy.spec.ts`.
 
 ### Implementation for User Story 6
 
-- [ ] T087 [P] [US6] Implement the `one_time_tokens` repository in `apps/api/src/modules/identity/repositories/one-time-tokens.repository.ts` (issue, find-by-hash, consume; purpose enum) on `TenantScopedRepository` (research D9).
-- [ ] T088 [US6] Implement the `verify-email`, `request-password-reset` (uniform response), and `confirm-password-reset` providers in `apps/api/src/modules/identity/providers/`, sending links via the `Mailer` port (depends on T087, T051).
-- [ ] T089 [US6] Add the three recovery routes to `AuthController` (or a sibling `AuthRecoveryController`) under `apps/api/src/modules/identity/controllers/`, all `@Public()`, with the org unverified-user policy applied.
-- [ ] T090 [P] [US6] Build the `reset` / `verify` screens in `apps/web/app/(auth)/reset/` (request + confirm new password).
+- [X] T087 [P] [US6] Implement the `one_time_tokens` repository in `apps/api/src/modules/identity/repositories/one-time-tokens.repository.ts` (issue, find-by-hash, consume; purpose enum) on `TenantScopedRepository` (research D9).
+- [X] T088 [US6] Implement the `verify-email`, `request-password-reset` (uniform response), and `confirm-password-reset` providers in `apps/api/src/modules/identity/providers/`, sending links via the `Mailer` port (depends on T087, T051).
+- [X] T089 [US6] Add the three recovery routes to `AuthController` (or a sibling `AuthRecoveryController`) under `apps/api/src/modules/identity/controllers/`, all `@Public()`, with the org unverified-user policy applied.
+- [X] T090 [P] [US6] Build the `reset` / `verify` screens in `apps/web/app/(auth)/reset/` (request + confirm new password).
 
 **Checkpoint**: Reset and verification work via single-use, time-limited links with no account enumeration.
 
@@ -255,19 +255,19 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 ### Tests for User Story 7 (MANDATORY — Constitution Principle V) ⚠️
 
-- [ ] T091 [P] [US7] Unit test in `apps/api/src/modules/identity/domain/scope.policy.spec.ts` (effective = scope ∩ role; out-of-scope or beyond-role → denied — SC-012).
-- [ ] T092 [P] [US7] Integration test in `apps/api/src/modules/identity/providers/api-tokens.provider.int.spec.ts` (mint→hash-at-rest+shown-once; in/out-of-scope; revoke rejects; `lastUsedAt` stamped).
-- [ ] T093 [P] [US7] Contract test in `apps/api/src/modules/identity/controllers/api-tokens.controller.contract.spec.ts` (`GET/POST /api-tokens`, `DELETE /api-tokens/{id}`).
-- [ ] T094 [P] [US7] Tenancy-isolation spec for `api_tokens` in `apps/api/src/modules/identity/repositories/api-tokens.tenancy.spec.ts`.
+- [X] T091 [P] [US7] Unit test in `apps/api/src/modules/identity/domain/scope.policy.spec.ts` (effective = scope ∩ role; out-of-scope or beyond-role → denied — SC-012).
+- [X] T092 [P] [US7] Integration test in `apps/api/src/modules/identity/providers/api-tokens.provider.int.spec.ts` (mint→hash-at-rest+shown-once; in/out-of-scope; revoke rejects; `lastUsedAt` stamped).
+- [X] T093 [P] [US7] Contract test in `apps/api/src/modules/identity/controllers/api-tokens.controller.contract.spec.ts` (`GET/POST /api-tokens`, `DELETE /api-tokens/{id}`).
+- [X] T094 [P] [US7] Tenancy-isolation spec for `api_tokens` in `apps/api/src/modules/identity/repositories/api-tokens.tenancy.spec.ts`.
 
 ### Implementation for User Story 7
 
-- [ ] T095 [P] [US7] Implement `ScopePolicy` in `apps/api/src/modules/identity/domain/scope.policy.ts` (research D5).
-- [ ] T096 [P] [US7] Implement the `api_tokens` repository in `apps/api/src/modules/identity/repositories/api-tokens.repository.ts` (create, find-by-hash, list-own, revoke, stamp-last-used) on `TenantScopedRepository`.
-- [ ] T097 [US7] Implement the `issue-token` (`rytask_pat_<random>`, returned once, argon2/keyed hash at rest), `list-tokens`, and `revoke-token` providers in `apps/api/src/modules/identity/providers/` (depends on T095, T096).
-- [ ] T098 [US7] Implement `ApiTokensController` in `apps/api/src/modules/identity/controllers/api-tokens.controller.ts` (`@RequirePermission('tokens:read'|'tokens:write')`, `self`).
-- [ ] T099 [US7] Extend `RbacGuard` (T076) with the **scope ∩ role** branch via `ScopePolicy` for PAT/MCP principals, and stamp `lastUsedAt` on use through `TokenVerifier` (T050); emit `TokenIssued` event in `apps/api/src/modules/identity/events/`.
-- [ ] T100 [P] [US7] Build the token-management UI in `apps/web/app/settings/tokens/` (mint with scope, show-once secret, list, revoke, last-used).
+- [X] T095 [P] [US7] Implement `ScopePolicy` in `apps/api/src/modules/identity/domain/scope.policy.ts` (research D5).
+- [X] T096 [P] [US7] Implement the `api_tokens` repository in `apps/api/src/modules/identity/repositories/api-tokens.repository.ts` (create, find-by-hash, list-own, revoke, stamp-last-used) on `TenantScopedRepository`.
+- [X] T097 [US7] Implement the `issue-token` (`rytask_pat_<random>`, returned once, argon2/keyed hash at rest), `list-tokens`, and `revoke-token` providers in `apps/api/src/modules/identity/providers/` (depends on T095, T096).
+- [X] T098 [US7] Implement `ApiTokensController` in `apps/api/src/modules/identity/controllers/api-tokens.controller.ts` (`@RequirePermission('tokens:read'|'tokens:write')`, `self`).
+- [X] T099 [US7] Extend `RbacGuard` (T076) with the **scope ∩ role** branch via `ScopePolicy` for PAT/MCP principals, and stamp `lastUsedAt` on use through `TokenVerifier` (T050); emit `TokenIssued` event in `apps/api/src/modules/identity/events/`.
+- [X] T100 [P] [US7] Build the token-management UI in `apps/web/app/settings/tokens/` (mint with scope, show-once secret, list, revoke, last-used).
 
 **Checkpoint**: Scoped PATs authenticate non-UI calls bounded by scope ∩ role, are revocable, and record last-used.
 
@@ -281,17 +281,17 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 ### Tests for User Story 8 (MANDATORY — Constitution Principle V) ⚠️
 
-- [ ] T101 [P] [US8] Unit test in `apps/api/src/modules/orgs/domain/last-owner.policy.spec.ts` (cannot remove/demote the last OWNER — SC-015).
-- [ ] T102 [P] [US8] Integration test in `apps/api/src/modules/orgs/providers/member-admin.provider.int.spec.ts` (set-role; remove → sessions/tokens revoked; transfer-ownership atomic + attributable; last-owner guard → 409).
-- [ ] T103 [P] [US8] Contract test in `apps/api/src/modules/orgs/controllers/member-admin.controller.contract.spec.ts` (`PATCH /orgs/current`, `DELETE /orgs/current`, `POST /orgs/current/transfer-ownership`, `GET/PATCH/DELETE /memberships[/{userId}]`).
+- [X] T101 [P] [US8] Unit test in `apps/api/src/modules/orgs/domain/last-owner.policy.spec.ts` (cannot remove/demote the last OWNER — SC-015).
+- [X] T102 [P] [US8] Integration test in `apps/api/src/modules/orgs/providers/member-admin.provider.int.spec.ts` (set-role; remove → sessions/tokens revoked; transfer-ownership atomic + attributable; last-owner guard → 409).
+- [X] T103 [P] [US8] Contract test in `apps/api/src/modules/orgs/controllers/member-admin.controller.contract.spec.ts` (`PATCH /orgs/current`, `DELETE /orgs/current`, `POST /orgs/current/transfer-ownership`, `GET/PATCH/DELETE /memberships[/{userId}]`).
 
 ### Implementation for User Story 8
 
-- [ ] T104 [P] [US8] Implement `LastOwnerPolicy` in `apps/api/src/modules/orgs/domain/last-owner.policy.ts` (research D13).
-- [ ] T105 [US8] Implement the `update-org-settings`, `soft-delete-org` (Owner-only, sets `organizations.deletedAt`, revokes sessions/tokens — D14), `set-member-role`, `remove-member` (revoke removed user's sessions/tokens — US8 AC3), `transfer-ownership` (Owner-only, atomic), and `list-members` providers in `apps/api/src/modules/orgs/providers/` (depends on T104; cross-revokes the identity sessions/api_tokens repos via service contracts).
-- [ ] T106 [US8] Extend `OrgsController` with `PATCH /orgs/current` (`'org:settings:write'`), `DELETE /orgs/current` (`'org:delete'`, Owner), `POST /orgs/current/transfer-ownership` (`'org:transfer'`, Owner) in `apps/api/src/modules/orgs/controllers/orgs.controller.ts`.
-- [ ] T107 [US8] Implement `MembershipsController` in `apps/api/src/modules/orgs/controllers/memberships.controller.ts` (`GET /memberships` `'members:read'`; `PATCH/DELETE /memberships/{userId}` `'members:write'`, with the Admin-cannot-touch-Owner + last-owner guard).
-- [ ] T108 [P] [US8] Build the org-settings + members admin UI in `apps/web/app/settings/organization/` and `apps/web/app/settings/members/` (edit settings, list/role-change/remove, transfer/delete with confirmation).
+- [X] T104 [P] [US8] Implement `LastOwnerPolicy` in `apps/api/src/modules/orgs/domain/last-owner.policy.ts` (research D13).
+- [X] T105 [US8] Implement the `update-org-settings`, `soft-delete-org` (Owner-only, sets `organizations.deletedAt`, revokes sessions/tokens — D14), `set-member-role`, `remove-member` (revoke removed user's sessions/tokens — US8 AC3), `transfer-ownership` (Owner-only, atomic), and `list-members` providers in `apps/api/src/modules/orgs/providers/` (depends on T104; cross-revokes the identity sessions/api_tokens repos via service contracts).
+- [X] T106 [US8] Extend `OrgsController` with `PATCH /orgs/current` (`'org:settings:write'`), `DELETE /orgs/current` (`'org:delete'`, Owner), `POST /orgs/current/transfer-ownership` (`'org:transfer'`, Owner) in `apps/api/src/modules/orgs/controllers/orgs.controller.ts`.
+- [X] T107 [US8] Implement `MembershipsController` in `apps/api/src/modules/orgs/controllers/memberships.controller.ts` (`GET /memberships` `'members:read'`; `PATCH/DELETE /memberships/{userId}` `'members:write'`, with the Admin-cannot-touch-Owner + last-owner guard).
+- [X] T108 [P] [US8] Build the org-settings + members admin UI in `apps/web/app/settings/organization/` and `apps/web/app/settings/members/` (edit settings, list/role-change/remove, transfer/delete with confirmation).
 
 **Checkpoint**: Admins manage settings + members; Owner-only transfer/delete enforced; the org never loses its last Owner.
 
@@ -301,13 +301,13 @@ description: "Task list for Identity, Tenancy & Onboarding (Milestone M0)"
 
 **Purpose**: Close the parity + required-test gates, the security NFRs, the SDK/docs, and the coverage bar.
 
-- [ ] T109 Register the M0 MCP tool **definitions** in `packages/contracts/src/mcp/registry.ts` (`whoami`, `list_workspaces`, `get_workspace`, `set_active_workspace`, `get/update_org_settings`, `list_members`, `invite_member`, `set_member_role`, `remove_member`, `transfer_ownership`, `list/create/revoke_api_token`) and add their `serviceCapabilities`; **exclude credential-acquisition flows** with a comment (research D11). Mark destructive tools with a dry-run/confirmation flag stub (mcp-tools.md §Safety).
-- [ ] T110 Extend `scripts/check-mcp-parity.ts` to cover the `identity`/`orgs` capabilities and confirm `pnpm check:mcp-parity` is green (credential flows correctly absent).
-- [ ] T111 Run `pnpm check:required-tests` and resolve every gap so the gate is green for the `identity` + `orgs` test plans (Principle V, SC-013/014).
-- [ ] T112 [P] Add the production transport-security config test in `apps/api/src/common/testing/transport-security.spec.ts` (TLS-only/HSTS; secure, HTTP-only session cookies — NFR-SEC-001, SC-015).
-- [ ] T113 [P] Regenerate the typed client in `packages/sdk/` from the updated OpenAPI.
-- [ ] T114 [P] Validate `specs/002-identity-tenancy-onboarding/quickstart.md` end-to-end (`docker compose up` → migrate → seed → curl loop → gates) and fix any drift.
-- [ ] T115 Run `pnpm test:coverage` and meet the constitution gates (≥80% line, ≥90% domain+providers, ≥90% branch on policies); add focused tests where short.
+- [X] T109 Register the M0 MCP tool **definitions** in `packages/contracts/src/mcp/registry.ts` (`whoami`, `list_workspaces`, `get_workspace`, `set_active_workspace`, `get/update_org_settings`, `list_members`, `invite_member`, `set_member_role`, `remove_member`, `transfer_ownership`, `list/create/revoke_api_token`) and add their `serviceCapabilities`; **exclude credential-acquisition flows** with a comment (research D11). Mark destructive tools with a dry-run/confirmation flag stub (mcp-tools.md §Safety).
+- [X] T110 Extend `scripts/check-mcp-parity.ts` to cover the `identity`/`orgs` capabilities and confirm `pnpm check:mcp-parity` is green (credential flows correctly absent).
+- [X] T111 Run `pnpm check:required-tests` and resolve every gap so the gate is green for the `identity` + `orgs` test plans (Principle V, SC-013/014).
+- [X] T112 [P] Add the production transport-security config test in `apps/api/src/common/testing/transport-security.spec.ts` (TLS-only/HSTS; secure, HTTP-only session cookies — NFR-SEC-001, SC-015).
+- [X] T113 [P] Regenerate the typed client in `packages/sdk/` from the updated OpenAPI.
+- [X] T114 [P] Validate `specs/002-identity-tenancy-onboarding/quickstart.md` end-to-end (`docker compose up` → migrate → seed → curl loop → gates) and fix any drift.
+- [X] T115 Run `pnpm test:coverage` and meet the constitution gates (≥80% line, ≥90% domain+providers, ≥90% branch on policies); add focused tests where short.
 
 ---
 

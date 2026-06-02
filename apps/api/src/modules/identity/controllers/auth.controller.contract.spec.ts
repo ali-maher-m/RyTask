@@ -33,7 +33,12 @@ const cannedWhoami: WhoAmI = {
 };
 
 const ownerToken = (): string =>
-  withPrincipal({ userId: SEED_USER_ID, organizationId: SEED_ORG_ID, workspaceId: SEED_WORKSPACE_ID, role: 'OWNER' });
+  withPrincipal({
+    userId: SEED_USER_ID,
+    organizationId: SEED_ORG_ID,
+    workspaceId: SEED_WORKSPACE_ID,
+    role: 'OWNER',
+  });
 
 describe('AuthController (contract)', () => {
   let app: INestApplication;
@@ -88,7 +93,9 @@ describe('AuthController (contract)', () => {
   });
 
   it('POST /auth/register disabled signup → 403', async () => {
-    mockRegister.register.mockRejectedValueOnce(new ForbiddenException('public signup is disabled'));
+    mockRegister.register.mockRejectedValueOnce(
+      new ForbiddenException('public signup is disabled'),
+    );
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({ name: 'New', email: 'new@x.test', password: 'a-good-password' });

@@ -1,12 +1,18 @@
 import { Global, Module } from '@nestjs/common';
+import { InvitesController } from './controllers/invites.controller';
+import { MembershipsController } from './controllers/memberships.controller';
 import { OrgsController } from './controllers/orgs.controller';
 import { SetupController } from './controllers/setup.controller';
 import { WorkspacesController } from './controllers/workspaces.controller';
 import { ORG_ACCESS } from './orgs.contract';
+import { AcceptInviteProvider } from './providers/accept-invite.provider';
 import { BootstrapFirstRunProvider } from './providers/bootstrap-first-run.provider';
 import { GetOrgProvider } from './providers/get-org.provider';
+import { InviteProvider } from './providers/invite.provider';
+import { MemberAdminProvider } from './providers/member-admin.provider';
 import { WorkspacesProvider } from './providers/workspaces.provider';
 import { BootstrapRepository } from './repositories/bootstrap.repository';
+import { InvitationsRepository } from './repositories/invitations.repository';
 import { MembershipsRepository } from './repositories/memberships.repository';
 import { OrganizationsRepository } from './repositories/organizations.repository';
 import { WorkspacesRepository } from './repositories/workspaces.repository';
@@ -23,15 +29,25 @@ import { WorkspacesService } from './services/workspaces.service';
  */
 @Global()
 @Module({
-  controllers: [SetupController, OrgsController, WorkspacesController],
+  controllers: [
+    SetupController,
+    OrgsController,
+    WorkspacesController,
+    InvitesController,
+    MembershipsController,
+  ],
   providers: [
     OrganizationsRepository,
     WorkspacesRepository,
     MembershipsRepository,
+    InvitationsRepository,
     BootstrapRepository,
     BootstrapFirstRunProvider,
     GetOrgProvider,
     WorkspacesProvider,
+    InviteProvider,
+    AcceptInviteProvider,
+    MemberAdminProvider,
     OrgsService,
     WorkspacesService,
     AccessServiceImpl,
