@@ -1,0 +1,15 @@
+# LOCAL-ONLY override (untracked) — auto-merged by `docker compose`.
+# Supplies a strong JWT_SECRET so the production-mode image passes
+# assertProductionJwtSecret() (api/worker run as NODE_ENV=production).
+# The committed docker-compose.yml does not set one. Do NOT commit this file.
+services:
+  api:
+    environment:
+      JWT_SECRET: "fdf2566c05e41066db99c3a6d831ae753c441a9a123e9191896a02aed1b7cb53"
+  worker:
+    environment:
+      JWT_SECRET: "fdf2566c05e41066db99c3a6d831ae753c441a9a123e9191896a02aed1b7cb53"
+  # `pnpm start` (the image CMD) triggers pnpm 11's verify-deps check, which tries to
+  # purge node_modules and aborts with no TTY. Run Next directly instead.
+  web:
+    command: ["node", "node_modules/next/dist/bin/next", "start"]
