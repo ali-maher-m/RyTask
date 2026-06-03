@@ -143,18 +143,26 @@ drizzle-kit migrate         # planned: transactional migrations (never db:push i
 Until code lands, the actionable "commands" are the Spec Kit skills above and the scripts in `.specify/scripts/bash/`.
 
 <!-- SPECKIT START -->
-Active feature: **M0 — Identity, Tenancy & Onboarding** (`002-identity-tenancy-onboarding`). M0 is the
-**foundation** M1 was already built against: it **populates the stub guards** (`AuthGuard`, `TenantGuard`,
-`RbacGuard`, `ThrottleGuard`) and replaces `resolveDevPrincipal` with real JWT/PAT verification + org
-resolution, then adds two bounded contexts (`identity`, `orgs`). For technologies, project structure,
-shell commands, and the design decisions driving the current work, read the plan and its artifacts in
-`specs/002-identity-tenancy-onboarding/`:
-- `plan.md` — technical context, Constitution Check (M0 *implements* Principles II & VI), structure, C1
-- `research.md` — design decisions D0–D17 (retrofit seams, identity model, sessions, RBAC, onboarding, …)
-- `data-model.md` — extends `organizations`/`users`; adds `memberships`, `sessions`, `api_tokens`, `invitations`, `one_time_tokens`
-- `contracts/` — REST OpenAPI (`/api/v1` auth/orgs/members/invites), the RBAC matrix, and the MCP catalog
-- `quickstart.md` — run/seed/test the M0 slice; migrating off the M1 dev-header seam
+Active feature: **M0+M1 Frontend — Web Application** (`003-frontend-m0-m1`). The production-grade
+Next.js web UI for everything M0 and M1 already do on the server — a **client** of the existing M0/M1
+REST API and `@rytask/contracts`, introducing **no new server capability**. It completes the existing
+`apps/web` walking skeleton (real `lib/api.ts` auth/refresh + typed M1 clients) and, above all, **wires
+the design system** (currently unwired: bare root layout, no tokens/fonts/theme/shell). For
+technologies, structure, shell commands, and the decisions driving current work, read the plan and its
+artifacts in `specs/003-frontend-m0-m1/`:
+- `plan.md` — technical context, Constitution Check (Principle VIII is the central gate), structure
+- `research.md` — decisions D1–D18 (token wiring, CSS-Modules+tokens, theme/fonts/icons, shell,
+  TanStack Query + Context, capability map, token-conformance gate, web closed-testing, filter-DSL
+  serialization, optimistic `version` reconcile, virtualization, markdown, client auth routing)
+- `data-model.md` — **client-side** state & UI surfaces only (no new persisted server entities)
+- `contracts/` — UI contracts: `route-map`, `role-capability-matrix`, `component-contracts`,
+  `view-config` (serializes the M1 filter DSL), `quick-add-grammar` — plus the consumed M0/M1 REST
+- `quickstart.md` — run/seed/verify each user story + the CI gates
 
-The already-implemented **M1 — Core Work Loop** (`specs/001-core-work-loop/`) is the downstream consumer:
-M0 must not break its contract (`users.organizationId`, `project_members`, `TenantScopedRepository`).
+Two new repo-root CI gates this feature adds: `scripts/check-design-tokens.ts` (token-only brand
+conformance, Principle VIII / NFR-WEB-001) and a generalized `scripts/check-required-tests.ts` +
+`apps/web/web.testplan.ts` (web closed-testing, Principle V / NFR-WEB-006). Tokens flow
+`branding/colors_and_type.css → packages/ui → apps/web` — never copy-pasted. The server stays the sole
+authority; client role gating is cosmetic. Must not break M1's contract
+(`users.organizationId`, `project_members`, `TenantScopedRepository`).
 <!-- SPECKIT END -->
