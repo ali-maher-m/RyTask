@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RyTask — Style Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="colors_and_type.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+  }
+  a { color: var(--primary-text); text-decoration: none; }
+
+  /* ---------- page frame ---------- */
+  .wrap { max-width: var(--container-page); margin: 0 auto; padding: 0 28px 96px; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 28px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: saturate(1.4) blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand .mark { width: 30px; height: 30px; border-radius: 9px; display: block; box-shadow: var(--shadow-sm); }
+  .brand .name { font-family: var(--font-brand); font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: var(--fg); }
+  .brand .name b { color: var(--primary-text); font-weight: 800; }
+  .topbar .tag {
+    font-size: var(--fs-sm); color: var(--fg-muted); padding-left: 16px;
+    border-left: 1px solid var(--border); margin-left: 2px;
+  }
+  .spacer { flex: 1; }
+  .theme-toggle {
+    display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px;
+    background: var(--surface); color: var(--fg-2); border: 1px solid var(--border);
+    border-radius: var(--radius-md); font-family: var(--font-ui); font-weight: 600; font-size: var(--fs-sm);
+    cursor: pointer; transition: background var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast);
+  }
+  .theme-toggle:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+  .theme-toggle:active { transform: translateY(1px); }
+  .theme-toggle i { width: 15px; height: 15px; }
+
+  /* ---------- intro ---------- */
+  .intro { padding: 56px 0 40px; max-width: 760px; }
+  .intro h1 { font-family: var(--font-brand); font-weight: 800; font-size: 40px; line-height: 1.06; letter-spacing: -0.025em; margin: 0 0 16px; }
+  .intro h1 .hl { color: var(--primary-text); }
+  .intro p { font-size: 16px; line-height: 1.6; color: var(--fg-2); margin: 0; max-width: 620px; }
+  .intro .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .pillmeta { display:inline-flex; align-items:center; gap:7px; height:28px; padding:0 11px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); font-size:var(--fs-xs); font-weight:600; color:var(--fg-muted); }
+  .pillmeta i { width:13px; height:13px; color: var(--primary-text); }
+
+  /* ---------- section scaffold ---------- */
+  section.block { padding: 40px 0 8px; border-top: 1px solid var(--border); margin-top: 40px; }
+  .eyebrow { font-family: var(--font-ui); font-weight: 600; font-size: var(--fs-micro); letter-spacing: var(--track-micro); text-transform: uppercase; color: var(--fg-faint); margin: 0 0 8px; }
+  .block > h2 { font-family: var(--font-ui); font-weight: 700; font-size: 22px; letter-spacing: -0.015em; margin: 0 0 6px; color: var(--fg); }
+  .block > .lede { font-size: var(--fs-sm); color: var(--fg-muted); margin: 0 0 26px; max-width: 640px; }
+  .grid { display: grid; gap: 18px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-xs); }
+  .panel h3 { font-size: var(--fs-h3); font-weight: 600; margin: 0 0 16px; color: var(--fg); letter-spacing: -0.01em; }
+  .panel .sub { font-size: var(--fs-xs); color: var(--fg-faint); font-weight: 600; text-transform: uppercase; letter-spacing: var(--track-micro); margin: 0 0 12px; }
+
+  /* ---------- swatches ---------- */
+  .swrow { display: grid; grid-template-columns: repeat(11, 1fr); gap: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); }
+  .swrow.short { grid-template-columns: repeat(7, 1fr); }
+  .sw { height: 64px; display: flex; align-items: flex-end; padding: 6px; }
+  .sw span { font-family: var(--font-mono); font-size: 9px; font-weight: 500; opacity: .9; }
+  .tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+  .tok { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+  .tok .chip { width: 30px; height: 30px; border-radius: 7px; border: 1px solid rgba(0,0,0,.08); flex: none; }
+  .tok .meta { min-width: 0; }
+  .tok .meta b { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--fg); }
+  .tok .meta code { font-family: var(--font-mono); font-size: 10px; color: var(--fg-faint); }
+
+  /* ---------- type ---------- */
+  .typescale > div { display: flex; align-items: baseline; gap: 18px; padding: 12px 0; border-bottom: 1px dashed var(--border); }
+  .typescale > div:last-child { border-bottom: 0; }
+  .typescale .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--fg-faint); width: 132px; flex: none; }
+  .specimen-brand { font-family: var(--font-brand); }
+  .figdemo { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; }
+  .figdemo .timer { font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; font-size: 40px; letter-spacing: .01em; color: var(--fg); line-height: 1; }
+  .figdemo .timer small { display:block; font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: var(--track-micro); text-transform: uppercase; color: var(--fg-faint); margin-bottom: 6px; }
+
+  /* ---------- buttons ---------- */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:var(--control-height); padding:0 14px; border-radius:var(--radius-md); font-family:var(--font-ui); font-weight:600; font-size:var(--fs-sm); line-height:1; cursor:pointer; border:1px solid transparent; transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast), transform var(--dur-instant), box-shadow var(--dur-fast); white-space: nowrap; }
+  .btn i { width:15px; height:15px; }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background:var(--primary); color:var(--fg-on-accent); box-shadow: var(--shadow-xs); }
+  .btn-primary:hover { background:var(--primary-hover); }
+  .btn-primary.is-active, .btn-primary:active { background:var(--primary-active); }
+  .btn-secondary { background:var(--surface); color:var(--fg); border-color:var(--border); }
+  .btn-secondary:hover { background:var(--surface-hover); border-color:var(--border-strong); }
+  .btn-secondary.is-active { background:var(--surface-active); }
+  .btn-ghost { background:transparent; color:var(--fg-2); }
+  .btn-ghost:hover { background:var(--surface-hover); }
+  .btn-danger { background:var(--error); color:#fff; }
+  .btn-danger:hover { filter: brightness(0.94); }
+  .btn.is-focus { box-shadow: var(--shadow-focus); outline: none; }
+  .btn[disabled], .btn.is-disabled { opacity:.45; cursor:not-allowed; pointer-events:none; }
+  .btn-sm { height:var(--control-height-sm); padding:0 10px; font-size:var(--fs-xs); border-radius:var(--radius-sm); }
+  .btn-lg { height:var(--control-height-lg); padding:0 18px; font-size:var(--fs-body); }
+  .btn-icon { width:var(--control-height); padding:0; }
+  .stateset { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .stateset .stl { font-family: var(--font-mono); font-size:10px; color:var(--fg-faint); width:100%; margin-top:4px; }
+
+  /* ---------- inputs ---------- */
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-size:var(--fs-xs); font-weight:600; color:var(--fg-2); }
+  .input { height:var(--control-height); padding:0 11px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--fg); font-family:var(--font-ui); font-size:var(--fs-sm); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+  .input::placeholder { color:var(--fg-faint); }
+  .input:hover { border-color:var(--border-strong); }
+  .input:focus { outline:none; border-color:var(--primary-text); box-shadow: var(--shadow-focus); }
+  .input.is-error { border-color:var(--error); }
+  .input.is-error:focus { box-shadow: 0 0 0 3px var(--error-soft); }
+  .input-search { position:relative; }
+  .input-search i { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--fg-faint); }
+  .input-search .input { padding-left:32px; width:100%; }
+  .hint { font-size:var(--fs-xs); color:var(--fg-faint); }
+  .hint.err { color:var(--error-fg); }
+
+  /* ---------- badges & status pills ---------- */
+  .row-inline { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .badge { display:inline-flex; align-items:center; gap:5px; height:20px; padding:0 8px; border-radius:var(--radius-pill); font-size:var(--fs-micro); font-weight:600; letter-spacing:.01em; }
+  .badge-soft { background:var(--surface-sunken); color:var(--fg-muted); border:1px solid var(--border); }
+  .badge-primary { background:var(--primary-soft); color:var(--primary-soft-fg); }
+  .badge-success { background:var(--success-soft); color:var(--success-fg); }
+  .badge-warning { background:var(--warning-soft); color:var(--warning-fg); }
+  .badge-error { background:var(--error-soft); color:var(--error-fg); }
+  .badge-new { background:var(--accent-soft); color:var(--accent-fg); text-transform:uppercase; letter-spacing:var(--track-micro); }
+  .status { display:inline-flex; align-items:center; gap:7px; height:22px; padding:0 9px 0 8px; border-radius:var(--radius-pill); font-size:var(--fs-xs); font-weight:600; color:var(--fg-2); background:var(--surface); border:1px solid var(--border); }
+  .status .dot { width:9px; height:9px; border-radius:50%; flex:none; }
+  .status .ring { width:11px; height:11px; border-radius:50%; border:2px solid currentColor; flex:none; }
+  .priority { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:600; color:var(--fg-muted); }
+  .priority i { width:14px; height:14px; }
+
+  /* ---------- task row + time meter (the differentiator) ---------- */
+  .tasklist { border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; background:var(--surface); }
+  .tasklist .group-head { display:flex; align-items:center; gap:9px; padding:8px 14px; background:var(--surface-sunken); border-bottom:1px solid var(--border); font-size:var(--fs-xs); font-weight:600; color:var(--fg-muted); white-space:nowrap; }
+  .tasklist .group-head .dot { width:8px; height:8px; border-radius:50%; }
+  .tasklist .group-head .count { color:var(--fg-faint); font-family:var(--font-mono); }
+  .task { display:grid; grid-template-columns: 18px 1fr auto auto; align-items:center; gap:12px; height:var(--row-height); padding:0 14px; border-bottom:1px solid var(--border-subtle); cursor:pointer; transition: background var(--dur-fast); }
+  .task:last-child { border-bottom:0; }
+  .task:hover { background:var(--surface-hover); }
+  .task.sel { background:var(--primary-soft); box-shadow: inset 2px 0 0 var(--primary); }
+  .task .check { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--border-strong); display:flex; align-items:center; justify-content:center; color:transparent; transition: all var(--dur-fast); }
+  .task.done .check { background:var(--success); border-color:var(--success); color:#fff; }
+  .task.done .check i { width:11px; height:11px; }
+  .task .ttl { display:flex; align-items:center; gap:9px; min-width:0; }
+  .task .ttl .id { font-family:var(--font-mono); font-size:11px; color:var(--fg-faint); flex:none; white-space:nowrap; }
+  .task .ttl .txt { font-size:var(--fs-sm); color:var(--fg); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .task.done .ttl .txt { color:var(--fg-muted); text-decoration:line-through; text-decoration-color:var(--fg-faint); }
+  .task .right { display:flex; align-items:center; gap:14px; }
+  .task .avatar { width:22px; height:22px; border-radius:50%; background:var(--sun-200); color:var(--sun-800); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex:none; }
+
+  /* time meter */
+  .meter { display:flex; align-items:center; gap:9px; }
+  .meter .bar { width:84px; height:6px; border-radius:999px; background:var(--time-track-bg); position:relative; overflow:hidden; }
+  .meter .fill { position:absolute; top:0; left:0; bottom:0; background:var(--time-actual); border-radius:999px; }
+  .meter .fill.over { background:var(--time-over); }
+  .meter .plan-tick { position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--time-plan-fg); border-radius:2px; opacity:.7; }
+  .meter .figs { font-family:var(--font-mono); font-size:var(--fs-time); font-variant-numeric:tabular-nums; color:var(--fg-2); white-space:nowrap; }
+  .meter .figs b { color:var(--fg); font-weight:600; }
+  .meter .figs.over b { color:var(--time-over); }
+  .meter .figs .plan { color:var(--fg-faint); }
+
+  /* ---------- card ---------- */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow-sm); }
+  .card .card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .card h4 { margin:0; font-size:var(--fs-h3); font-weight:600; color:var(--fg); letter-spacing:-0.01em; }
+  .card p { margin:0 0 14px; font-size:var(--fs-sm); color:var(--fg-muted); line-height:1.5; }
+  .card .card-foot { display:flex; align-items:center; gap:10px; }
+  .card .stack { display:flex; }
+  .card .stack .avatar { width:22px; height:22px; border-radius:50%; border:2px solid var(--surface); margin-left:-6px; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .card .stack .avatar:first-child { margin-left:0; }
+
+  /* ---------- sidebar nav ---------- */
+  .sidebar { width:232px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:10px; box-shadow:var(--shadow-xs); }
+  .sidebar .wsp { display:flex; align-items:center; gap:9px; padding:8px 8px 12px; }
+  .sidebar .wsp .av { width:26px; height:26px; border-radius:7px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; font-family:var(--font-brand); }
+  .sidebar .wsp .nm { font-weight:700; font-size:var(--fs-sm); color:var(--fg); }
+  .sidebar .wsp i { width:15px; height:15px; color:var(--fg-faint); margin-left:auto; }
+  .navsec { margin-top:6px; }
+  .navsec .lbl { font-size:var(--fs-micro); font-weight:600; letter-spacing:var(--track-micro); text-transform:uppercase; color:var(--fg-faint); padding:8px 8px 4px; }
+  .navitem { display:flex; align-items:center; gap:9px; height:30px; padding:0 8px; border-radius:var(--radius-sm); font-size:var(--fs-sm); font-weight:500; color:var(--fg-2); cursor:pointer; transition: background var(--dur-fast); }
+  .navitem i { width:16px; height:16px; color:var(--fg-faint); }
+  .navitem:hover { background:var(--surface-hover); }
+  .navitem.active { background:var(--primary-soft); color:var(--primary-soft-fg); font-weight:600; }
+  .navitem.active i { color:var(--primary-text); }
+  .navitem .ct { margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--fg-faint); }
+  .navitem .kbd { margin-left:auto; }
+  .kbd { font-family:var(--font-mono); font-size:10px; font-weight:500; color:var(--fg-muted); background:var(--surface-sunken); border:1px solid var(--border); border-bottom-width:2px; border-radius:5px; padding:1px 5px; }
+
+  /* ---------- modal ---------- */
+  .modal-demo { position:relative; background:var(--surface-sunken); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; min-height:280px; overflow:hidden; }
+  .modal-demo .scrim { position:absolute; inset:0; background:var(--overlay); }
+  .modal { position:relative; width:min(440px, 100%); margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-xl); box-shadow:var(--shadow-lg); overflow:hidden; }
+  .modal .mhead { display:flex; align-items:center; gap:10px; padding:16px 18px 12px; }
+  .modal .mhead .mi { width:30px; height:30px; border-radius:8px; background:var(--primary-soft); color:var(--primary-text); display:flex; align-items:center; justify-content:center; }
+  .modal .mhead .mi i { width:16px; height:16px; }
+  .modal .mhead h5 { margin:0; font-size:var(--fs-h3); font-weight:600; color:var(--fg); }
+  .modal .mhead .x { margin-left:auto; color:var(--fg-faint); cursor:pointer; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; }
+  .modal .mhead .x:hover { background:var(--surface-hover); }
+  .modal .mbody { padding:4px 18px 18px; }
+  .modal .mbody p { margin:0 0 14px; font-size:var(--fs-sm); color:var(--fg-muted); line-height:1.55; }
+  .modal .mfoot { display:flex; justify-content:flex-end; gap:8px; padding:12px 18px; border-top:1px solid var(--border); background:var(--surface-sunken); }
+
+  /* command-style capture */
+  .capture { width:min(460px,100%); margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-xl); box-shadow:var(--shadow-lg); overflow:hidden; }
+  .capture .cin { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); }
+  .capture .cin i { width:17px; height:17px; color:var(--accent); }
+  .capture .cin input { flex:1; border:0; background:transparent; outline:none; font-family:var(--font-ui); font-size:15px; color:var(--fg); }
+  .capture .cin input::placeholder { color:var(--fg-faint); }
+  .capture .crow { display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:var(--fs-xs); color:var(--fg-muted); }
+  .capture .crow .badge { height:18px; }
+  .capture .cfoot { display:flex; align-items:center; gap:10px; padding:9px 16px; border-top:1px solid var(--border); background:var(--surface-sunken); font-size:var(--fs-micro); color:var(--fg-faint); }
+
+  /* ---------- spacing / radius / shadow ---------- */
+  .scale-vis { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; }
+  .scale-vis .u { text-align:center; }
+  .scale-vis .box { background:var(--primary-soft); border:1px solid var(--primary-border); border-radius:3px; }
+  .scale-vis .u code { display:block; font-family:var(--font-mono); font-size:10px; color:var(--fg-faint); margin-top:6px; }
+  .radii { display:flex; gap:16px; flex-wrap:wrap; }
+  .radii .r { width:74px; }
+  .radii .r .box { height:54px; background:var(--primary-soft); border:1.5px solid var(--primary); }
+  .radii .r code { display:block; font-family:var(--font-mono); font-size:10px; color:var(--fg-faint); margin-top:8px; }
+  .shadows { display:flex; gap:22px; flex-wrap:wrap; }
+  .shadows .s { width:120px; text-align:center; }
+  .shadows .s .box { height:70px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); }
+  .shadows .s code { display:block; font-family:var(--font-mono); font-size:10px; color:var(--fg-faint); margin-top:14px; }
+  .motion { display:flex; gap:20px; flex-wrap:wrap; }
+  .motion .m { font-size:var(--fs-xs); color:var(--fg-muted); }
+  .motion .m code { font-family:var(--font-mono); color:var(--fg); }
+
+  /* ---------- never-do ---------- */
+  .never { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+  .never .n { display:flex; gap:11px; padding:13px 15px; background:var(--error-soft); border:1px solid color-mix(in srgb, var(--error) 30%, transparent); border-radius:var(--radius-md); }
+  .never .n i { width:16px; height:16px; color:var(--error); flex:none; margin-top:1px; }
+  .never .n div b { display:block; font-size:var(--fs-sm); font-weight:600; color:var(--fg); margin-bottom:2px; }
+  .never .n div span { font-size:var(--fs-xs); color:var(--fg-muted); line-height:1.45; }
+
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 880px){ .cols-2,.cols-3 { grid-template-columns: 1fr; } .topbar .tag { display:none; } }
+
+  .footnote { margin-top:48px; padding-top:20px; border-top:1px solid var(--border); font-size:var(--fs-xs); color:var(--fg-faint); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img class="mark" src="assets/logo-mark.svg" alt="">
+    <span class="name">Ry<b>Task</b></span>
+  </div>
+  <span class="tag">Style sheet · v1.0 · open-source issue &amp; time tracker</span>
+  <span class="spacer"></span>
+  <button class="theme-toggle" id="themeBtn"><span id="themeIco"></span><span id="themeLbl">Dark</span></button>
+</header>
+
+<div class="wrap">
+
+  <div class="intro">
+    <h1>A tracker that doesn't <span class="hl">talk like a tracker.</span></h1>
+    <p>RyTask is built for small, interrupt-driven teams — calm enough for the non-technical teammate, fast enough for the keyboard-first lead. This sheet defines the brand: tokens, type, and product-grade components, with native plan-vs-actual time built into the row.</p>
+    <div class="meta">
+      <span class="pillmeta"><i data-lucide="timer"></i> Native time-tracking</span>
+      <span class="pillmeta"><i data-lucide="zap"></i> Slack-style capture</span>
+      <span class="pillmeta"><i data-lucide="sparkles"></i> AI / MCP control</span>
+      <span class="pillmeta"><i data-lucide="square-terminal"></i> Self-hostable</span>
+    </div>
+  </div>
+
+  <!-- ============ BRAND ============ -->
+  <section class="block">
+    <p class="eyebrow">Brand</p>
+    <h2>Logo &amp; mark</h2>
+    <p class="lede">A rounded task tile holding a confident check — its long arm leans forward into a honey dot: task done, momentum kept. One mark, works on any surface. Never recolor, rotate, or add effects.</p>
+    <div class="grid cols-3">
+      <div class="panel" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+        <img src="assets/logo-mark.svg" width="64" height="64" alt="RyTask mark">
+        <span class="sub" style="margin:0;">Mark · app icon</span>
+      </div>
+      <div class="panel" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="assets/logo-mark.svg" width="38" height="38" alt="">
+          <span style="font-family:var(--font-brand);font-weight:800;font-size:30px;letter-spacing:-0.025em;color:var(--fg);">Ry<span style="color:var(--primary-text);">Task</span></span>
+        </div>
+        <span class="sub" style="margin:0;">Horizontal wordmark</span>
+      </div>
+      <div class="panel" style="background:var(--stone-900);border-color:var(--stone-800);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="assets/logo-mark-dark.svg" width="38" height="38" alt="">
+          <span style="font-family:var(--font-brand);font-weight:800;font-size:30px;letter-spacing:-0.025em;color:#fff;">Ry<span style="color:var(--sun-400);">Task</span></span>
+        </div>
+        <span class="sub" style="margin:0;color:var(--stone-500);">On dark / mono</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COLOR ============ -->
+  <section class="block">
+    <p class="eyebrow">Foundations</p>
+    <h2>Color</h2>
+    <p class="lede">Sunbeam yellow leads with optimism and focus; honey accent carries time and momentum; warm Stone neutrals supply the Notion-grade warmth. Yellow fills always take dark ink text. Every product color is a semantic token — both modes resolve from the same names.</p>
+
+    <div class="grid" style="gap:18px;">
+      <div class="panel">
+        <h3>Sunbeam — primary</h3>
+        <div class="swrow" id="iris"></div>
+      </div>
+      <div class="grid cols-2">
+        <div class="panel">
+          <h3>Honey — accent / time</h3>
+          <div class="swrow short" id="honey"></div>
+        </div>
+        <div class="panel">
+          <h3>Semantic states</h3>
+          <div class="tokens" id="semantic"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Stone — warm neutrals (light surfaces &amp; text)</h3>
+        <div class="swrow" id="stone"></div>
+      </div>
+      <div class="grid cols-2">
+        <div class="panel">
+          <h3>Light surface &amp; text tokens</h3>
+          <div class="tokens" id="lightTokens"></div>
+        </div>
+        <div class="panel" data-theme="dark" style="background:var(--bg);border-color:var(--border);">
+          <h3 style="color:var(--fg);">Dark surface &amp; text tokens</h3>
+          <div class="tokens" id="darkTokens"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Issue-status dots</h3>
+        <div class="row-inline" id="statusRow" style="gap:14px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TYPE ============ -->
+  <section class="block">
+    <p class="eyebrow">Foundations</p>
+    <h2>Typography</h2>
+    <p class="lede">Schibsted Grotesk for brand moments, Hanken Grotesk for the entire UI (warm, humanist, legible at 13px), Geist Mono for every figure — times, estimates, IDs — always tabular so columns never jump.</p>
+
+    <div class="grid cols-2">
+      <div class="panel">
+        <h3>Families</h3>
+        <div style="font-family:var(--font-brand);font-weight:800;font-size:34px;letter-spacing:-0.02em;color:var(--fg);line-height:1.1;">Schibsted Grotesk</div>
+        <div class="sub" style="margin:4px 0 18px;">Brand · wordmark · hero · 800</div>
+        <div style="font-family:var(--font-ui);font-weight:600;font-size:22px;color:var(--fg);">Hanken Grotesk — the UI</div>
+        <div class="sub" style="margin:4px 0 18px;">Everything · 400 / 500 / 600 / 700</div>
+        <div style="font-family:var(--font-mono);font-weight:500;font-size:20px;color:var(--fg);font-variant-numeric:tabular-nums;">Geist Mono 02:45:08</div>
+        <div class="sub" style="margin:4px 0 0;">Figures · IDs · code · 400 / 500</div>
+      </div>
+      <div class="panel">
+        <h3>Tabular figures &amp; time</h3>
+        <div class="figdemo">
+          <div class="timer"><small>Running timer</small>01:24:36</div>
+          <div class="timer" style="font-size:26px;"><small>Estimate</small>2:00</div>
+          <div class="timer" style="font-size:26px;color:var(--time-over);"><small style="color:var(--fg-faint);">Logged · over</small>2:47</div>
+        </div>
+        <div style="margin-top:18px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px;color:var(--fg-muted);line-height:1.9;">
+          RT-128 &nbsp; 00:45 &nbsp; +1,240 &nbsp; 98.6%<br>
+          RT-129 &nbsp; 12:30 &nbsp; &nbsp; &nbsp;820 &nbsp; &nbsp;7.0%
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h3>UI scale</h3>
+      <div class="typescale">
+        <div><span class="lbl">display · 30 / 800</span><span class="specimen-brand" style="font-weight:800;font-size:30px;letter-spacing:-0.02em;">Plan the week</span></div>
+        <div><span class="lbl">h1 · 22 / 700</span><span style="font-weight:700;font-size:22px;letter-spacing:-0.015em;">My issues</span></div>
+        <div><span class="lbl">h2 · 18 / 600</span><span style="font-weight:600;font-size:18px;letter-spacing:-0.01em;">In progress</span></div>
+        <div><span class="lbl">h3 · 15 / 600</span><span style="font-weight:600;font-size:15px;">Sprint 24 · Billing</span></div>
+        <div><span class="lbl">body · 14 / 400</span><span style="font-size:14px;color:var(--fg-2);">Default interface text — comments, descriptions, menus.</span></div>
+        <div><span class="lbl">sm · 13 / 400</span><span style="font-size:13px;color:var(--fg-muted);">Secondary text, row metadata, captions.</span></div>
+        <div><span class="lbl">micro · 11 / 600</span><span style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--fg-faint);">Talent categories</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPONENTS ============ -->
+  <section class="block">
+    <p class="eyebrow">Components</p>
+    <h2>Buttons</h2>
+    <p class="lede">32px default height. Push micro-interaction on press (1px down), no color-flip novelty. Focus shows a 3px ring. Primary is Sunbeam yellow with dark ink text; danger is reserved for destructive only.</p>
+    <div class="grid cols-2">
+      <div class="panel">
+        <h3>Variants</h3>
+        <div class="stateset">
+          <button class="btn btn-primary"><i data-lucide="plus"></i> New issue</button>
+          <button class="btn btn-secondary"><i data-lucide="filter"></i> Filter</button>
+          <button class="btn btn-ghost">Cancel</button>
+          <button class="btn btn-danger"><i data-lucide="trash-2"></i> Delete</button>
+          <button class="btn btn-secondary btn-icon"><i data-lucide="more-horizontal"></i></button>
+        </div>
+        <div class="stateset" style="margin-top:16px;">
+          <button class="btn btn-primary btn-sm">Small</button>
+          <button class="btn btn-primary">Default</button>
+          <button class="btn btn-primary btn-lg">Large</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Primary states</h3>
+        <div class="stateset">
+          <button class="btn btn-primary">Default</button>
+          <button class="btn btn-primary" style="background:var(--primary-hover);">Hover</button>
+          <button class="btn btn-primary is-active">Active</button>
+          <button class="btn btn-primary is-focus">Focus</button>
+          <button class="btn btn-primary is-disabled">Disabled</button>
+          <span class="stl">default · hover · active · focus · disabled</span>
+        </div>
+        <div class="stateset" style="margin-top:14px;">
+          <button class="btn btn-secondary">Default</button>
+          <button class="btn btn-secondary" style="background:var(--surface-hover);border-color:var(--border-strong);">Hover</button>
+          <button class="btn btn-secondary is-active">Active</button>
+          <button class="btn btn-secondary is-focus">Focus</button>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:40px;">Inputs &amp; capture</h2>
+    <p class="lede">Calm fields, 1px hairline, Sunbeam focus ring. The fast-capture bar is the front door — type a sentence, RyTask parses assignee, estimate, and status.</p>
+    <div class="grid cols-2">
+      <div class="panel">
+        <h3>Fields</h3>
+        <div style="display:flex;flex-direction:column;gap:14px;max-width:340px;">
+          <div class="field"><label>Issue title</label><input class="input" placeholder="Fix invoice export timezone"></div>
+          <div class="input-search"><i data-lucide="search"></i><input class="input" placeholder="Search issues…"></div>
+          <div class="field"><label>Estimate</label><input class="input is-error" value="2 weeeks"><span class="hint err">Couldn't read that — try “2h”, “3d”, “1w”.</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Fast capture</h3>
+        <div class="capture" style="box-shadow:var(--shadow-md);">
+          <div class="cin"><i data-lucide="zap"></i><input value="Refund flow breaks on partial @maya ~2h #bug" readonly></div>
+          <div class="crow">
+            <span class="badge badge-soft"><i data-lucide="user" style="width:11px;height:11px;"></i> Maya</span>
+            <span class="badge badge-warning">~2h</span>
+            <span class="badge badge-error">bug</span>
+            <span style="margin-left:auto;color:var(--fg-faint);">parsed from text</span>
+          </div>
+          <div class="cfoot"><span class="kbd">⏎</span> create <span class="kbd">⇥</span> edit <span style="margin-left:auto;">RyTask reads it like Slack</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:40px;">Badges &amp; status pills</h2>
+    <div class="panel">
+      <div class="row-inline" style="gap:16px;">
+        <span class="badge badge-soft">Default</span>
+        <span class="badge badge-primary">Assigned</span>
+        <span class="badge badge-success">Shipped</span>
+        <span class="badge badge-warning">At risk</span>
+        <span class="badge badge-error">Blocked</span>
+        <span class="badge badge-new">New match</span>
+      </div>
+      <div class="row-inline" style="gap:14px;margin-top:18px;">
+        <span class="status"><span class="ring" style="color:var(--status-backlog);"></span> Backlog</span>
+        <span class="status"><span class="ring" style="color:var(--status-todo);"></span> Todo</span>
+        <span class="status"><span class="dot" style="background:var(--status-progress);"></span> In progress</span>
+        <span class="status"><span class="dot" style="background:var(--status-review);"></span> In review</span>
+        <span class="status"><span class="dot" style="background:var(--status-done);"></span> Done</span>
+        <span class="priority"><i data-lucide="signal-high"></i> High</span>
+        <span class="priority"><i data-lucide="signal-medium"></i> Medium</span>
+        <span class="priority"><i data-lucide="signal-low"></i> Low</span>
+      </div>
+    </div>
+
+    <h2 style="margin-top:40px;">Task row · plan vs. actual</h2>
+    <p class="lede">The signature component. Status, check, ID, title, owner — then a live meter: honey fills logged time against the planned tick; if it crosses, the bar and figure turn red. Time is first-class, not an add-on.</p>
+    <div class="tasklist" id="tasklist"></div>
+
+    <h2 style="margin-top:40px;">Cards, sidebar &amp; modal</h2>
+    <div class="grid cols-3" style="align-items:start;">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card">
+          <div class="card-top">
+            <h4>Billing reconciliation</h4>
+            <span class="badge badge-warning">At risk</span>
+          </div>
+          <p>Stripe payouts don't match ledger for partial refunds. Needs a fix before month close.</p>
+          <div class="card-foot">
+            <span class="status"><span class="dot" style="background:var(--status-progress);"></span> In progress</span>
+            <span class="meter" style="margin-left:auto;"><span class="figs over"><b>4:10</b> <span class="plan">/ 3:00</span></span></span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-top"><h4>Onboarding polish</h4><span class="badge badge-primary">Sprint 24</span></div>
+          <p>Tighten the empty states and first-run capture hint.</p>
+          <div class="card-foot">
+            <div class="stack">
+              <span class="avatar" style="background:var(--sun-200);color:var(--sun-800);">MK</span>
+              <span class="avatar" style="background:var(--honey-200);color:var(--honey-700);">JD</span>
+              <span class="avatar" style="background:var(--green-50);color:var(--success-fg);">SR</span>
+            </div>
+            <span class="badge badge-soft" style="margin-left:auto;">3 open</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar">
+        <div class="wsp"><span class="av">N</span><span class="nm">Northwind</span><i data-lucide="chevrons-up-down"></i></div>
+        <div class="navsec">
+          <div class="navitem"><i data-lucide="search"></i> Search <span class="kbd" style="margin-left:auto;">⌘K</span></div>
+          <div class="navitem"><i data-lucide="inbox"></i> Inbox <span class="ct">4</span></div>
+          <div class="navitem active"><i data-lucide="circle-user"></i> My issues <span class="ct">12</span></div>
+        </div>
+        <div class="navsec">
+          <div class="lbl">Workspace</div>
+          <div class="navitem"><i data-lucide="layers"></i> Projects</div>
+          <div class="navitem"><i data-lucide="timer"></i> Time <span class="ct">37h</span></div>
+          <div class="navitem"><i data-lucide="sparkles"></i> Ask AI</div>
+        </div>
+        <div class="navsec">
+          <div class="lbl">Teams</div>
+          <div class="navitem"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--status-progress);margin-left:2px;"></span> Engineering</div>
+          <div class="navitem"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--status-review);margin-left:2px;"></span> Design</div>
+        </div>
+      </div>
+
+      <div class="modal-demo">
+        <div class="scrim"></div>
+        <div class="modal">
+          <div class="mhead">
+            <span class="mi"><i data-lucide="timer"></i></span>
+            <h5>Log time</h5>
+            <span class="x"><i data-lucide="x" style="width:15px;height:15px;"></i></span>
+          </div>
+          <div class="mbody">
+            <p>RT-128 · Refund flow breaks on partial. Planned <b style="color:var(--fg);">2:00</b>, logged <b style="color:var(--time-over);">2:47</b> so far.</p>
+            <div class="field"><label>Add time</label><input class="input" value="0:25" style="font-family:var(--font-mono);"></div>
+          </div>
+          <div class="mfoot">
+            <button class="btn btn-ghost">Cancel</button>
+            <button class="btn btn-primary">Save entry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TOKENS ============ -->
+  <section class="block">
+    <p class="eyebrow">Foundations</p>
+    <h2>Spacing, radius, shadow &amp; motion</h2>
+    <p class="lede">A 4px grid, small radii for precision, and tight warm-ink shadows — elevation is a whisper, never a cloud. Motion is fast and calm with no bounce: keyboard-first means snappy.</p>
+    <div class="grid cols-2">
+      <div class="panel">
+        <h3>Spacing · 4px grid</h3>
+        <div class="scale-vis" id="spaceVis"></div>
+      </div>
+      <div class="panel">
+        <h3>Radius</h3>
+        <div class="radii" id="radiusVis"></div>
+      </div>
+    </div>
+    <div class="grid cols-2" style="margin-top:18px;">
+      <div class="panel">
+        <h3>Shadow / elevation</h3>
+        <div class="shadows">
+          <div class="s"><div class="box" style="box-shadow:var(--shadow-xs);"></div><code>--shadow-xs</code></div>
+          <div class="s"><div class="box" style="box-shadow:var(--shadow-sm);"></div><code>--shadow-sm</code></div>
+          <div class="s"><div class="box" style="box-shadow:var(--shadow-md);"></div><code>--shadow-md</code></div>
+          <div class="s"><div class="box" style="box-shadow:var(--shadow-lg);"></div><code>--shadow-lg</code></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Motion</h3>
+        <div class="motion">
+          <div class="m"><code>--dur-fast</code> 140ms · hovers, presses</div>
+          <div class="m"><code>--dur-base</code> 200ms · panels, theme</div>
+          <div class="m"><code>--ease-out</code> <code>(.22,1,.36,1)</code> · default</div>
+          <div class="m"><code>--ease-snap</code> <code>(.3,0,0,1)</code> · menus, popovers</div>
+          <div class="m" style="color:var(--fg-faint);">No bounce. No overshoot. All decorative motion off under reduced-motion.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NEVER ============ -->
+  <section class="block">
+    <p class="eyebrow">Guardrails</p>
+    <h2>Never do this</h2>
+    <p class="lede">The line between "calm and product-grade" and "generic AI app" is mostly a list of restraints.</p>
+    <div class="never">
+      <div class="n"><i data-lucide="ban"></i><div><b>No decorative gradients</b><span>No purple-to-blue hero washes, no gradient buttons or text. Flat fills only; gradient is reserved for the time meter, if ever.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No glassmorphism or heavy blur</b><span>One subtle backdrop blur on the sticky bar; never frosted cards, modals, or nav.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No floaty drop shadows</b><span>Elevation stays tight and warm-ink. No big soft colored glows under cards or buttons.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No jargon or hype copy</b><span>“Synergy”, “supercharge”, “revolutionary” fail the non-technical-teammate test. Plain, kind, direct.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No proportional figures</b><span>Every time, estimate, count or ID is tabular mono. Columns must never shift as numbers change.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No emoji as UI chrome</b><span>Lucide icons carry meaning. Emoji only inside user content, never as buttons, status, or nav.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No off-palette color</b><span>Only Sunbeam, Honey, Stone and the three semantic hues (plus one indigo for info / in-review). No neon, no random extra hue, no gradients.</span></div></div>
+      <div class="n"><i data-lucide="ban"></i><div><b>No big radii</b><span>Nothing over 18px except pills. Soft, bubbly cards read as consumer-cute, not focused.</span></div></div>
+    </div>
+  </section>
+
+  <div class="footnote">
+    <span>RyTask Design System · tokens in <code style="font-family:var(--font-mono);">colors_and_type.css</code></span>
+    <span>Sunbeam #ECB30A · Honey #D98A0E · Hanken Grotesk · Geist Mono</span>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+  // ---------- swatch builders ----------
+  const iris = {50:'#FEF9E6',100:'#FCEFB9',200:'#F8DE77',300:'#F4C932',400:'#ECB30A',500:'#D69A05',600:'#B5800A',700:'#936409',800:'#76500D',900:'#5F420F',950:'#382706'};
+  const honey = {50:'#FEF6E6',100:'#FCE9C0',200:'#F8D584',300:'#F2BD4B',400:'#EAA31C',500:'#D98A0E',600:'#B26C08'};
+  const stone = {0:'#FFFFFF',50:'#FAF9F7',100:'#F4F2EE',150:'#ECEAE4',200:'#E4E1DA',300:'#D3CEC5',400:'#B1AA9E',500:'#8B8478',600:'#6C655B',700:'#4E4842',800:'#322E2A',900:'#201D1A',950:'#151310'};
+  function lum(hex){const n=parseInt(hex.slice(1),16);const r=(n>>16)&255,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)/255;}
+  function buildScale(id,obj){const el=document.getElementById(id);if(!el)return;el.innerHTML=Object.entries(obj).map(([k,v])=>`<div class="sw" style="background:${v};"><span style="color:${lum(v)>0.6?'#201D1A':'#fff'}">${k}</span></div>`).join('');}
+  buildScale('iris',iris); buildScale('honey',honey); buildScale('stone',stone);
+
+  // semantic token cards
+  const sem=[['Success','--success','#1F9D57'],['Warning','--warning','#DB7C12'],['Error','--error','#DC4A3E'],['Info','--info','#5965E3']];
+  document.getElementById('semantic').innerHTML=sem.map(([n,t,h])=>`<div class="tok"><span class="chip" style="background:var(${t})"></span><div class="meta"><b>${n}</b><code>${t}</code></div></div>`).join('');
+
+  // light tokens
+  const lt=[['Canvas','--bg','#FAF9F7'],['Surface','--surface','#FFFFFF'],['Sunken','--surface-sunken','#F4F2EE'],['Border','--border','#E4E1DA'],['Text','--fg','#201D1A'],['Text-2','--fg-2','#4E4842'],['Muted','--fg-muted','#6C655B'],['Faint','--fg-faint','#8B8478']];
+  document.getElementById('lightTokens').innerHTML=lt.map(([n,t,h])=>`<div class="tok"><span class="chip" style="background:${h}"></span><div class="meta"><b>${n}</b><code>${t}</code></div></div>`).join('');
+  const dt=[['Canvas','--bg','#141318'],['Surface','--surface','#18171D'],['Sunken','--surface-sunken','#100F14'],['Border','--border','#2C2A33'],['Text','--fg','#ECEBEF'],['Text-2','--fg-2','#C7C4CE'],['Muted','--fg-muted','#9D99A6'],['Faint','--fg-faint','#726E7C']];
+  document.getElementById('darkTokens').innerHTML=dt.map(([n,t,h])=>`<div class="tok" style="background:#18171D;border-color:#2C2A33;"><span class="chip" style="background:${h};border-color:rgba(255,255,255,.1)"></span><div class="meta"><b style="color:#ECEBEF">${n}</b><code style="color:#726E7C">${t}</code></div></div>`).join('');
+
+  // status dots
+  const st=[['Backlog','--status-backlog','ring'],['Todo','--status-todo','ring'],['In progress','--status-progress','dot'],['In review','--status-review','dot'],['Done','--status-done','dot'],['Canceled','--status-canceled','dot']];
+  document.getElementById('statusRow').innerHTML=st.map(([n,t,k])=>`<span class="status"><span class="${k}" style="${k==='ring'?'color':'background'}:var(${t})"></span> ${n}</span>`).join('');
+
+  // task rows with meters
+  const tasks=[
+    {done:false,id:'RT-128',txt:'Refund flow breaks on partial payments',who:'MK',c1:'var(--sun-200)',c2:'var(--sun-800)',plan:120,act:167,st:'progress'},
+    {done:false,id:'RT-131',txt:'Timezone drift in invoice export',who:'JD',c1:'var(--honey-200)',c2:'var(--honey-700)',plan:180,act:96,st:'progress'},
+    {done:true, id:'RT-119',txt:'Add keyboard shortcut for capture',who:'SR',c1:'var(--green-50)',c2:'var(--success-fg)',plan:60,act:52,st:'done'},
+    {done:false,id:'RT-140',txt:'Empty-state copy for first project',who:'MK',c1:'var(--sun-200)',c2:'var(--sun-800)',plan:90,act:0,st:'review'},
+  ];
+  function fmt(m){const h=Math.floor(m/60),mm=m%60;return h>0?`${h}:${String(mm).padStart(2,'0')}`:`0:${String(mm).padStart(2,'0')}`;}
+  const stcolor={progress:'var(--status-progress)',review:'var(--status-review)',done:'var(--status-done)'};
+  document.getElementById('tasklist').innerHTML =
+    `<div class="group-head"><span class="dot" style="background:var(--status-progress)"></span> In progress <span class="count">· 4</span></div>` +
+    tasks.map(t=>{
+      const over=t.act>t.plan; const pct=Math.min(100,t.plan?Math.round(t.act/t.plan*100):0);
+      const overpct=over?Math.min(100,Math.round((t.act-t.plan)/t.plan*100)):0;
+      const planpos=over?Math.round(t.plan/t.act*100):100;
+      const fillw=over?planpos:(t.plan?Math.round(t.act/t.plan*100):0);
+      const meter = t.act===0
+        ? `<span class="figs"><span class="plan">est ${fmt(t.plan)}</span></span>`
+        : `<span class="bar"><span class="fill" style="width:${fillw}%"></span>${over?`<span class="fill over" style="left:${planpos}%;width:${100-planpos}%"></span>`:''}<span class="plan-tick" style="left:${over?planpos:Math.min(100,fillw)}%"></span></span>
+           <span class="figs ${over?'over':''}"><b>${fmt(t.act)}</b> <span class="plan">/ ${fmt(t.plan)}</span></span>`;
+      return `<div class="task ${t.done?'done':''} ${t.id==='RT-128'?'sel':''}">
+        <span class="check">${t.done?'<i data-lucide="check"></i>':''}</span>
+        <span class="ttl"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:${stcolor[t.st]};"></span><span class="id">${t.id}</span><span class="txt">${t.txt}</span></span>
+        <span class="meter">${meter}</span>
+        <span class="avatar" style="background:${t.c1};color:${t.c2};">${t.who}</span>
+      </div>`;
+    }).join('');
+
+  // spacing vis
+  const sp=[['1',4],['2',8],['3',12],['4',16],['6',24],['8',32],['12',48]];
+  document.getElementById('spaceVis').innerHTML=sp.map(([n,px])=>`<div class="u"><div class="box" style="width:${px}px;height:${px}px;"></div><code>${px}</code></div>`).join('');
+  // radius vis
+  const rd=[['xs',4],['sm',6],['md',8],['lg',10],['xl',14],['2xl',18]];
+  document.getElementById('radiusVis').innerHTML=rd.map(([n,px])=>`<div class="r"><div class="box" style="border-radius:${px}px;"></div><code>--radius-${n} · ${px}</code></div>`).join('');
+
+  // theme toggle
+  const btn=document.getElementById('themeBtn'), lbl=document.getElementById('themeLbl'), ico=document.getElementById('themeIco');
+  function setTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('rt-theme',t);lbl.textContent=t==='dark'?'Light':'Dark';ico.innerHTML=`<i data-lucide="${t==='dark'?'sun':'moon'}"></i>`;lucide.createIcons();}
+  btn.addEventListener('click',()=>setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'));
+  setTheme(localStorage.getItem('rt-theme')||'light');
+  lucide.createIcons();
+</script>
+</body>
+</html>

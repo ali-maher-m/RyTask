@@ -1,0 +1,5 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RyTask">
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#F4C932"></rect>
+  <path d="M17 33.5 L27.5 44 L48 19" stroke="#201D1A" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="48" cy="19" r="3.4" fill="#201D1A"></circle>
+</svg>

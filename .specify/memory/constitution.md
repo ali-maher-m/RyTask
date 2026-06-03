@@ -1,35 +1,54 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR — one new principle added (VIII. Design System & Brand Fidelity)
+and three existing sections materially expanded (Additional Engineering Constraints,
+Development Workflow & Quality Gates, Governance). Purely additive: no principle was
+removed, reworded, or renumbered; Principles I–VII are unchanged verbatim.
+
+Principles (current set, 8):
+- I.    Fixed Technology Stack                              (unchanged)
+- II.   Multi-Tenancy by Construction                       (unchanged)
+- III.  Modular Monolith & Hexagonal Architecture          (unchanged)
+- IV.   API <-> MCP Parity                                 (unchanged)
+- V.    Test-First & Enforced Coverage (NON-NEGOTIABLE)    (unchanged)
+- VI.   Secure by Default                                  (unchanged)
+- VII.  One-Command Self-Hosting                           (unchanged)
+- VIII. Design System & Brand Fidelity                     (ADDED in 1.1.0)
+
+Sections amended in 1.1.0 (additive only):
+- Additional Engineering Constraints — appended a design-token-origin constraint.
+- Development Workflow & Quality Gates — appended brand-fidelity / token-only gate.
+- Governance — runtime-guidance sentence now also names `branding/`.
+
+Removed sections: none.
+
+Template / artifact consistency check (1.1.0):
+- [UPDATED] .specify/templates/plan-template.md — Constitution Check now surfaces
+            Principle VIII (token-only UI + brand invariants) explicitly.
+- [OK]      .specify/templates/spec-template.md — no natural design-system slot;
+            spec is scenario/requirement/success-criteria driven. No change required.
+- [UPDATED] .specify/templates/tasks-template.md — Polish phase gained an optional
+            brand-fidelity / design-token verification task for UI-bearing features.
+            (Existing Principle-V test mandates from 1.0.0 retained.)
+- [OK]      CLAUDE.md — already documents `branding/` (the "Branding & design system"
+            section). No change required here.
+- [FOLLOW-UP] knowledge/ARCHITECTURE.md — does not yet reference the design system;
+            consider adding a pointer to `branding/` when ARCHITECTURE.md is next revised.
+
+Deferred TODOs: none. Ratification date unchanged (2026-05-31); last amended 2026-06-03.
+
+----- prior report (1.0.0, retained for history) -----
 Version change: (unversioned template) → 1.0.0
 Bump rationale: Initial ratification. Template placeholders replaced with concrete,
 project-specific principles. First adoption, so MAJOR version 1.0.0.
-
-Principles defined (initial set, 7 per user input):
-- I.   Fixed Technology Stack
-- II.  Multi-Tenancy by Construction
-- III. Modular Monolith & Hexagonal Architecture
-- IV.  API <-> MCP Parity
-- V.   Test-First & Enforced Coverage (NON-NEGOTIABLE)
-- VI.  Secure by Default
-- VII. One-Command Self-Hosting
-
-Added sections (replacing generic template slots):
-- Additional Engineering Constraints
-- Development Workflow & Quality Gates
-- Governance (concrete amendment + versioning + compliance rules)
-
-Removed sections: none (template placeholders -> concrete content).
-
-Template consistency check:
-- [OK]    .specify/templates/plan-template.md — Constitution Check gate is derived
-          from this file at plan time; compatible, no change required.
-- [OK]    .specify/templates/spec-template.md — no mandated-section conflicts; compatible.
-- [FIXED] .specify/templates/tasks-template.md — updated: prior "Tests are OPTIONAL"
-          guidance reconciled with Principle V (tests MANDATORY for this project).
-- [OK]    .claude/skills/commands — no stale agent-specific references requiring change.
-
-Deferred TODOs: none. Ratification date set to first-adoption date (2026-05-31).
+Principles defined (initial set, 7): I Fixed Stack, II Multi-Tenancy, III Modular
+Monolith & Hexagonal, IV API<->MCP Parity, V Test-First (NON-NEGOTIABLE), VI Secure
+by Default, VII One-Command Self-Hosting. Added sections: Additional Engineering
+Constraints, Development Workflow & Quality Gates, Governance. Removed: none.
+tasks-template.md reconciled "Tests OPTIONAL" → MANDATORY (Principle V). Ratified
+2026-05-31; no deferred TODOs.
 -->
 
 # RyTask Constitution
@@ -145,6 +164,41 @@ Self-hosting MUST be trivial:
 Rationale: The product targets small teams without dedicated ops. If standing it up is hard, the
 open-source / self-host promise fails the "Albert/Marissa test."
 
+### VIII. Design System & Brand Fidelity
+
+The visual product is brand-governed, not improvised. All UI work (`apps/web`, `packages/ui`, and any
+generated mocks/prototypes) MUST conform to the RyTask design system in `branding/`:
+
+- `branding/colors_and_type.css` is the single source of truth for design tokens (color light+dark,
+  type, spacing, radius, shadow, motion, layout). Product UI MUST reference ONLY the semantic
+  `var(--*)` tokens. Raw palette primitives and hard-coded hex/px brand values are FORBIDDEN in
+  product code. Tokens MUST flow from this file into `packages/ui`; values MUST NOT be copy-pasted
+  around the codebase.
+- Brand invariants MUST hold: Sunbeam yellow (`#ECB30A`) is the primary, and yellow/colored fills MUST
+  carry DARK ink text (never white text on yellow); Honey (`#D98A0E`) is reserved for time/momentum;
+  neutrals are the warm Stone scale; only three semantic hues (green/amber/red) plus one indigo for
+  info/in-review are permitted — no teal, neon, or off-palette color. Light and dark MUST resolve from
+  the same semantic token names.
+- Typography MUST be Hanken Grotesk for UI, Schibsted Grotesk for brand moments only, and Geist Mono
+  with `tabular-nums` for every figure (times, estimates, counts, IDs). Inter is explicitly avoided.
+- The aesthetic MUST stay flat: NO decorative gradients, NO glassmorphism/frosted blur, NO floaty
+  colored shadows, NO emoji as UI chrome. Small radii and 1px hairlines do the structural work, and
+  elevation is a whisper. Motion MUST be fast and calm — no bounce/overshoot — and decorative motion
+  MUST be disabled under `prefers-reduced-motion`.
+- Copy and voice MUST be plain, kind, and jargon-free, passing the non-technical-teammate
+  ("Albert/Marissa") test. Sentence case for everything human; `UPPERCASE` with `0.06em` tracking only
+  for micro-labels.
+- Accessibility is a hard floor: text and interactive UI MUST meet WCAG AA contrast — this is precisely
+  WHY yellow fills take dark ink. Brand fidelity MUST NEVER override legibility.
+- Production substitutions to resolve before GA: icons are Lucide-via-CDN (self-host a sprite for
+  production), fonts are pulled from Google Fonts (confirm the cuts), and the logo is a v1 proposal
+  open to iteration.
+
+Rationale: The look-and-feel — calm warmth, honest in-row time meters, zero jargon — is a stated
+product differentiator and the visible half of the non-technical-teammate promise. Consistency and
+correct light/dark behavior are only guaranteed when UI is driven from one token source and checked
+mechanically, not maintained by reviewer discipline or scattered hex values.
+
 ## Additional Engineering Constraints
 
 These constraints reinforce the principles above and are binding:
@@ -157,6 +211,9 @@ These constraints reinforce the principles above and are binding:
   100-column width, trailing commas, LF line endings).
 - Architecture invariants (module boundaries, tenant scoping, MCP parity, required tests) MUST be
   enforced by lint + architecture tests + CI, not by review convention alone.
+- Design tokens MUST originate from `branding/colors_and_type.css`. UI MUST NOT introduce off-token
+  colors, fonts, or radii (no hard-coded brand hex/px, no non-system font families), and this MUST be
+  enforceable by lint/CI rather than review convention.
 
 ## Development Workflow & Quality Gates
 
@@ -165,8 +222,9 @@ These constraints reinforce the principles above and are binding:
 - The implementation plan for every feature MUST include a Constitution Check. Violations MUST be
   justified in a Complexity Tracking entry, or the design MUST be revised.
 - CI MUST enforce, as blocking gates: required-test presence, all tests passing, coverage
-  thresholds (Principle V), MCP parity (Principle IV), tenant-isolation tests (Principle II), and
-  RBAC presence on endpoints (Principle VI).
+  thresholds (Principle V), MCP parity (Principle IV), tenant-isolation tests (Principle II),
+  RBAC presence on endpoints (Principle VI), and design-system conformance — token-only UI with no
+  off-token colors/fonts/radii (Principle VIII).
 - A pull request MUST NOT merge while any blocking gate fails. Reviewers MUST verify
   constitutional compliance as part of approval.
 
@@ -182,6 +240,8 @@ These constraints reinforce the principles above and are binding:
 - Compliance MUST be reviewed on every pull request through the CI gates and the reviewer
   checklist above. Repeated or willful violations MUST block release until remediated.
 - Runtime development guidance for contributors and AI agents lives in `CLAUDE.md` and
-  `knowledge/ARCHITECTURE.md`; those documents MUST stay consistent with this constitution.
+  `knowledge/ARCHITECTURE.md`; the visual source of truth lives in `branding/` (notably
+  `branding/README.md` and `branding/RyTask Style Sheet.html`, with tokens in
+  `branding/colors_and_type.css`). Those documents MUST stay consistent with this constitution.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-31 | **Last Amended**: 2026-05-31
+**Version**: 1.1.0 | **Ratified**: 2026-05-31 | **Last Amended**: 2026-06-03

@@ -1,0 +1,40 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="../colors_and_type.css"><style>
+  *{box-sizing:border-box;}html,body{margin:0;}
+  body{background:var(--surface);color:var(--fg);font-family:var(--font-ui);padding:20px;-webkit-font-smoothing:antialiased;}
+  .r{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .sw{flex:1;min-width:40px;height:54px;border-radius:8px;display:flex;align-items:flex-end;padding:5px;}
+  .sw span{font-family:var(--font-mono);font-size:9px;font-weight:500;}
+  .lbl{font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);margin:0 0 12px;}
+  .tok{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+  .tok .chip{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,0,0,.08);flex:none;}
+  .tok b{font-size:11px;font-weight:600;color:var(--fg);display:block;}
+  .tok code{font-family:var(--font-mono);font-size:9px;color:var(--fg-faint);}
+  .grid{display:grid;gap:8px;}
+  .badge{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600;}
+  .status{display:inline-flex;align-items:center;gap:7px;height:23px;padding:0 10px 0 9px;border-radius:999px;font-size:12px;font-weight:600;color:var(--fg-2);background:var(--surface);border:1px solid var(--border);}
+  .dot{width:9px;height:9px;border-radius:50%;}.ring{width:11px;height:11px;border-radius:50%;border:2px solid currentColor;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:8px;font-family:var(--font-ui);font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;}
+</style></head><body><p class="lbl">Task row — plan vs. actual</p>
+<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);">
+<div style="display:grid;grid-template-columns:16px 12px auto 1fr auto 22px;align-items:center;gap:11px;height:38px;padding:0 14px;border-bottom:1px solid var(--border-subtle);">
+<span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--border-strong);background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;"></span>
+<span style="width:8px;height:8px;border-radius:50%;background:var(--status-progress);"></span>
+<span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-faint);white-space:nowrap;">RT-128</span>
+<span style="font-size:13px;color:var(--fg);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Refund flow breaks on partial payments</span>
+<span style="display:flex;align-items:center;gap:9px;"><span style="width:80px;height:6px;border-radius:999px;background:var(--time-track-bg);position:relative;overflow:hidden;display:inline-block;"><span style="position:absolute;top:0;left:0;bottom:0;width:72%;background:var(--time-actual);border-radius:999px;"></span><span style="position:absolute;top:0;left:72%;width:28%;bottom:0;background:var(--time-over);"></span><span style="position:absolute;top:-2px;bottom:-2px;left:72%;width:2px;background:var(--time-plan-fg);opacity:.7;"></span></span><span style="font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--fg-2);white-space:nowrap;"><b style="color:var(--time-over);font-weight:600;">2:47</b> <span style="color:var(--fg-faint)">/ 2:00</span></span></span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--sun-200);color:var(--sun-800);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">MK</span></div>
+<div style="display:grid;grid-template-columns:16px 12px auto 1fr auto 22px;align-items:center;gap:11px;height:38px;padding:0 14px;border-bottom:1px solid var(--border-subtle);">
+<span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--border-strong);background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;"></span>
+<span style="width:8px;height:8px;border-radius:50%;background:var(--status-progress);"></span>
+<span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-faint);white-space:nowrap;">RT-131</span>
+<span style="font-size:13px;color:var(--fg);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Timezone drift in invoice export</span>
+<span style="display:flex;align-items:center;gap:9px;"><span style="width:80px;height:6px;border-radius:999px;background:var(--time-track-bg);position:relative;overflow:hidden;display:inline-block;"><span style="position:absolute;top:0;left:0;bottom:0;width:53%;background:var(--time-actual);border-radius:999px;"></span><span style="position:absolute;top:-2px;bottom:-2px;left:53%;width:2px;background:var(--time-plan-fg);opacity:.7;"></span></span><span style="font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--fg-2);white-space:nowrap;"><b style="color:var(--fg);font-weight:600;">1:36</b> <span style="color:var(--fg-faint)">/ 3:00</span></span></span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--honey-200);color:var(--honey-700);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">JD</span></div>
+<div style="display:grid;grid-template-columns:16px 12px auto 1fr auto 22px;align-items:center;gap:11px;height:38px;padding:0 14px;border-bottom:1px solid var(--border-subtle);">
+<span style="width:16px;height:16px;border-radius:5px;border:1.5px solid var(--success);background:var(--success);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;">✓</span>
+<span style="width:8px;height:8px;border-radius:50%;background:var(--status-done);"></span>
+<span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-faint);white-space:nowrap;">RT-119</span>
+<span style="font-size:13px;color:var(--fg-muted);font-weight:500;text-decoration:line-through;text-decoration-color:var(--fg-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Add keyboard shortcut for capture</span>
+<span style="display:flex;align-items:center;gap:9px;"><span style="width:80px;height:6px;border-radius:999px;background:var(--time-track-bg);position:relative;overflow:hidden;display:inline-block;"><span style="position:absolute;top:0;left:0;bottom:0;width:87%;background:var(--time-actual);border-radius:999px;"></span><span style="position:absolute;top:-2px;bottom:-2px;left:87%;width:2px;background:var(--time-plan-fg);opacity:.7;"></span></span><span style="font-family:var(--font-mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--fg-2);white-space:nowrap;"><b style="color:var(--fg);font-weight:600;">0:52</b> <span style="color:var(--fg-faint)">/ 1:00</span></span></span>
+<span style="width:22px;height:22px;border-radius:50%;background:var(--green-50);color:var(--success-fg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">SR</span></div>
+</div></body></html>

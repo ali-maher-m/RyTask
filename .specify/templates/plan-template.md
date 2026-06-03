@@ -42,6 +42,12 @@
 
 [Gates determined based on constitution file]
 
+- [ ] **Design System & Brand Fidelity (Principle VIII)** — if this feature has any UI surface
+      (`apps/web`, `packages/ui`, or generated mocks): it uses ONLY semantic `var(--*)` tokens from
+      `branding/colors_and_type.css` (no off-token colors/fonts/radii, no hard-coded brand hex/px),
+      honors the flat-aesthetic and brand invariants, meets WCAG AA contrast, and the copy passes the
+      non-technical-teammate test. Mark N/A only for features with no user-facing UI.
+
 ## Project Structure
 
 ### Documentation (this feature)

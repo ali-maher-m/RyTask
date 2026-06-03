@@ -1,0 +1,337 @@
+/* ============================================================================
+   RyTask — Design Tokens
+   Calm, trustworthy, lightweight. Linear's precision + Notion's warmth.
+   Flat, fast, keyboard-first. No gradients-for-decoration. No AI sheen.
+
+   Load fonts (in HTML <head>):
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   1 · PRIMITIVES  — raw palette. Never reference these directly in product UI;
+                     use the semantic tokens in §2. Listed here for the record.
+   ---------------------------------------------------------------------------- */
+:root {
+  /* Sunbeam — primary. Optimistic golden yellow: energy, focus, warmth.
+     Yellow fills ALWAYS take dark ink text — never white. */
+  --sun-50:  #FEF9E6;
+  --sun-100: #FCEFB9;
+  --sun-200: #F8DE77;
+  --sun-300: #F4C932;
+  --sun-400: #ECB30A;   /* brand primary fill (light) */
+  --sun-500: #D69A05;
+  --sun-600: #B5800A;
+  --sun-700: #936409;   /* brand color for text on light surfaces */
+  --sun-800: #76500D;
+  --sun-900: #5F420F;
+  --sun-950: #382706;
+
+  /* Honey — accent / "time". Warm gold. Momentum, logged time, highlights. */
+  --honey-50:  #FEF6E6;
+  --honey-100: #FCE9C0;
+  --honey-200: #F8D584;
+  --honey-300: #F2BD4B;
+  --honey-400: #EAA31C;
+  --honey-500: #D98A0E;   /* accent */
+  --honey-600: #B26C08;
+  --honey-700: #8A530B;
+
+  /* Stone — warm-tinted neutrals (the Notion warmth). */
+  --stone-0:   #FFFFFF;
+  --stone-50:  #FAF9F7;
+  --stone-100: #F4F2EE;
+  --stone-150: #ECEAE4;
+  --stone-200: #E4E1DA;
+  --stone-300: #D3CEC5;
+  --stone-400: #B1AA9E;
+  --stone-500: #8B8478;
+  --stone-600: #6C655B;
+  --stone-700: #4E4842;
+  --stone-800: #322E2A;
+  --stone-900: #201D1A;
+  --stone-950: #151310;
+
+  /* Ink — warm-cool dark surfaces (the "calm ink" of dark mode). */
+  --ink-0:   #1F1D24;
+  --ink-50:  #1B1A20;
+  --ink-100: #18171D;
+  --ink-200: #141318;
+  --ink-300: #100F14;
+  --ink-line:        #2C2A33;
+  --ink-line-strong: #3A3744;
+
+  /* Semantic hues (mode-agnostic anchors). */
+  --green-500: #1F9D57;  --green-400: #34C77B;  --green-50: #E7F6EC;  --green-950:#0E2E1C;
+  --amber-500: #DB7C12;  --amber-400: #F0992E;  --amber-50: #FCEFDD;  --amber-950:#352206;
+  --red-500:   #DC4A3E;  --red-400:   #F06A5E;  --red-50:   #FCEBE9;  --red-950:  #3A1310;
+}
+
+/* ----------------------------------------------------------------------------
+   2 · SEMANTIC TOKENS — LIGHT (default)
+       Use ONLY these in product UI.
+   ---------------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg:            var(--stone-50);    /* app canvas */
+  --surface:       var(--stone-0);     /* cards, rows, panels */
+  --surface-sunken:var(--stone-100);   /* wells, inset fields, code */
+  --surface-hover: var(--stone-100);   /* row / item hover */
+  --surface-active:var(--stone-150);   /* pressed / selected bg */
+  --overlay:       rgba(32, 29, 26, 0.32); /* modal scrim */
+
+  /* Lines */
+  --border:        var(--stone-200);   /* default hairline */
+  --border-strong: var(--stone-300);   /* emphasis / dividers under load */
+  --border-subtle: var(--stone-150);   /* faint internal splits */
+
+  /* Text */
+  --fg:        var(--stone-900);  /* primary text, headings */
+  --fg-2:      var(--stone-700);  /* body, secondary */
+  --fg-muted:  var(--stone-600);  /* meta, captions, placeholders-strong */
+  --fg-faint:  var(--stone-500);  /* timestamps, disabled-ish, hints */
+  --fg-on-accent: #201D1A;        /* DARK ink — text on yellow / colored fills */
+
+  /* Primary (interactive brand) — yellow fills carry DARK ink text */
+  --primary:        var(--sun-400);
+  --primary-hover:  var(--sun-500);
+  --primary-active: var(--sun-600);
+  --primary-text:   var(--sun-700);   /* brand color for text/icons on light surfaces */
+  --primary-soft:   var(--sun-50);    /* tinted bg for selected/brand chips */
+  --primary-soft-fg:var(--sun-800);
+  --primary-border: var(--sun-200);
+  --ring:           rgba(236, 179, 10, 0.40); /* focus ring */
+
+  /* Accent / time */
+  --accent:       var(--honey-500);
+  --accent-soft:  var(--honey-50);
+  --accent-fg:    var(--honey-700);
+
+  /* Time-tracking functional tokens */
+  --time-plan:    var(--stone-300);   /* planned (track / estimate) */
+  --time-plan-fg: var(--stone-600);
+  --time-actual:  var(--honey-400);   /* logged / actual */
+  --time-over:    var(--red-500);     /* over estimate */
+  --time-track-bg:var(--stone-150);   /* empty meter track */
+
+  /* Semantic states */
+  --success: var(--green-500);  --success-soft: var(--green-50);  --success-fg: #146C3D;
+  --warning: var(--amber-500);  --warning-soft: var(--amber-50);  --warning-fg: #8A4D08;
+  --error:   var(--red-500);    --error-soft:   var(--red-50);    --error-fg:   #A6362B;
+  --info:    #5965E3;           --info-soft:    #EEF0FD;          --info-fg:    #3A45B5;
+
+  /* Status-pill dots (issue workflow) */
+  --status-backlog:  var(--stone-400);
+  --status-todo:     var(--stone-600);
+  --status-progress: var(--honey-400);
+  --status-review:   #5965E3;
+  --status-done:     var(--green-500);
+  --status-canceled: var(--stone-400);
+
+  /* Shadows — tight, warm-ink, fast. Elevation is subtle, not floaty. */
+  --shadow-xs: 0 1px 1px rgba(20, 18, 16, 0.05);
+  --shadow-sm: 0 1px 2px rgba(20, 18, 16, 0.06), 0 1px 1px rgba(20, 18, 16, 0.04);
+  --shadow-md: 0 2px 4px rgba(20, 18, 16, 0.05), 0 4px 12px rgba(20, 18, 16, 0.07);
+  --shadow-lg: 0 4px 10px rgba(20, 18, 16, 0.06), 0 16px 36px rgba(20, 18, 16, 0.12);
+  --shadow-focus: 0 0 0 3px var(--ring);
+}
+
+/* ----------------------------------------------------------------------------
+   2b · SEMANTIC TOKENS — DARK  (calm ink)
+   ---------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:            var(--ink-200);
+  --surface:       var(--ink-100);
+  --surface-sunken:var(--ink-300);
+  --surface-hover: var(--ink-50);
+  --surface-active:var(--ink-0);
+  --overlay:       rgba(8, 7, 10, 0.58);
+
+  --border:        var(--ink-line);
+  --border-strong: var(--ink-line-strong);
+  --border-subtle: #232128;
+
+  --fg:        #ECEBEF;
+  --fg-2:      #C7C4CE;
+  --fg-muted:  #9D99A6;
+  --fg-faint:  #726E7C;
+  --fg-on-accent: #201D1A;
+
+  --primary:        var(--sun-400);
+  --primary-hover:  var(--sun-300);
+  --primary-active: var(--sun-200);
+  --primary-text:   var(--sun-300);
+  --primary-soft:   rgba(236, 179, 10, 0.16);
+  --primary-soft-fg:var(--sun-300);
+  --primary-border: rgba(244, 201, 50, 0.30);
+  --ring:           rgba(236, 179, 10, 0.40);
+
+  --accent:       var(--honey-400);
+  --accent-soft:  rgba(234, 163, 28, 0.14);
+  --accent-fg:    var(--honey-300);
+
+  --time-plan:    var(--ink-line-strong);
+  --time-plan-fg: #9D99A6;
+  --time-actual:  var(--honey-400);
+  --time-over:    var(--red-400);
+  --time-track-bg:#26242C;
+
+  --success: var(--green-400);  --success-soft: rgba(52,199,123,0.14);  --success-fg: var(--green-400);
+  --warning: var(--amber-400);  --warning-soft: rgba(240,153,46,0.14);  --warning-fg: var(--amber-400);
+  --error:   var(--red-400);    --error-soft:   rgba(240,106,94,0.14);  --error-fg:   var(--red-400);
+  --info:    #8E97F2;   --info-soft:    rgba(137,151,242,0.16);  --info-fg:    #A6B0F7;
+
+  --status-backlog:  #6C655B;
+  --status-todo:     #9D99A6;
+  --status-progress: var(--honey-400);
+  --status-review:   #8E97F2;
+  --status-done:     var(--green-400);
+  --status-canceled: #5A5560;
+
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.40);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 1px 1px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45), 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 6px 14px rgba(0, 0, 0, 0.45), 0 20px 44px rgba(0, 0, 0, 0.60);
+  --shadow-focus: 0 0 0 3px var(--ring);
+}
+
+/* Auto dark for OS preference unless an explicit light theme is set */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg:#141318;--surface:#18171D;--surface-sunken:#100F14;--surface-hover:#1B1A20;--surface-active:#1F1D24;
+    --overlay:rgba(8,7,10,.58);
+    --border:#2C2A33;--border-strong:#3A3744;--border-subtle:#232128;
+    --fg:#ECEBEF;--fg-2:#C7C4CE;--fg-muted:#9D99A6;--fg-faint:#726E7C;--fg-on-accent:#201D1A;
+    --primary:#ECB30A;--primary-hover:#F4C932;--primary-active:#F8DE77;--primary-text:#F4C932;
+    --primary-soft:rgba(236,179,10,.16);--primary-soft-fg:#F4C932;--primary-border:rgba(244,201,50,.30);--ring:rgba(236,179,10,.40);
+    --accent:#EAA31C;--accent-soft:rgba(234,163,28,.14);--accent-fg:#F2BD4B;
+    --time-plan:#3A3744;--time-plan-fg:#9D99A6;--time-actual:#EAA31C;--time-over:#F06A5E;--time-track-bg:#26242C;
+    --success:#34C77B;--success-soft:rgba(52,199,123,.14);--success-fg:#34C77B;
+    --warning:#F0992E;--warning-soft:rgba(240,153,46,.14);--warning-fg:#F0992E;
+    --error:#F06A5E;--error-soft:rgba(240,106,94,.14);--error-fg:#F06A5E;
+    --info:#8E97F2;--info-soft:rgba(137,151,242,.16);--info-fg:#A6B0F7;
+    --status-backlog:#6C655B;--status-todo:#9D99A6;--status-progress:#EAA31C;--status-review:#8E97F2;--status-done:#34C77B;--status-canceled:#5A5560;
+    --shadow-xs:0 1px 1px rgba(0,0,0,.40);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.45),0 1px 1px rgba(0,0,0,.30);
+    --shadow-md:0 2px 6px rgba(0,0,0,.45),0 6px 16px rgba(0,0,0,.45);
+    --shadow-lg:0 6px 14px rgba(0,0,0,.45),0 20px 44px rgba(0,0,0,.60);
+    --shadow-focus:0 0 0 3px var(--ring);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   3 · TYPOGRAPHY
+   ---------------------------------------------------------------------------- */
+:root {
+  /* Families */
+  --font-brand: "Schibsted Grotesk", "Hanken Grotesk", system-ui, sans-serif; /* wordmark, hero */
+  --font-ui:    "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif; /* everything */
+  --font-mono:  "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace; /* time, IDs, code */
+
+  /* UI scale — dense, product-grade. Base 14px. */
+  --fs-display: 30px;  /* brand moments, empty-state hero */
+  --fs-h1:      22px;  /* page title */
+  --fs-h2:      18px;  /* section header */
+  --fs-h3:      15px;  /* card / group title */
+  --fs-body:    14px;  /* default UI text */
+  --fs-sm:      13px;  /* secondary text */
+  --fs-xs:      12px;  /* meta, labels */
+  --fs-micro:   11px;  /* uppercase micro-labels */
+
+  /* Numeric / time-tracking figures (tabular). */
+  --fs-time-xl: 34px;  /* running timer */
+  --fs-time-lg: 20px;  /* focused durations */
+  --fs-time:    13px;  /* row time / estimate */
+  --fs-time-sm: 11px;  /* meta time */
+
+  /* Line heights */
+  --lh-display: 1.08;
+  --lh-heading: 1.22;
+  --lh-body:    1.55;
+  --lh-flat:    1.0;   /* buttons, single-line figures */
+
+  /* Weights */
+  --w-regular: 400;
+  --w-medium:  500;
+  --w-semibold:600;
+  --w-bold:    700;
+  --w-display: 800;
+
+  /* Tracking */
+  --track-display: -0.02em;
+  --track-heading: -0.01em;
+  --track-body:    0;
+  --track-micro:   0.06em;  /* uppercase labels */
+  --track-mono:    0;
+
+  /* ----------------------------------------------------------------------
+     4 · SPACE / RADIUS — 4px base grid. Small radii = precision.
+     ---------------------------------------------------------------------- */
+  --space-0_5: 2px;
+  --space-1:   4px;
+  --space-1_5: 6px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+
+  --radius-xs:  4px;   /* chips, tags, dots-housing */
+  --radius-sm:  6px;   /* inputs, small buttons, rows */
+  --radius-md:  8px;   /* default control, buttons */
+  --radius-lg:  10px;  /* cards */
+  --radius-xl:  14px;  /* modals, large panels */
+  --radius-2xl: 18px;  /* hero containers (rare) */
+  --radius-pill:999px; /* status pills, avatars */
+
+  /* ----------------------------------------------------------------------
+     5 · MOTION — fast, calm, no bounce. Keyboard-first means snappy.
+     ---------------------------------------------------------------------- */
+  --dur-instant: 80ms;
+  --dur-fast:    140ms;
+  --dur-base:    200ms;
+  --dur-slow:    320ms;
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);   /* default UI ease */
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-snap:   cubic-bezier(0.3, 0, 0, 1);        /* crisp menu/popover */
+
+  /* Layout */
+  --nav-width:      232px;
+  --container-page: 1180px;
+  --container-prose:680px;
+  --row-height:     38px;   /* task row */
+  --control-height: 32px;   /* default button / input */
+  --control-height-sm: 26px;
+  --control-height-lg: 40px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-instant:0ms; --dur-fast:0ms; --dur-base:0ms; --dur-slow:0ms; }
+}
+
+/* ----------------------------------------------------------------------------
+   6 · SEMANTIC HELPER CLASSES — optional sugar mapping tokens → roles.
+   ---------------------------------------------------------------------------- */
+.rt-display { font-family:var(--font-brand); font-weight:var(--w-display); font-size:var(--fs-display); line-height:var(--lh-display); letter-spacing:var(--track-display); color:var(--fg); }
+.rt-h1 { font-family:var(--font-ui); font-weight:var(--w-bold); font-size:var(--fs-h1); line-height:var(--lh-heading); letter-spacing:var(--track-heading); color:var(--fg); }
+.rt-h2 { font-family:var(--font-ui); font-weight:var(--w-semibold); font-size:var(--fs-h2); line-height:var(--lh-heading); letter-spacing:var(--track-heading); color:var(--fg); }
+.rt-h3 { font-family:var(--font-ui); font-weight:var(--w-semibold); font-size:var(--fs-h3); line-height:var(--lh-heading); color:var(--fg); }
+.rt-body { font-family:var(--font-ui); font-weight:var(--w-regular); font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-2); }
+.rt-sm { font-family:var(--font-ui); font-weight:var(--w-regular); font-size:var(--fs-sm); line-height:1.45; color:var(--fg-muted); }
+.rt-micro { font-family:var(--font-ui); font-weight:var(--w-semibold); font-size:var(--fs-micro); line-height:var(--lh-flat); letter-spacing:var(--track-micro); text-transform:uppercase; color:var(--fg-faint); }
+.rt-time { font-family:var(--font-mono); font-weight:var(--w-medium); font-size:var(--fs-time); font-variant-numeric:tabular-nums; color:var(--fg); }
+.rt-time-xl { font-family:var(--font-mono); font-weight:var(--w-medium); font-size:var(--fs-time-xl); font-variant-numeric:tabular-nums; line-height:var(--lh-flat); letter-spacing:0.01em; color:var(--fg); }
+
+/* numbers everywhere should be tabular by default in product chrome */
+.rt-tnum { font-variant-numeric:tabular-nums; }

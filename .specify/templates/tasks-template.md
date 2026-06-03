@@ -156,6 +156,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
+- [ ] TXXX [P] Design-system / brand-fidelity check (Constitution Principle VIII) — for UI-bearing features: confirm UI uses only `var(--*)` tokens from `branding/colors_and_type.css` (no off-token colors/fonts/radii), flat aesthetic + brand invariants hold, and WCAG AA contrast passes. Omit if the feature has no UI.
 - [ ] TXXX Run quickstart.md validation
 
 ---

@@ -1,0 +1,24 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="../colors_and_type.css"><style>
+  *{box-sizing:border-box;}html,body{margin:0;}
+  body{background:var(--surface);color:var(--fg);font-family:var(--font-ui);padding:20px;-webkit-font-smoothing:antialiased;}
+  .r{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .sw{flex:1;min-width:40px;height:54px;border-radius:8px;display:flex;align-items:flex-end;padding:5px;}
+  .sw span{font-family:var(--font-mono);font-size:9px;font-weight:500;}
+  .lbl{font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);margin:0 0 12px;}
+  .tok{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+  .tok .chip{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,0,0,.08);flex:none;}
+  .tok b{font-size:11px;font-weight:600;color:var(--fg);display:block;}
+  .tok code{font-family:var(--font-mono);font-size:9px;color:var(--fg-faint);}
+  .grid{display:grid;gap:8px;}
+  .badge{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600;}
+  .status{display:inline-flex;align-items:center;gap:7px;height:23px;padding:0 10px 0 9px;border-radius:999px;font-size:12px;font-weight:600;color:var(--fg-2);background:var(--surface);border:1px solid var(--border);}
+  .dot{width:9px;height:9px;border-radius:50%;}.ring{width:11px;height:11px;border-radius:50%;border:2px solid currentColor;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:8px;font-family:var(--font-ui);font-weight:600;font-size:13px;border:1px solid transparent;cursor:pointer;}
+</style></head><body><p class="lbl">Badges &amp; priority</p>
+<div class="r" style="gap:10px;">
+<span class="badge" style="background:var(--surface-sunken);color:var(--fg-muted);border:1px solid var(--border);">Default</span>
+<span class="badge" style="background:var(--primary-soft);color:var(--primary-soft-fg);">Assigned</span>
+<span class="badge" style="background:var(--success-soft);color:var(--success-fg);">Shipped</span>
+<span class="badge" style="background:var(--warning-soft);color:var(--warning-fg);">At risk</span>
+<span class="badge" style="background:var(--error-soft);color:var(--error-fg);">Blocked</span>
+</div></body></html>

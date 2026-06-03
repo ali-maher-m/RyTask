@@ -54,6 +54,35 @@ Feature work is scaffolded by `.specify/scripts/bash/create-new-feature.sh` into
 
 The **North-Star metric** is CTW (Tasks Captured-and-Tracked per Active User per Week) — couples fast capture with honest time-tracking.
 
+## Branding & design system (the visual source of truth)
+
+**All brand + design-system assets live in `branding/`.** This is an original, from-scratch RyTask brand
+(not derived from any existing product) delivered as a handoff bundle from Claude Design. It is the
+authority for anything visual — when building UI (`apps/web/`, `packages/ui/`), match it; do not invent
+colors, type, spacing, or components that contradict it.
+
+| File / folder | What it is |
+|---|---|
+| `branding/colors_and_type.css` | **All design tokens** (color light+dark, type, spacing, radius, shadow, motion, layout) — the single source of truth. In product code, reference **only** the semantic `var(--*)` names, never raw primitives or hex. |
+| `branding/RyTask Style Sheet.html` | The canonical one-page style sheet — logo, palettes, type, every core component, token visualizations, the "never do this" list. Light/dark toggle. |
+| `branding/SKILL.md` | Agent-Skills entrypoint for reusing the brand when generating UI/mocks. |
+| `branding/assets/` | Logo mark + wordmark SVGs (color, dark, mono). |
+| `branding/preview/` | Design-System cards — swatches, type specimens, component states. |
+| `branding/ui_kits/app/` | High-fidelity recreation of the RyTask app (sidebar + issue list with live plan-vs-actual time meters) to fork from. |
+| `branding/README.md` | Design-system overview: voice, foundations, iconography, caveats. |
+| `branding/HANDOFF.md`, `branding/chats/` | Provenance — the coding-agent handoff note and the design-session transcript (where the intent lives). |
+
+**Non-negotiable brand rules** (full detail in `branding/README.md` + the style sheet):
+- **Color:** `Sunbeam` yellow primary (`#ECB30A`) — **fills always take dark ink text, never white** (`--fg-on-accent`). `Honey` (`#D98A0E`) is the accent that carries *time/momentum*. Warm `Stone` neutrals. Only three semantic hues (green/amber/red) + one indigo for info/in-review. Both light **and** dark resolve from the same semantic token names. No teal/neon/off-palette color.
+- **Type:** **Hanken Grotesk** for all UI; **Schibsted Grotesk** (800) for brand moments only; **Geist Mono** (`tabular-nums`) for *every figure* — times, estimates, counts, IDs. Base UI size 14px. (Inter is deliberately avoided.)
+- **Aesthetic:** flat fills only — **no decorative gradients, no glassmorphism/frosted blur, no floaty colored shadows, no emoji as UI chrome.** Small radii (6/8/10/14px) signal precision; 1px hairlines do the structural work; elevation is a whisper. Motion is fast and calm — no bounce/overshoot; respect `prefers-reduced-motion`.
+- **Signature move:** plan-vs-actual time meter lives *inside* the task row (honey fill vs. planned tick; over-budget turns red), plus Slack-style capture that parses `@assignee ~estimate #label`.
+- **Voice/copy:** plain, kind, jargon-free — must pass the "non-technical teammate" (Albert/Marissa) test. Sentence case everywhere human; `UPPERCASE 0.06em` only for micro-labels.
+- **Substitutions to resolve at production:** icons are **Lucide via CDN** (self-host a sprite for prod); fonts are pulled from Google Fonts (confirm the cuts); the logo is a v1 proposal open to iteration.
+
+When UI code lands, tokens flow from `branding/colors_and_type.css` into `packages/ui/` / `apps/web/`; keep
+that file as the upstream source rather than copy-pasting hex values around the codebase.
+
 ## FIXED technical stack (do not substitute)
 
 - **Backend:** NestJS — a **modular monolith** with hard, extractable module boundaries.
