@@ -50,6 +50,12 @@ export const testPlan: WebTestPlan = {
       target: 'board optimistic move reverts on 403/409 (US4)',
       file: 'test/board-move.test.tsx',
     },
+    { kind: 'unit', target: 'client capability map rules (US5)', file: 'test/capabilities.test.ts' },
+    {
+      kind: 'component',
+      target: 'project settings: delete populated status requires re-map (US6)',
+      file: 'test/project-settings.test.tsx',
+    },
   ],
 };
 

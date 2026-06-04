@@ -1,7 +1,10 @@
 'use client';
 
 import { ItemDetail } from '@/components/item-detail';
-import { listLabels } from '@/lib/api';
+import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
+import { type MappedError, listLabels, listProjectMembers, mapApiError } from '@/lib/api';
+import { useCapabilities } from '@/lib/auth/capability-context';
+import { useSession } from '@/lib/auth/session-context';
 import {
   type ViewConfig,
   type ViewWorkItemQuery,
@@ -25,8 +28,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Label, Status, WorkItem } from '@rytask/contracts';
-import { Dialog } from '@rytask/ui';
+import type { Label, ProjectRoleDto, Status, WorkItem } from '@rytask/contracts';
+import { Dialog, Tooltip } from '@rytask/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { GripVertical } from 'lucide-react';
 import Link from 'next/link';
@@ -90,6 +93,10 @@ function moveRevertMessage(error: unknown): string {
 export function useBoard(projectId: string, query?: ViewWorkItemQuery) {
   const [state, setState] = useState<BoardState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The first-load failure is mapped to a surface kind (forbidden/not-found/error) so the page can
+  // render a tenant-safe SurfaceState with zero foreign data (FR-WEB-101, D10). `error` stays the
+  // inline message channel for optimistic-move reverts (kept identical for the component test).
+  const [loadError, setLoadError] = useState<MappedError | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -99,8 +106,10 @@ export function useBoard(projectId: string, query?: ViewWorkItemQuery) {
       ]);
       setState({ statuses, items });
       setError(null);
+      setLoadError(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load board');
+      setLoadError(mapApiError(e));
     }
   }, [projectId, query]);
 
@@ -173,7 +182,7 @@ export function useBoard(projectId: string, query?: ViewWorkItemQuery) {
     [state, reload],
   );
 
-  return { state, error, setError, reload, move, applyItem, removeItem } as const;
+  return { state, error, setError, loadError, reload, move, applyItem, removeItem } as const;
 }
 
 export function BoardClient({ projectId }: { projectId: string }) {
@@ -181,9 +190,15 @@ export function BoardClient({ projectId }: { projectId: string }) {
   const cfg: ViewConfig = useMemo(() => parseViewConfig(searchParams, 'board'), [searchParams]);
   const query = useMemo(() => viewConfigToWorkItemQuery(cfg, projectId), [cfg, projectId]);
 
-  const { state, error, reload, move, applyItem, removeItem } = useBoard(projectId, query);
+  const { state, error, loadError, reload, move, applyItem, removeItem } = useBoard(
+    projectId,
+    query,
+  );
+  const { can } = useCapabilities();
+  const { principal } = useSession();
   const [selected, setSelected] = useState<WorkItem | null>(null);
   const [labels, setLabels] = useState<Label[]>([]);
+  const [projectRole, setProjectRole] = useState<ProjectRoleDto | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState('');
   const [busy, setBusy] = useState(false);
   const [quickAddError, setQuickAddError] = useState<string | null>(null);
@@ -194,6 +209,20 @@ export function BoardClient({ projectId }: { projectId: string }) {
       .then(setLabels)
       .catch(() => setLabels([]));
   }, []);
+
+  // Resolve the principal's project role so write gating mirrors the RBAC matrix (org OWNER/ADMIN
+  // bypass it; an org MEMBER needs project MEMBER+). Best-effort — the server stays authoritative.
+  useEffect(() => {
+    const userId = principal?.user.id;
+    if (!userId) return;
+    listProjectMembers(projectId)
+      .then((members) => setProjectRole(members.find((m) => m.userId === userId)?.role))
+      .catch(() => setProjectRole(undefined));
+  }, [projectId, principal]);
+
+  // Cosmetic write gate (US5, FR-WEB-100). A refused drag/edit still reverts gracefully server-side.
+  const canWrite = can('workitem:write', { projectRole });
+  const writeReason = can('workitem:write') ? '' : 'You need edit access to this project.';
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -214,6 +243,7 @@ export function BoardClient({ projectId }: { projectId: string }) {
   }, [state]);
 
   async function onDragEnd(event: DragEndEvent) {
+    if (!canWrite) return; // cosmetic guard; a slipped-through move still reverts on a server 403
     const { active, over } = event;
     if (!over) return;
     await move(String(active.id), String(over.id));
@@ -236,22 +266,23 @@ export function BoardClient({ projectId }: { projectId: string }) {
     }
   }
 
-  if (error && !state) {
-    return (
-      <main style={MAIN}>
-        <h1 style={{ fontSize: 'var(--fs-h1)' }}>Board</h1>
-        <p role="alert" style={{ color: 'var(--error)' }}>
-          {error}
-        </p>
-      </main>
-    );
-  }
-
   if (!state) {
     return (
       <main style={MAIN}>
         <h1 style={{ fontSize: 'var(--fs-h1)' }}>Board</h1>
-        <p>Loading board…</p>
+        {loadError ? (
+          <SurfaceFeedback
+            error={loadError}
+            onRetry={reload}
+            action={
+              <Link href="/projects" style={LINK}>
+                Back to projects
+              </Link>
+            }
+          />
+        ) : (
+          <SurfaceLoading label="Loading board…" />
+        )}
       </main>
     );
   }
@@ -277,25 +308,36 @@ export function BoardClient({ projectId }: { projectId: string }) {
         </nav>
       </header>
 
-      <form
-        onSubmit={onQuickAdd}
-        aria-label="Quick add work item"
-        style={{ marginBottom: 'var(--space-3)' }}
-      >
-        <input
-          type="text"
-          data-testid="quick-add-input"
-          aria-label="Quick add"
-          placeholder="Capture a task…  @assignee #label !priority ^date"
-          value={quickAdd}
-          onChange={(e) => setQuickAdd(e.target.value)}
-          disabled={busy}
-          style={{ ...CONTROL, minWidth: 'min(420px, 100%)' }}
-        />
-        <button type="submit" disabled={busy || !quickAdd.trim()} style={ADD_BUTTON}>
-          Add
-        </button>
-      </form>
+      {canWrite ? (
+        <form
+          onSubmit={onQuickAdd}
+          aria-label="Quick add work item"
+          style={{ marginBottom: 'var(--space-3)' }}
+        >
+          <input
+            type="text"
+            data-testid="quick-add-input"
+            aria-label="Quick add"
+            placeholder="Capture a task…  @assignee #label !priority ^date"
+            value={quickAdd}
+            onChange={(e) => setQuickAdd(e.target.value)}
+            disabled={busy}
+            style={{ ...CONTROL, minWidth: 'min(420px, 100%)' }}
+          />
+          <button type="submit" disabled={busy || !quickAdd.trim()} style={ADD_BUTTON}>
+            Add
+          </button>
+        </form>
+      ) : (
+        <Tooltip content={writeReason}>
+          <p
+            data-testid="board-readonly"
+            style={{ color: 'var(--fg-muted)', margin: '0 0 var(--space-3)' }}
+          >
+            You have read-only access to this project.
+          </p>
+        </Tooltip>
+      )}
 
       {error ? (
         <p role="alert" style={{ color: 'var(--error)' }}>
@@ -324,6 +366,7 @@ export function BoardClient({ projectId }: { projectId: string }) {
               status={status}
               items={columns.get(status.id) ?? []}
               onSelect={setSelected}
+              canDrag={canWrite}
             />
           ))}
         </div>
@@ -335,6 +378,8 @@ export function BoardClient({ projectId }: { projectId: string }) {
             item={selected}
             statuses={state.statuses}
             labels={labels}
+            canEdit={canWrite}
+            editReason={writeReason || undefined}
             onChange={(updated) => {
               applyItem(updated);
               setSelected(updated);
@@ -355,10 +400,13 @@ function BoardColumn({
   status,
   items,
   onSelect,
+  canDrag,
 }: {
   status: Status;
   items: WorkItem[];
   onSelect: (item: WorkItem) => void;
+  /** Whether cards may be dragged (cosmetic — the server still authorizes the move). */
+  canDrag: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualize = items.length > VIRTUALIZE_THRESHOLD;
@@ -412,6 +460,7 @@ function BoardColumn({
                     key={item.id}
                     item={item}
                     onSelect={onSelect}
+                    canDrag={canDrag}
                     positionStyle={{ position: 'absolute', top: row.start, left: 0, width: '100%' }}
                   />
                 );
@@ -421,7 +470,7 @@ function BoardColumn({
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, minHeight: 24 }}>
             {items.map((item) => (
-              <BoardCard key={item.id} item={item} onSelect={onSelect} />
+              <BoardCard key={item.id} item={item} onSelect={onSelect} canDrag={canDrag} />
             ))}
           </ul>
         )}
@@ -433,15 +482,18 @@ function BoardColumn({
 function BoardCard({
   item,
   onSelect,
+  canDrag,
   positionStyle,
 }: {
   item: WorkItem;
   onSelect: (item: WorkItem) => void;
+  canDrag: boolean;
   /** Absolute placement supplied by the column virtualizer (omitted in the non-virtual path). */
   positionStyle?: React.CSSProperties;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
+    disabled: !canDrag,
   });
 
   const style: React.CSSProperties = {
@@ -462,23 +514,25 @@ function BoardCard({
         <button type="button" onClick={() => onSelect(item)} style={CARD_TITLE_BUTTON}>
           {item.title}
         </button>
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${item.title}`}
-          style={{
-            border: 0,
-            background: 'transparent',
-            cursor: 'grab',
-            color: 'var(--fg-muted)',
-            padding: 0,
-            display: 'inline-flex',
-            alignItems: 'center',
-          }}
-        >
-          <GripVertical size={16} aria-hidden="true" />
-        </button>
+        {canDrag ? (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag ${item.title}`}
+            style={{
+              border: 0,
+              background: 'transparent',
+              cursor: 'grab',
+              color: 'var(--fg-muted)',
+              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            <GripVertical size={16} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
       <small style={{ color: 'var(--fg-muted)' }}>
         <code style={{ fontFamily: 'var(--font-mono)' }}>{item.key}</code>

@@ -1,27 +1,30 @@
 'use client';
 
 import { ItemDetail } from '@/components/item-detail';
-import { ApiError, listAllWorkItems, listLabels, listStatuses } from '@/lib/api';
-import type { Label, Status, WorkItem } from '@rytask/contracts';
-import { ErrorState, ForbiddenState, NotFoundState } from '@rytask/ui';
+import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
+import {
+  type MappedError,
+  listAllWorkItems,
+  listLabels,
+  listProjectMembers,
+  listStatuses,
+  mapApiError,
+} from '@/lib/api';
+import { useCapabilities } from '@/lib/auth/capability-context';
+import { useSession } from '@/lib/auth/session-context';
+import type { Label, ProjectRoleDto, Status, WorkItem } from '@rytask/contracts';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 /**
- * Client surface for the item-detail route (US3, T046). Resolves the work item by its human key
- * (there is no get-by-key endpoint, so it lists the project's items and matches client-side — M1
- * projects are small), loads the project's statuses + workspace labels, and mounts `ItemDetail`.
- * Tenant-safe: a 403/404 (or a key that isn't in this project) renders a friendly state with **no**
- * foreign data (FR-WEB-101). Deleting routes back to the board.
+ * Client surface for the item-detail route (US3/US5, T046/T055/T056). Resolves the work item by its
+ * human key (there is no get-by-key endpoint, so it lists the project's items and matches
+ * client-side — M1 projects are small), loads the project's statuses + workspace labels, and mounts
+ * `ItemDetail`. Tenant-safe (D10, FR-WEB-101): a 403/404 (or a key that isn't in this project) maps
+ * through `mapApiError` to a friendly SurfaceState with **no** foreign data. Editing is gated by the
+ * capability map (cosmetic); deleting routes back to the board.
  */
-
-type LoadState =
-  | { kind: 'loading' }
-  | { kind: 'ready' }
-  | { kind: 'not-found' }
-  | { kind: 'forbidden' }
-  | { kind: 'error' };
 
 const PAGE: React.CSSProperties = {
   maxWidth: 'var(--container-prose)',
@@ -31,13 +34,18 @@ const PAGE: React.CSSProperties = {
 
 export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; itemKey: string }) {
   const router = useRouter();
+  const { can } = useCapabilities();
+  const { principal } = useSession();
   const [item, setItem] = useState<WorkItem | null>(null);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
-  const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [projectRole, setProjectRole] = useState<ProjectRoleDto | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<MappedError | null>(null);
 
   const load = useCallback(async () => {
-    setState({ kind: 'loading' });
+    setLoading(true);
+    setError(null);
     try {
       const [items, st, lb] = await Promise.all([
         listAllWorkItems({ projectId }),
@@ -48,15 +56,17 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
       setLabels(lb);
       const found = items.find((i) => i.key === itemKey) ?? null;
       if (!found) {
-        setState({ kind: 'not-found' });
-        return;
+        // The key isn't in this project (or this tenant) — a tenant-safe not-found, zero foreign data.
+        setError({ kind: 'not-found', status: 404, message: 'We couldn’t find that item.' });
+        setItem(null);
+      } else {
+        setItem(found);
       }
-      setItem(found);
-      setState({ kind: 'ready' });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403) setState({ kind: 'forbidden' });
-      else if (e instanceof ApiError && e.status === 404) setState({ kind: 'not-found' });
-      else setState({ kind: 'error' });
+      setError(mapApiError(e));
+      setItem(null);
+    } finally {
+      setLoading(false);
     }
   }, [projectId, itemKey]);
 
@@ -64,36 +74,41 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
     void load();
   }, [load]);
 
-  const backToBoard = `/projects/${projectId}/board`;
+  useEffect(() => {
+    const userId = principal?.user.id;
+    if (!userId) return;
+    listProjectMembers(projectId)
+      .then((members) => setProjectRole(members.find((m) => m.userId === userId)?.role))
+      .catch(() => setProjectRole(undefined));
+  }, [projectId, principal]);
 
-  if (state.kind === 'loading') {
+  const backToBoard = `/projects/${projectId}/board`;
+  const backLink = (
+    <Link href={backToBoard} style={{ color: 'var(--accent)' }}>
+      Back to board
+    </Link>
+  );
+
+  if (loading) {
     return (
       <main style={PAGE}>
-        <p>Loading item…</p>
+        <SurfaceLoading label="Loading item…" />
       </main>
     );
   }
-  if (state.kind === 'forbidden') {
+  if (error || !item) {
     return (
       <main style={PAGE}>
-        <ForbiddenState />
+        <SurfaceFeedback
+          error={error ?? { kind: 'error', status: null, message: 'Something went wrong.' }}
+          onRetry={load}
+          action={backLink}
+        />
       </main>
     );
   }
-  if (state.kind === 'not-found') {
-    return (
-      <main style={PAGE}>
-        <NotFoundState action={<Link href={backToBoard}>Back to board</Link>} />
-      </main>
-    );
-  }
-  if (state.kind === 'error' || !item) {
-    return (
-      <main style={PAGE}>
-        <ErrorState onRetry={load} />
-      </main>
-    );
-  }
+
+  const canWrite = can('workitem:write', { projectRole });
 
   return (
     <main style={PAGE}>
@@ -106,6 +121,7 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
         item={item}
         statuses={statuses}
         labels={labels}
+        canEdit={canWrite}
         onChange={setItem}
         onDeleted={() => router.push(backToBoard)}
         onClose={() => router.push(backToBoard)}

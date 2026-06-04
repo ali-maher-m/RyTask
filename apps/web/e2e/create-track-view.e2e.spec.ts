@@ -202,3 +202,54 @@ test('list inline edit (US4) + Board↔List view carry-over', async ({ page }) =
   await expect(page).toHaveURL(/group=status/);
   await expect(page.getByTestId('group-select')).toHaveValue('status');
 });
+
+test('organize (US6): create two projects, add a status + label, then see My Work', async ({
+  page,
+}) => {
+  await signIn(page);
+  const stamp = Date.now() % 100000; // keep the key prefix within ^[A-Z][A-Z0-9]{1,9}$
+
+  // ── create the first project via the New-project form ─────────────────────────
+  await page.goto('/projects');
+  await page.getByRole('button', { name: 'New project' }).click();
+  await page.getByLabel('Name').fill(`Alpha ${stamp}`);
+  await page.getByLabel('Key prefix').fill(`QA${stamp}`);
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+\/board/);
+  const alphaId = page.url().match(/\/projects\/([0-9a-f-]+)\/board/)?.[1];
+  expect(alphaId).toBeTruthy();
+
+  // ── add a Started-category status and a label in project settings ─────────────
+  await page.goto(`/projects/${alphaId}/settings`);
+  await page.getByRole('heading', { name: /settings/i }).first().waitFor();
+
+  const statusName = `Reviewing ${stamp}`;
+  await page.getByLabel('New status name').fill(statusName);
+  await page.getByLabel('Category').last().selectOption('STARTED');
+  await page.getByRole('button', { name: 'Add status' }).click();
+  await expect(page.getByTestId('status-list')).toContainText(statusName);
+
+  const labelName = `area:web ${stamp}`;
+  await page.getByLabel('New label name').fill(labelName);
+  await page.getByRole('button', { name: 'Add label' }).click();
+  await expect(page.getByTestId('label-list')).toContainText(labelName);
+
+  // ── create a second project with a distinct prefix ────────────────────────────
+  await page.goto('/projects/new');
+  await page.getByLabel('Name').fill(`Beta ${stamp}`);
+  await page.getByLabel('Key prefix').fill(`QB${stamp}`);
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+\/board/);
+
+  // Both projects now appear in the projects list/switcher.
+  await page.goto('/projects');
+  await expect(page.getByTestId('projects-list')).toContainText(`Alpha ${stamp}`);
+  await expect(page.getByTestId('projects-list')).toContainText(`Beta ${stamp}`);
+
+  // ── My Work is the cross-project hub (renders even when nothing is assigned) ───
+  await page.goto('/my-work');
+  await expect(page.getByRole('heading', { name: 'My Work' })).toBeVisible();
+
+  const a11y = await new AxeBuilder({ page }).analyze();
+  expect(a11y.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+});

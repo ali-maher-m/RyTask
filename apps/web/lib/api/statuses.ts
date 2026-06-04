@@ -36,15 +36,24 @@ export async function updateStatus(statusId: string, input: UpdateStatus): Promi
   return body.data;
 }
 
-/** DELETE /statuses/{id} — remove a status (server requires re-mapping a populated status). */
-export function deleteStatus(statusId: string): Promise<void> {
-  return authedRequest<void>(`/statuses/${statusId}`, { method: 'DELETE' });
+/**
+ * DELETE /statuses/{id} — remove a status. The server returns `409` if the status still has items
+ * and no `reassignTo` is given; pass the id of the status to move those items onto first
+ * (FR-WEB-051). Re-mapping is required before a populated status can be deleted.
+ */
+export function deleteStatus(statusId: string, reassignTo?: string | null): Promise<void> {
+  const qs = reassignTo ? `?reassignTo=${encodeURIComponent(reassignTo)}` : '';
+  return authedRequest<void>(`/statuses/${statusId}${qs}`, { method: 'DELETE' });
 }
 
-/** POST /projects/{id}/statuses/reorder — set the total ordering of the project's statuses. */
-export function reorderStatuses(projectId: string, input: ReorderStatuses): Promise<void> {
-  return authedRequest<void>(`/projects/${projectId}/statuses/reorder`, {
+/** POST /projects/{id}/statuses/reorder — set the total ordering; returns the reordered set. */
+export async function reorderStatuses(
+  projectId: string,
+  input: ReorderStatuses,
+): Promise<Status[]> {
+  const body = await authedRequest<StatusListResponse>(`/projects/${projectId}/statuses/reorder`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
+  return body.data;
 }

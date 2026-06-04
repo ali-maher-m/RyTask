@@ -48,6 +48,36 @@ export async function listAllWorkItems(query: WorkItemQuery = {}): Promise<WorkI
   return all;
 }
 
+/** One keyset page of work items, plus the cursor to advance it (null at the end). */
+export interface WorkItemPage {
+  items: WorkItem[];
+  nextCursor: string | null;
+}
+
+/**
+ * GET /work-items — read ONE keyset page (no auto-walk). The cross-project "My Work" hub uses this
+ * with `smart=my-work` (assignee = me, every accessible project) and a "Load more" cursor so a busy
+ * user isn't forced to load everything at once (FR-WEB-053, SC-011 keyset — no OFFSET).
+ */
+export async function listWorkItemsPage(
+  query: WorkItemQuery = {},
+  cursor?: string | null,
+  limit = 50,
+): Promise<WorkItemPage> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (query.projectId && !query.smart) params.set('projectId', query.projectId);
+  if (query.filter && !query.smart) params.set('filter', query.filter);
+  if (query.smart) params.set('smart', query.smart);
+  if (query.group) params.set('group', query.group);
+  if (query.sort) params.set('sort', query.sort);
+  if (cursor) params.set('cursor', cursor);
+  const page = await authedRequest<WorkItemListResponse>(`/work-items?${params.toString()}`);
+  return {
+    items: page.data,
+    nextCursor: page.pageInfo.hasNextPage ? page.pageInfo.nextCursor : null,
+  };
+}
+
 /** GET /work-items/{id} — one item by id. */
 export async function getWorkItem(id: string): Promise<WorkItem> {
   const body = await authedRequest<ResourceEnvelope<WorkItem>>(`/work-items/${id}`);

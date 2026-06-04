@@ -15,6 +15,9 @@ import { type APIRequestContext, type BrowserContext, expect, test } from '@play
 const FOUNDER_EMAIL = 'founder@rytask.local';
 const FOUNDER_PASSWORD = 'rytask-dev-password';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const DEMO_PROJECT_ID = '0193b3a0-0000-7000-8000-000000000010'; // SEED_PROJECT_ID
+// A well-formed id that belongs to no project this principal can see (tenant-safe deep-link probe).
+const UNKNOWN_PROJECT_ID = '00000000-0000-7000-8000-0000000000ff';
 
 async function accessTokenOf(context: BrowserContext): Promise<string> {
   const [page] = context.pages();
@@ -73,7 +76,19 @@ test('owner invites a Viewer who accepts and is then denied a mutating action (R
   const viewerToken = await accessTokenOf(guestContext);
   await expectMutationForbidden(request, viewerToken);
 
-  // 5. Accessibility scan of the accept landing.
+  // 5. The Viewer UI hides mutating controls on a board (cosmetic gating, FR-WEB-100): no quick-add,
+  //    a read-only notice instead.
+  await guest.goto(`/projects/${DEMO_PROJECT_ID}/board`);
+  await expect(guest.getByTestId('board-readonly')).toBeVisible();
+  await expect(guest.getByTestId('quick-add-input')).toHaveCount(0);
+
+  // 6. A deep link outside this principal's tenant/permission lands on a friendly not-found/forbidden
+  //    with ZERO foreign data rendered (FR-WEB-101, D10).
+  await guest.goto(`/projects/${UNKNOWN_PROJECT_ID}/board`);
+  await expect(guest.getByText(/couldn’t find|don’t have access/i)).toBeVisible();
+  await expect(guest.getByTestId('board-card')).toHaveCount(0);
+
+  // 7. Accessibility scan of the accept landing.
   await guest.goto(acceptPath);
   const results = await new AxeBuilder({ page: guest }).analyze();
   expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);

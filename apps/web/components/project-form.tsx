@@ -1,18 +1,17 @@
 'use client';
 
+import { createProject, updateProject } from '@/lib/api';
 import type { CreateProject, Project, ProjectMember, UpdateProject } from '@rytask/contracts';
+import { Button, Input, Textarea } from '@rytask/ui';
 import { useState } from 'react';
-import { authedRequest } from '../lib/api';
 
 /**
- * Project create / settings form (US4, T075, FR-PROJ-001). Captures a project's name, key
- * prefix, icon, color, and lead. In `create` mode it POSTs `CreateProject`; in `edit` mode it
- * PATCHes `UpdateProject` (only changed fields) for the existing project. Requests carry the M0
- * bearer token via `authedRequest` (the M1 dev-header seam is gone). The key prefix is immutable
- * after creation (the key sequence is anchored to it), so it is read-only in edit mode. The lead
- * is chosen from the project's members (edit) or left unset (create, set later in settings).
- * Every field has an associated label for axe; submit/validation errors surface in a
- * `role="alert"` region.
+ * Project create / settings form (US6, T061, FR-WEB-050). Captures a project's name, key prefix,
+ * description, icon, color, and lead. In `create` mode it POSTs `CreateProject`; in `edit` mode it
+ * PATCHes only the changed fields. Requests carry the M0 bearer via the consolidated `@/lib/api`
+ * client. The key prefix is immutable after creation (the key sequence is anchored to it), so it is
+ * read-only in edit mode. The lead is chosen from the project's members (edit) or left unset
+ * (create). Token-only styling; every field is labelled (axe) and errors surface in a `role="alert"`.
  */
 
 /** Key prefix rule (projects.contract `keyPrefixSchema`): A then 1–9 of [A-Z0-9]. */
@@ -21,6 +20,7 @@ const KEY_PREFIX_RE = /^[A-Z][A-Z0-9]{1,9}$/;
 interface FormFields {
   name: string;
   keyPrefix: string;
+  description: string;
   icon: string;
   color: string;
   leadId: string;
@@ -30,8 +30,9 @@ function initialFields(project?: Project): FormFields {
   return {
     name: project?.name ?? '',
     keyPrefix: project?.keyPrefix ?? '',
+    description: project?.description ?? '',
     icon: project?.icon ?? '',
-    color: project?.color ?? '#3B82F6',
+    color: project?.color ?? '',
     leadId: project?.leadId ?? '',
   };
 }
@@ -44,6 +45,8 @@ export interface ProjectFormProps {
   /** Called with the created/updated project after a successful save. */
   onSaved?: (project: Project) => void;
 }
+
+const FIELD: React.CSSProperties = { marginBottom: 'var(--space-3)' };
 
 export function ProjectForm({ project, members = [], onSaved }: ProjectFormProps) {
   const mode = project ? 'edit' : 'create';
@@ -63,7 +66,6 @@ export function ProjectForm({ project, members = [], onSaved }: ProjectFormProps
     if (mode === 'create' && !KEY_PREFIX_RE.test(fields.keyPrefix)) {
       return 'Key prefix must be an uppercase letter followed by 1–9 letters or digits (e.g. RYT).';
     }
-    if (!fields.color.trim()) return 'Color is required.';
     return null;
   }
 
@@ -79,12 +81,12 @@ export function ProjectForm({ project, members = [], onSaved }: ProjectFormProps
     setError(null);
     setSaved(null);
     try {
-      const project_ = project
-        ? await patchProject(project.id, buildUpdate(project, fields))
-        : await postProject(buildCreate(fields));
-      setSaved(project_);
+      const result = project
+        ? await updateProject(project.id, buildUpdate(project, fields))
+        : await createProject(buildCreate(fields));
+      setSaved(result);
       if (mode === 'create') setFields(initialFields());
-      onSaved?.(project_);
+      onSaved?.(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.');
     } finally {
@@ -96,13 +98,14 @@ export function ProjectForm({ project, members = [], onSaved }: ProjectFormProps
 
   return (
     <form onSubmit={submit} aria-labelledby={headingId}>
-      <h2 id={headingId}>{mode === 'create' ? 'New project' : 'Project settings'}</h2>
+      <h2 id={headingId} style={{ fontSize: 'var(--fs-h2)', marginTop: 0 }}>
+        {mode === 'create' ? 'New project' : 'Project details'}
+      </h2>
 
-      <p>
-        <label htmlFor="project-name">Name</label>
-        <br />
-        <input
+      <div style={FIELD}>
+        <Input
           id="project-name"
+          label="Name"
           type="text"
           required
           maxLength={120}
@@ -110,68 +113,91 @@ export function ProjectForm({ project, members = [], onSaved }: ProjectFormProps
           disabled={busy}
           onChange={(e) => set('name', e.target.value)}
         />
-      </p>
+      </div>
 
-      <p>
-        <label htmlFor="project-key-prefix">Key prefix</label>
-        <br />
-        <input
+      <div style={FIELD}>
+        <Input
           id="project-key-prefix"
+          label="Key prefix"
           type="text"
           value={fields.keyPrefix}
           disabled={busy || mode === 'edit'}
           readOnly={mode === 'edit'}
           maxLength={10}
           placeholder="RYT"
-          aria-describedby="project-key-prefix-hint"
+          hint={
+            mode === 'edit'
+              ? 'The key prefix is fixed once the project exists.'
+              : 'Uppercase letter then 1–9 letters/digits (e.g. RYT). Item keys read RYT-1, RYT-2…'
+          }
           onChange={(e) => set('keyPrefix', e.target.value.toUpperCase())}
         />
-        <br />
-        <small id="project-key-prefix-hint">
-          {mode === 'edit'
-            ? 'The key prefix is fixed once the project exists.'
-            : 'Uppercase letter then 1–9 letters/digits (e.g. RYT). Item keys read RYT-1, RYT-2…'}
-        </small>
-      </p>
+      </div>
 
-      <p>
-        <label htmlFor="project-icon">Icon</label>
-        <br />
-        <input
+      <div style={FIELD}>
+        <Textarea
+          id="project-description"
+          label="Description"
+          rows={3}
+          maxLength={2000}
+          value={fields.description}
+          disabled={busy}
+          onChange={(e) => set('description', e.target.value)}
+        />
+      </div>
+
+      <div style={FIELD}>
+        <Input
           id="project-icon"
+          label="Icon"
           type="text"
           maxLength={64}
-          placeholder="🚀"
+          placeholder="A short label or emoji shortcode"
           value={fields.icon}
           disabled={busy}
           onChange={(e) => set('icon', e.target.value)}
         />
-      </p>
+      </div>
 
-      <p>
-        <label htmlFor="project-color">Color</label>
-        <br />
-        <input
-          id="project-color"
-          type="text"
-          required
-          maxLength={32}
-          placeholder="#3B82F6"
-          value={fields.color}
-          disabled={busy}
-          onChange={(e) => set('color', e.target.value)}
+      <div style={{ ...FIELD, display: 'flex', alignItems: 'flex-end', gap: 'var(--space-2)' }}>
+        <div style={{ flex: 1 }}>
+          <Input
+            id="project-color"
+            label="Color"
+            type="text"
+            maxLength={32}
+            placeholder="#RRGGBB"
+            value={fields.color}
+            disabled={busy}
+            onChange={(e) => set('color', e.target.value)}
+          />
+        </div>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 'var(--space-5)',
+            height: 'var(--space-5)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)',
+            background: fields.color || 'var(--surface-sunken)',
+          }}
         />
-      </p>
+      </div>
 
       {mode === 'edit' ? (
-        <p>
-          <label htmlFor="project-lead">Lead</label>
-          <br />
+        <div style={FIELD}>
+          <label
+            htmlFor="project-lead"
+            style={{ display: 'block', fontSize: 'var(--fs-sm)', color: 'var(--fg-muted)' }}
+          >
+            Lead
+          </label>
           <select
             id="project-lead"
             value={fields.leadId}
             disabled={busy}
             onChange={(e) => set('leadId', e.target.value)}
+            style={SELECT}
           >
             <option value="">Unassigned</option>
             {members.map((m) => (
@@ -180,37 +206,51 @@ export function ProjectForm({ project, members = [], onSaved }: ProjectFormProps
               </option>
             ))}
           </select>
-        </p>
+        </div>
       ) : null}
 
-      <button type="submit" disabled={busy}>
-        {busy ? 'Saving…' : mode === 'create' ? 'Create project' : 'Save changes'}
-      </button>
+      <Button type="submit" variant="primary" loading={busy}>
+        {mode === 'create' ? 'Create project' : 'Save changes'}
+      </Button>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020' }}>
+        <p role="alert" style={{ color: 'var(--error)', marginTop: 'var(--space-2)' }}>
           {error}
         </p>
       ) : null}
 
       {saved ? (
-        <output>
-          Saved <strong>{saved.name}</strong> (<code>{saved.keyPrefix}</code>).
+        <output style={{ display: 'block', marginTop: 'var(--space-2)', color: 'var(--fg-muted)' }}>
+          Saved <strong>{saved.name}</strong> (
+          <code style={{ fontFamily: 'var(--font-mono)' }}>{saved.keyPrefix}</code>).
         </output>
       ) : null}
     </form>
   );
 }
 
+const SELECT: React.CSSProperties = {
+  font: 'inherit',
+  color: 'var(--fg)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-2)',
+  width: '100%',
+};
+
 /** Build a `CreateProject` body from the form, omitting empty optionals. */
 function buildCreate(fields: FormFields): CreateProject {
   const body: CreateProject = {
     name: fields.name.trim(),
     keyPrefix: fields.keyPrefix.trim(),
-    color: fields.color.trim(),
   };
+  const description = fields.description.trim();
+  if (description) body.description = description;
   const icon = fields.icon.trim();
   if (icon) body.icon = icon;
+  const color = fields.color.trim();
+  if (color) body.color = color;
   if (fields.leadId) body.leadId = fields.leadId;
   return body;
 }
@@ -220,27 +260,13 @@ function buildUpdate(project: Project, fields: FormFields): UpdateProject {
   const body: UpdateProject = {};
   const name = fields.name.trim();
   if (name !== project.name) body.name = name;
+  const description = fields.description.trim();
+  if ((description || null) !== project.description) body.description = description || null;
   const color = fields.color.trim();
-  if (color !== project.color) body.color = color;
+  if (color && color !== project.color) body.color = color;
   const icon = fields.icon.trim();
   if ((icon || null) !== project.icon) body.icon = icon || null;
   const leadId = fields.leadId || null;
   if (leadId !== project.leadId) body.leadId = leadId;
   return body;
-}
-
-async function postProject(body: CreateProject): Promise<Project> {
-  const json = await authedRequest<{ data: Project }>('/projects', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-  return json.data;
-}
-
-async function patchProject(id: string, body: UpdateProject): Promise<Project> {
-  const json = await authedRequest<{ data: Project }>(`/projects/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
-  return json.data;
 }

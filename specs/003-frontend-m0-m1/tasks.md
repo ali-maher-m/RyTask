@@ -176,15 +176,15 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 5 (MANDATORY) ⚠️
 
-- [ ] T053 [P] [US5] Unit test the capability map (default-deny parity, VIEWER read-only, org-admin bypass, owner-only transfer/delete, admin-vs-owner, last-owner guard) in `apps/web/test/capabilities.test.ts` (role-capability-matrix §"Rules the map MUST encode").
-- [ ] T054 [US5] e2e per-role gating + cross-tenant deep link → friendly not-found with 0 foreign data in `apps/web/e2e/signup-invite-accept-rbac.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T053 [P] [US5] Unit test the capability map (default-deny parity, VIEWER read-only, org-admin bypass, owner-only transfer/delete, admin-vs-owner, last-owner guard) in `apps/web/test/capabilities.test.ts` (role-capability-matrix §"Rules the map MUST encode").
+- [X] T054 [US5] e2e per-role gating + cross-tenant deep link → friendly not-found with 0 foreign data in `apps/web/e2e/signup-invite-accept-rbac.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 5
 
-- [ ] T055 [US5] Apply the capability map across surfaces (hide/disable + `Tooltip` reason) — shell nav, item-detail, board/list actions, project & org settings (FR-WEB-100).
-- [ ] T056 [US5] Tenant-safe rendering: route loaders map API `404`/`403` to `NotFoundState`/`ForbiddenState`, never rendering foreign data (FR-WEB-101, D10) via `apps/web/lib/api/errors.ts`.
-- [ ] T057 [P] [US5] Wire the shared SurfaceState (loading skeleton / empty / forbidden / error + retry) across every data surface (FR-WEB-102).
-- [ ] T058 [US5] Shared optimistic-reconcile mutation helper (snapshot → rollback → kind, recoverable message; offers refresh on `409`) in `apps/web/lib/query/optimistic.ts` (FR-WEB-103, D15).
+- [X] T055 [US5] Apply the capability map across surfaces (hide/disable + `Tooltip` reason) — shell nav, item-detail, board/list actions, project & org settings (FR-WEB-100).
+- [X] T056 [US5] Tenant-safe rendering: route loaders map API `404`/`403` to `NotFoundState`/`ForbiddenState`, never rendering foreign data (FR-WEB-101, D10) via `apps/web/lib/api/errors.ts`.
+- [X] T057 [P] [US5] Wire the shared SurfaceState (loading skeleton / empty / forbidden / error + retry) across every data surface (FR-WEB-102).
+- [X] T058 [US5] Shared optimistic-reconcile mutation helper (snapshot → rollback → kind, recoverable message; offers refresh on `409`) in `apps/web/lib/query/optimistic.ts` (FR-WEB-103, D15).
 
 **Checkpoint**: US5 — trust backbone in place; the P1 MVP slice is complete and demonstrable.
 
@@ -198,15 +198,15 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 6 (MANDATORY) ⚠️
 
-- [ ] T059 [P] [US6] Component test: deleting a status that still has items requires re-mapping first in `apps/web/test/project-settings.test.tsx` (FR-WEB-051).
-- [ ] T060 [US6] e2e two projects + new status/label + My Work across projects in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T059 [P] [US6] Component test: deleting a status that still has items requires re-mapping first in `apps/web/test/project-settings.test.tsx` (FR-WEB-051).
+- [X] T060 [US6] e2e two projects + new status/label + My Work across projects in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 6
 
-- [ ] T061 [US6] Projects list/switcher `app/(app)/projects/page.tsx` + create `app/(app)/projects/new/page.tsx` with project CRUD (name, key prefix, icon, color, description, lead; edit/archive/delete; archived hidden but recoverable) using `apps/web/components/project-form.tsx` (FR-WEB-050).
-- [ ] T062 [US6] Project settings — statuses (add/rename/reorder/recolor/delete, category-mapped; require re-mapping when deleting a populated status) in `apps/web/app/(app)/projects/[projectId]/settings/page.tsx` (FR-WEB-051).
-- [ ] T063 [P] [US6] Project settings — labels (create/edit/delete name + color; appliable + filterable) in the same settings surface (FR-WEB-052).
-- [ ] T064 [US6] "My Work" cross-project view (`GET /work-items?smart=my-issues`) in `apps/web/app/(app)/my-work/my-work-client.tsx` (FR-WEB-053).
+- [X] T061 [US6] Projects list/switcher `app/(app)/projects/page.tsx` + create `app/(app)/projects/new/page.tsx` with project CRUD (name, key prefix, icon, color, description, lead; edit/archive/delete; archived hidden but recoverable) using `apps/web/components/project-form.tsx` (FR-WEB-050).
+- [X] T062 [US6] Project settings — statuses (add/rename/reorder/recolor/delete, category-mapped; require re-mapping when deleting a populated status) in `apps/web/app/(app)/projects/[projectId]/settings/page.tsx` (FR-WEB-051).
+- [X] T063 [P] [US6] Project settings — labels (create/edit/delete name + color; appliable + filterable) in the same settings surface (FR-WEB-052).
+- [X] T064 [US6] "My Work" cross-project view (`GET /work-items?smart=my-issues`) in `apps/web/app/(app)/my-work/my-work-client.tsx` (FR-WEB-053).
 
 **Checkpoint**: US6 — work has a home; statuses/labels are the team's own; My Work is the personal hub.
 

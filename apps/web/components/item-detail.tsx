@@ -96,6 +96,14 @@ export interface ItemDetailProps {
   statuses?: Status[];
   /** Workspace labels available to attach (GET /labels). Optional — empty if not loaded. */
   labels?: Label[];
+  /**
+   * Cosmetic edit gate (US5, FR-WEB-100). When `false`, every mutating control is disabled and a
+   * read-only notice explains why — the server stays authoritative, so a slipped-through write
+   * still reconciles. Defaults to `true` so hosts that don't gate keep full editing.
+   */
+  canEdit?: boolean;
+  /** Plain-language reason shown when `canEdit` is false (from the capability map). */
+  editReason?: string;
   /** Called after any successful mutation with the server's fresh item (e.g. to refresh a board). */
   onChange?: (item: WorkItem) => void;
   /** Called when the user trashes the item (after a 204). */
@@ -108,10 +116,15 @@ export function ItemDetail({
   item,
   statuses = [],
   labels = [],
+  canEdit = true,
+  editReason = 'You have read-only access to this item. Ask a project admin to make changes.',
   onChange,
   onDeleted,
   onClose,
 }: ItemDetailProps) {
+  const readOnly = !canEdit;
+  // Disable every editing control while a request is in flight OR the role can't write here.
+  const locked = (busyState: boolean) => busyState || readOnly;
   const [current, setCurrent] = useState<WorkItem>(item);
   const [description, setDescription] = useState<string>(item.description ?? '');
   const [editingDescription, setEditingDescription] = useState(false);
@@ -371,6 +384,21 @@ export function ItemDetail({
         ) : null}
       </header>
 
+      {readOnly ? (
+        <p
+          data-testid="item-readonly-notice"
+          style={{
+            color: 'var(--fg-muted)',
+            fontSize: 'var(--fs-sm)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-2) var(--space-3)',
+            marginBottom: 'var(--space-3)',
+          }}
+        >
+          {editReason}
+        </p>
+      ) : null}
       {conflict ? (
         <p role="alert" style={{ color: 'var(--error)' }}>
           This item changed elsewhere. Refresh to get the latest before editing.
@@ -392,6 +420,7 @@ export function ItemDetail({
             type="button"
             onClick={() => setEditingDescription((v) => !v)}
             aria-pressed={editingDescription}
+            disabled={readOnly}
             style={{ ...CONTROL, padding: 'var(--space-1) var(--space-2)' }}
           >
             {editingDescription ? 'Preview' : 'Edit'}
@@ -405,7 +434,7 @@ export function ItemDetail({
             onChange={(e) => setDescription(e.target.value)}
             onBlur={saveDescription}
             rows={6}
-            disabled={busy}
+            disabled={locked(busy)}
             placeholder="Add a description… **markdown** supported (incl. - [ ] task lists)"
             style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
           />
@@ -434,7 +463,7 @@ export function ItemDetail({
             id={statusId}
             value={current.statusId}
             onChange={(e) => changeStatus(e.target.value)}
-            disabled={busy}
+            disabled={locked(busy)}
             style={CONTROL}
           >
             {statuses.map((s) => (
@@ -454,7 +483,7 @@ export function ItemDetail({
           id={priorityId}
           value={current.priority}
           onChange={(e) => changePriority(e.target.value as Priority)}
-          disabled={busy}
+          disabled={locked(busy)}
           style={CONTROL}
         >
           {PRIORITIES.map((p) => (
@@ -475,7 +504,7 @@ export function ItemDetail({
           defaultValue={current.assigneeId ?? ''}
           onBlur={(e) => changeAssignee(e.target.value.trim())}
           placeholder="Assignee user id (blank to unassign)"
-          disabled={busy}
+          disabled={locked(busy)}
           style={CONTROL}
         />
       </div>
@@ -490,7 +519,7 @@ export function ItemDetail({
           defaultValue={current.parentId ?? ''}
           onBlur={(e) => changeParent(e.target.value.trim())}
           placeholder="Parent work item id (blank for none)"
-          disabled={busy}
+          disabled={locked(busy)}
           style={CONTROL}
         />
       </div>
@@ -505,7 +534,7 @@ export function ItemDetail({
           step="any"
           defaultValue={current.estimateValue ?? ''}
           onBlur={(e) => changeEstimate(e.target.value)}
-          disabled={busy}
+          disabled={locked(busy)}
           style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
         />
       </div>
@@ -528,7 +557,7 @@ export function ItemDetail({
             type="date"
             value={current.startDate ?? ''}
             onChange={(e) => changeDate('startDate', e.target.value)}
-            disabled={busy}
+            disabled={locked(busy)}
             style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
           />
         </div>
@@ -541,7 +570,7 @@ export function ItemDetail({
             type="date"
             value={current.endDate ?? ''}
             onChange={(e) => changeDate('endDate', e.target.value)}
-            disabled={busy}
+            disabled={locked(busy)}
             style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
           />
         </div>
@@ -554,7 +583,7 @@ export function ItemDetail({
             type="date"
             value={current.dueDate ?? ''}
             onChange={(e) => changeDate('dueDate', e.target.value)}
-            disabled={busy}
+            disabled={locked(busy)}
             style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
           />
         </div>
@@ -597,7 +626,7 @@ export function ItemDetail({
                   <button
                     type="button"
                     onClick={() => removeLabel(id)}
-                    disabled={busy}
+                    disabled={locked(busy)}
                     aria-label={`Remove label ${label ? label.name : id}`}
                     style={{ ...CONTROL, border: 0, background: 'transparent', padding: 0 }}
                   >
@@ -618,7 +647,7 @@ export function ItemDetail({
             const v = e.target.value;
             if (v) void addLabel(v);
           }}
-          disabled={busy || available.length === 0}
+          disabled={locked(busy) || available.length === 0}
           style={CONTROL}
         >
           <option value={NONE_VALUE}>Choose a label…</option>
@@ -635,12 +664,12 @@ export function ItemDetail({
         <button
           type="button"
           onClick={trash}
-          disabled={busy}
+          disabled={locked(busy)}
           style={{ ...CONTROL, color: 'var(--error)', borderColor: 'var(--error)' }}
         >
           Move to trash
         </button>
-        <button type="button" onClick={restore} disabled={busy} style={CONTROL}>
+        <button type="button" onClick={restore} disabled={locked(busy)} style={CONTROL}>
           Restore
         </button>
       </div>

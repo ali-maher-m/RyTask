@@ -10,7 +10,10 @@ import {
   type WorkItemQuery,
 } from '@/components/filter-bar';
 import { ItemDetail } from '@/components/item-detail';
-import { listLabels } from '@/lib/api';
+import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
+import { type MappedError, listLabels, listProjectMembers, mapApiError } from '@/lib/api';
+import { useCapabilities } from '@/lib/auth/capability-context';
+import { useSession } from '@/lib/auth/session-context';
 import {
   type ViewConfig,
   carryOverHref,
@@ -22,10 +25,11 @@ import {
   type Label,
   PRIORITIES,
   type Priority,
+  type ProjectRoleDto,
   type Status,
   type WorkItem,
 } from '@rytask/contracts';
-import { Dialog } from '@rytask/ui';
+import { Dialog, EmptyState } from '@rytask/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -155,10 +159,14 @@ export function ListClient({ projectId }: { projectId: string }) {
     [cfg],
   );
 
+  const { can } = useCapabilities();
+  const { principal } = useSession();
   const [state, setState] = useState<ListState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<MappedError | null>(null);
   const [selected, setSelected] = useState<WorkItem | null>(null);
   const [labels, setLabels] = useState<Label[]>([]);
+  const [projectRole, setProjectRole] = useState<ProjectRoleDto | undefined>(undefined);
   const [quickAdd, setQuickAdd] = useState('');
   const [busy, setBusy] = useState(false);
   const [filterValue, setFilterValue] = useState<FilterBarValue>(initialBarValue);
@@ -176,8 +184,10 @@ export function ListClient({ projectId }: { projectId: string }) {
       ]);
       setState({ statuses, items });
       setError(null);
+      setLoadError(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load list');
+      setLoadError(mapApiError(e));
     }
   }, [projectId, query]);
 
@@ -190,6 +200,17 @@ export function ListClient({ projectId }: { projectId: string }) {
       .then(setLabels)
       .catch(() => setLabels([]));
   }, []);
+
+  // Resolve the principal's project role for cosmetic write gating (org OWNER/ADMIN bypass).
+  useEffect(() => {
+    const userId = principal?.user.id;
+    if (!userId) return;
+    listProjectMembers(projectId)
+      .then((members) => setProjectRole(members.find((m) => m.userId === userId)?.role))
+      .catch(() => setProjectRole(undefined));
+  }, [projectId, principal]);
+
+  const canWrite = can('workitem:write', { projectRole });
 
   const onFilterChange = useCallback((value: FilterBarValue) => {
     setFilterValue(value);
@@ -260,22 +281,23 @@ export function ListClient({ projectId }: { projectId: string }) {
     sort: query.sort && query.sort !== 'number' ? query.sort : undefined,
   });
 
-  if (error && !state) {
-    return (
-      <main style={MAIN}>
-        <h1 style={{ fontSize: 'var(--fs-h1)' }}>List</h1>
-        <p role="alert" style={{ color: 'var(--error)' }}>
-          {error}
-        </p>
-      </main>
-    );
-  }
-
   if (!state) {
     return (
       <main style={MAIN}>
         <h1 style={{ fontSize: 'var(--fs-h1)' }}>List</h1>
-        <p>Loading list…</p>
+        {loadError ? (
+          <SurfaceFeedback
+            error={loadError}
+            onRetry={load}
+            action={
+              <Link href="/projects" style={LINK}>
+                Back to projects
+              </Link>
+            }
+          />
+        ) : (
+          <SurfaceLoading label="Loading list…" />
+        )}
       </main>
     );
   }
@@ -283,7 +305,7 @@ export function ListClient({ projectId }: { projectId: string }) {
   const statusName = (id: string) => state.statuses.find((s) => s.id === id)?.name ?? id;
   const sections = buildSections(state.items, group, state.statuses, labels);
   const virtualize = !group && state.items.length > VIRTUALIZE_THRESHOLD;
-  const rowApi: RowApi = { statusName, busy, onPatch: patch, onOpen: setSelected };
+  const rowApi: RowApi = { statusName, busy, canWrite, onPatch: patch, onOpen: setSelected };
 
   return (
     <main style={MAIN}>
@@ -314,25 +336,34 @@ export function ListClient({ projectId }: { projectId: string }) {
         onSaveView={onSaveView}
       />
 
-      <form
-        onSubmit={onQuickAdd}
-        aria-label="Quick add work item"
-        style={{ margin: 'var(--space-3) 0' }}
-      >
-        <input
-          type="text"
-          data-testid="quick-add-input"
-          aria-label="Quick add"
-          placeholder="Capture a task…  @assignee #label !priority ^date"
-          value={quickAdd}
-          onChange={(e) => setQuickAdd(e.target.value)}
-          disabled={busy}
-          style={{ ...CONTROL, minWidth: 'min(420px, 100%)' }}
-        />
-        <button type="submit" disabled={busy || !quickAdd.trim()} style={ADD_BUTTON}>
-          Add
-        </button>
-      </form>
+      {canWrite ? (
+        <form
+          onSubmit={onQuickAdd}
+          aria-label="Quick add work item"
+          style={{ margin: 'var(--space-3) 0' }}
+        >
+          <input
+            type="text"
+            data-testid="quick-add-input"
+            aria-label="Quick add"
+            placeholder="Capture a task…  @assignee #label !priority ^date"
+            value={quickAdd}
+            onChange={(e) => setQuickAdd(e.target.value)}
+            disabled={busy}
+            style={{ ...CONTROL, minWidth: 'min(420px, 100%)' }}
+          />
+          <button type="submit" disabled={busy || !quickAdd.trim()} style={ADD_BUTTON}>
+            Add
+          </button>
+        </form>
+      ) : (
+        <p
+          data-testid="list-readonly"
+          style={{ color: 'var(--fg-muted)', margin: 'var(--space-3) 0' }}
+        >
+          You have read-only access to this project.
+        </p>
+      )}
 
       {error ? (
         <p role="alert" style={{ color: 'var(--error)' }}>
@@ -342,7 +373,14 @@ export function ListClient({ projectId }: { projectId: string }) {
 
       <div data-testid="work-item-list">
         {state.items.length === 0 ? (
-          <p>No work items yet — capture one above.</p>
+          <EmptyState
+            title="No work items yet"
+            description={
+              canWrite
+                ? 'Capture one with the quick-add above to get started.'
+                : 'Nothing matches this view yet.'
+            }
+          />
         ) : virtualize ? (
           <VirtualTable items={state.items} rowApi={rowApi} />
         ) : (
@@ -383,6 +421,7 @@ export function ListClient({ projectId }: { projectId: string }) {
             item={selected}
             statuses={state.statuses}
             labels={labels}
+            canEdit={canWrite}
             onChange={(updated) => {
               replaceItem(updated);
               setSelected(updated);
@@ -404,6 +443,8 @@ export function ListClient({ projectId }: { projectId: string }) {
 interface RowApi {
   statusName: (id: string) => string;
   busy: boolean;
+  /** Cosmetic write gate — inline editing controls are disabled when false (US5, FR-WEB-100). */
+  canWrite: boolean;
   onPatch: (
     item: WorkItem,
     fields: Partial<Pick<WorkItem, 'title' | 'priority' | 'dueDate'>>,
@@ -481,7 +522,8 @@ function HeaderRow() {
 }
 
 function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
-  const { statusName, busy, onPatch, onOpen } = rowApi;
+  const { statusName, busy, canWrite, onPatch, onOpen } = rowApi;
+  const disabled = busy || !canWrite;
   const [title, setTitle] = useState(item.title);
 
   // Keep the local draft in sync when the row is replaced by a server response.
@@ -508,7 +550,8 @@ function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
           type="text"
           aria-label={`Title for ${item.key}`}
           value={title}
-          disabled={busy}
+          disabled={disabled}
+          readOnly={!canWrite}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={commitTitle}
           onKeyDown={(e) => {
@@ -533,7 +576,7 @@ function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
         <select
           id={`prio-${item.id}`}
           value={item.priority}
-          disabled={busy}
+          disabled={disabled}
           onChange={(e) => void onPatch(item, { priority: e.target.value as Priority })}
           style={CONTROL}
         >
@@ -552,7 +595,7 @@ function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
           id={`due-${item.id}`}
           type="date"
           value={item.dueDate ?? ''}
-          disabled={busy}
+          disabled={disabled}
           onChange={(e) => void onPatch(item, { dueDate: e.target.value || null })}
           style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
         />

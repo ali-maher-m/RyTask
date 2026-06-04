@@ -1,7 +1,9 @@
 'use client';
 
 import { ApiError, authedRequest, clearSession } from '@/lib/api';
+import { useCapabilities } from '@/lib/auth/capability-context';
 import type { Membership, OrgSettings, Organization, Role } from '@rytask/contracts';
+import { ForbiddenState } from '@rytask/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useState } from 'react';
@@ -18,6 +20,7 @@ const DEMOTE_ROLES: Role[] = ['ADMIN', 'MEMBER', 'GUEST', 'VIEWER'];
 
 export function OrganizationClient() {
   const router = useRouter();
+  const { can } = useCapabilities();
   const formId = useId();
   const [org, setOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
@@ -122,6 +125,17 @@ export function OrganizationClient() {
     }
   }
 
+  // Cosmetic gate (US5, FR-WEB-100): only owners/admins manage org settings. The server stays
+  // authoritative — a non-admin who reaches this route sees a friendly forbidden, not the form.
+  if (!can('org:settings:write')) {
+    return (
+      <main>
+        <h1>Organization settings</h1>
+        <ForbiddenState description="Only owners and admins can change organization settings." />
+      </main>
+    );
+  }
+
   if (!org) {
     return (
       <main>
@@ -132,6 +146,8 @@ export function OrganizationClient() {
   }
 
   const transferable = members.filter((m) => m.role !== 'OWNER' && m.deactivatedAt === null);
+  const canTransfer = can('org:transfer');
+  const canDelete = can('org:delete');
 
   return (
     <main>
@@ -260,7 +276,7 @@ export function OrganizationClient() {
         </p>
 
         {error ? (
-          <p role="alert" style={{ color: '#b00020' }}>
+          <p role="alert" style={{ color: 'var(--error)' }}>
             {error}
           </p>
         ) : null}
@@ -271,82 +287,91 @@ export function OrganizationClient() {
         </button>
       </form>
 
-      <hr />
+      {canTransfer ? (
+        <>
+          <hr />
+          <h2>Transfer ownership</h2>
+          {transferable.length === 0 ? (
+            <p>Add another member first to transfer ownership.</p>
+          ) : (
+            <form aria-labelledby={`${formId}-transfer-heading`} onSubmit={transfer}>
+              <h3
+                id={`${formId}-transfer-heading`}
+                style={{ position: 'absolute', left: '-9999px' }}
+              >
+                Transfer ownership
+              </h3>
+              <p>
+                <label htmlFor={`${formId}-transfer-to`}>New owner</label>
+                <br />
+                <select
+                  id={`${formId}-transfer-to`}
+                  value={transferTo}
+                  disabled={busy}
+                  onChange={(e) => setTransferTo(e.target.value)}
+                >
+                  <option value="">Choose a member…</option>
+                  {transferable.map((m) => (
+                    <option key={m.userId} value={m.userId}>
+                      {m.user.name} ({m.user.email})
+                    </option>
+                  ))}
+                </select>
+              </p>
+              <p>
+                <label htmlFor={`${formId}-demote`}>Your role afterwards</label>
+                <br />
+                <select
+                  id={`${formId}-demote`}
+                  value={demoteSelfTo}
+                  disabled={busy}
+                  onChange={(e) => setDemoteSelfTo(e.target.value as Role | '')}
+                >
+                  <option value="">Stay an Owner</option>
+                  {DEMOTE_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </p>
+              <button type="submit" disabled={busy || !transferTo}>
+                Transfer ownership
+              </button>
+            </form>
+          )}
+        </>
+      ) : null}
 
-      <h2>Transfer ownership</h2>
-      {transferable.length === 0 ? (
-        <p>Add another member first to transfer ownership.</p>
-      ) : (
-        <form aria-labelledby={`${formId}-transfer-heading`} onSubmit={transfer}>
-          <h3 id={`${formId}-transfer-heading`} style={{ position: 'absolute', left: '-9999px' }}>
-            Transfer ownership
-          </h3>
+      {canDelete ? (
+        <>
+          <hr />
+          <h2>Delete this organization</h2>
           <p>
-            <label htmlFor={`${formId}-transfer-to`}>New owner</label>
-            <br />
-            <select
-              id={`${formId}-transfer-to`}
-              value={transferTo}
-              disabled={busy}
-              onChange={(e) => setTransferTo(e.target.value)}
-            >
-              <option value="">Choose a member…</option>
-              {transferable.map((m) => (
-                <option key={m.userId} value={m.userId}>
-                  {m.user.name} ({m.user.email})
-                </option>
-              ))}
-            </select>
+            This deactivates the organization and signs everyone out. Type the organization name (
+            <strong>{org.name}</strong>) to confirm.
           </p>
           <p>
-            <label htmlFor={`${formId}-demote`}>Your role afterwards</label>
+            <label htmlFor={`${formId}-confirm-delete`}>Confirm name</label>
             <br />
-            <select
-              id={`${formId}-demote`}
-              value={demoteSelfTo}
+            <input
+              id={`${formId}-confirm-delete`}
+              type="text"
+              value={confirmDelete}
               disabled={busy}
-              onChange={(e) => setDemoteSelfTo(e.target.value as Role | '')}
-            >
-              <option value="">Stay an Owner</option>
-              {DEMOTE_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+              onChange={(e) => setConfirmDelete(e.target.value)}
+            />
           </p>
-          <button type="submit" disabled={busy || !transferTo}>
-            Transfer ownership
+          <button
+            type="button"
+            onClick={() => void deleteOrg()}
+            disabled={busy || confirmDelete !== org.name}
+            style={{ color: 'var(--error)' }}
+          >
+            Delete organization
           </button>
-        </form>
-      )}
-
-      <hr />
-
-      <h2>Delete this organization</h2>
-      <p>
-        This deactivates the organization and signs everyone out. Type the organization name (
-        <strong>{org.name}</strong>) to confirm.
-      </p>
-      <p>
-        <label htmlFor={`${formId}-confirm-delete`}>Confirm name</label>
-        <br />
-        <input
-          id={`${formId}-confirm-delete`}
-          type="text"
-          value={confirmDelete}
-          disabled={busy}
-          onChange={(e) => setConfirmDelete(e.target.value)}
-        />
-      </p>
-      <button
-        type="button"
-        onClick={() => void deleteOrg()}
-        disabled={busy || confirmDelete !== org.name}
-        style={{ color: '#b00020' }}
-      >
-        Delete organization
-      </button>
+        </>
+      ) : null}
     </main>
   );
 }
