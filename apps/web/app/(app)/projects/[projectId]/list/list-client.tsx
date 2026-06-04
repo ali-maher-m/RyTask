@@ -14,6 +14,7 @@ import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
 import { type MappedError, listLabels, listProjectMembers, mapApiError } from '@/lib/api';
 import { useCapabilities } from '@/lib/auth/capability-context';
 import { useSession } from '@/lib/auth/session-context';
+import { useOrg } from '@/lib/org/org-context';
 import {
   type ViewConfig,
   carryOverHref,
@@ -161,6 +162,7 @@ export function ListClient({ projectId }: { projectId: string }) {
 
   const { can } = useCapabilities();
   const { principal } = useSession();
+  const { isOverdue } = useOrg();
   const [state, setState] = useState<ListState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<MappedError | null>(null);
@@ -302,10 +304,21 @@ export function ListClient({ projectId }: { projectId: string }) {
     );
   }
 
-  const statusName = (id: string) => state.statuses.find((s) => s.id === id)?.name ?? id;
+  const statusById = new Map(state.statuses.map((s) => [s.id, s]));
+  const statusName = (id: string) => statusById.get(id)?.name ?? id;
+  // Overdue is computed in the org timezone (FR-WEB-062), preferring the server's flag when present.
+  const overdueOf = (item: WorkItem) =>
+    item.overdue ?? isOverdue(item.dueDate, statusById.get(item.statusId)?.category);
   const sections = buildSections(state.items, group, state.statuses, labels);
   const virtualize = !group && state.items.length > VIRTUALIZE_THRESHOLD;
-  const rowApi: RowApi = { statusName, busy, canWrite, onPatch: patch, onOpen: setSelected };
+  const rowApi: RowApi = {
+    statusName,
+    overdueOf,
+    busy,
+    canWrite,
+    onPatch: patch,
+    onOpen: setSelected,
+  };
 
   return (
     <main style={MAIN}>
@@ -442,6 +455,8 @@ export function ListClient({ projectId }: { projectId: string }) {
 
 interface RowApi {
   statusName: (id: string) => string;
+  /** Whether an item is overdue, computed in the org timezone (US8, FR-WEB-062). */
+  overdueOf: (item: WorkItem) => boolean;
   busy: boolean;
   /** Cosmetic write gate — inline editing controls are disabled when false (US5, FR-WEB-100). */
   canWrite: boolean;
@@ -522,8 +537,9 @@ function HeaderRow() {
 }
 
 function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
-  const { statusName, busy, canWrite, onPatch, onOpen } = rowApi;
+  const { statusName, overdueOf, busy, canWrite, onPatch, onOpen } = rowApi;
   const disabled = busy || !canWrite;
+  const overdue = overdueOf(item);
   const [title, setTitle] = useState(item.title);
 
   // Keep the local draft in sync when the row is replaced by a server response.
@@ -591,14 +607,25 @@ function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
         <label className="sr-only" htmlFor={`due-${item.id}`}>
           Due date for {item.key}
         </label>
-        <input
-          id={`due-${item.id}`}
-          type="date"
-          value={item.dueDate ?? ''}
-          disabled={disabled}
-          onChange={(e) => void onPatch(item, { dueDate: e.target.value || null })}
-          style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
-        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <input
+            id={`due-${item.id}`}
+            type="date"
+            value={item.dueDate ?? ''}
+            disabled={disabled}
+            onChange={(e) => void onPatch(item, { dueDate: e.target.value || null })}
+            style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
+          />
+          {overdue ? (
+            <span
+              data-testid="overdue-badge"
+              aria-label={`${item.key} is overdue`}
+              style={OVERDUE_BADGE}
+            >
+              Overdue
+            </span>
+          ) : null}
+        </span>
       </td>
       <td style={CELL}>
         <button
@@ -653,4 +680,13 @@ const ADD_BUTTON: React.CSSProperties = {
   padding: 'var(--space-2) var(--space-3)',
   marginLeft: 'var(--space-2)',
   cursor: 'pointer',
+};
+const OVERDUE_BADGE: React.CSSProperties = {
+  background: 'var(--error-soft)',
+  color: 'var(--error-fg)',
+  border: '1px solid var(--error)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '0 var(--space-2)',
+  fontSize: 'var(--fs-micro)',
+  whiteSpace: 'nowrap',
 };

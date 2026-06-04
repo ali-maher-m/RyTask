@@ -1,67 +1,40 @@
 'use client';
 
+import {
+  type FilterCondition,
+  type FilterField,
+  type FilterGroup,
+  type FilterNode,
+  type FilterOperator,
+  type SortSpec,
+  encodeFilterAst,
+  encodeSortSpec,
+} from '@/lib/views/view-config';
 import { PRIORITIES, type Priority, STATUS_CATEGORIES } from '@rytask/contracts';
+import { X } from 'lucide-react';
 import { useCallback, useId, useMemo, useState } from 'react';
 
 /**
- * Filter bar (US5, T088, FR-VIEW-006/007/008/009). One control surface that drives the List
- * and Board reads through the single query engine (filter-dsl.md, D6):
- *   - a compound filter: a flat list of conditions joined by a top-level AND/OR (matches the
- *     spec's `priority = Urgent AND (label = bug OR overdue)` shape — see {@link FilterCondition});
- *   - multi-key sort + a single group field (FR-VIEW-007);
- *   - a save-view affordance → POST /api/v1/views (FR-VIEW-008);
- *   - a smart-view switcher (My Issues / Due Soon / Overdue / Urgent) → GET
- *     /work-items?smart=… (FR-VIEW-009, D7).
+ * Filter bar (US7, T068, FR-WEB-040/041/042/043). One token-only control surface that drives the
+ * List and Board reads through the single query engine (filter-dsl.md, D14):
+ *   - a **compound** filter — nested AND/OR groups (the spec's `priority = Urgent AND (label = bug
+ *     OR overdue)` shape is buildable, FR-WEB-040);
+ *   - a **multi-key** sort (priority sorts URGENT→NONE via `desc`) + a single group field (FR-WEB-041);
+ *   - a save-view affordance → POST /views (FR-WEB-042);
+ *   - an always-present **smart-view** switcher (My Issues / Due Soon / Overdue / Urgent) →
+ *     `GET /work-items?smart=…`, server-resolved live (FR-WEB-043, D7).
  *
- * It is presentation-only: it emits a typed {@link FilterBarValue} via `onChange` and a
- * compiled {@link WorkItemQuery} via `onQueryChange`/`buildWorkItemQuery`, and delegates the
- * actual POST to an injected `onSaveView`. The filter AST is serialized to base64(JSON) for the
- * `filter=` query param, mirroring how `list-work-items.provider.ts` decodes it
- * (`JSON.parse(Buffer.from(filter,'base64').toString('utf8'))`). Fully keyboard-accessible
- * (labelled controls, a `<fieldset>`/`<legend>` per group) for axe.
+ * The Filter AST + serializers live in `lib/views/view-config.ts` (the single source the round-trip
+ * test covers, T065); this component only *builds* the AST and emits a compiled {@link WorkItemQuery}.
+ * It offers only the operators a field's type allows (an invalid combo is rejected `400` server-side
+ * as a backstop). Fully keyboard-accessible (labelled controls, a `<fieldset>`/`<legend>` per group)
+ * for axe, and token-only (semantic `var(--*)`, lucide icons — never raw hex or emoji chrome).
  */
 
-// ── Filter AST (filter-dsl.md; mirrored client-side — not exported from @rytask/contracts) ──
+// ── Re-exported AST types (single source: view-config.ts) ──
+export type { FilterField, FilterOperator, FilterCondition, FilterGroup, FilterNode };
 
-/** A field the M1 query engine can filter on (filter-dsl.md field registry). */
-export type FilterField =
-  | 'status'
-  | 'statusCategory'
-  | 'priority'
-  | 'assignee'
-  | 'label'
-  | 'dueDate'
-  | 'overdue';
-
-/** An operator, validated against the field's type by the server's domain validator. */
-export type FilterOperator =
-  | 'eq'
-  | 'neq'
-  | 'in'
-  | 'nin'
-  | 'gt'
-  | 'lt'
-  | 'before'
-  | 'after'
-  | 'isNull'
-  | 'isEmpty';
-
-/** A single leaf condition (`field operator value`). `value` shape depends on the operator. */
-export interface FilterCondition {
-  field: FilterField;
-  operator: FilterOperator;
-  value: unknown;
-}
-
-/** A boolean group of conditions/sub-groups (groups nest arbitrarily — FR-VIEW-006). */
-export interface FilterGroup {
-  op: 'and' | 'or';
-  conditions: FilterNode[];
-}
-
-export type FilterNode = FilterGroup | FilterCondition;
-
-/** A sort key (multi-key, FR-VIEW-007). `priority desc` is URGENT→NONE by ordinal. */
+/** A sort key (multi-key, FR-WEB-041). `priority desc` is URGENT→NONE by ordinal. */
 export type SortField = 'priority' | 'dueDate' | 'startDate' | 'endDate' | 'createdAt' | 'number';
 export interface SortKey {
   field: SortField;
@@ -77,8 +50,8 @@ export type SmartView = '' | 'my-issues' | 'due-soon' | 'overdue' | 'urgent';
 /** The full, serializable state of the bar (the typed `value` for controlled use). */
 export interface FilterBarValue {
   smart: SmartView;
-  op: 'and' | 'or';
-  conditions: FilterCondition[];
+  /** The root compound group (nested AND/OR — FR-WEB-040). */
+  filter: FilterGroup;
   sort: SortKey[];
   group: GroupField;
 }
@@ -92,10 +65,11 @@ export interface WorkItemQuery {
   sort?: string;
 }
 
+const emptyRoot = (): FilterGroup => ({ op: 'and', conditions: [] });
+
 export const EMPTY_FILTER_BAR_VALUE: FilterBarValue = {
   smart: '',
-  op: 'and',
-  conditions: [],
+  filter: emptyRoot(),
   sort: [],
   group: '',
 };
@@ -147,6 +121,8 @@ const OPERATOR_LABELS: Record<FilterOperator, string> = {
   lt: 'is lower than',
   before: 'before',
   after: 'after',
+  between: 'between',
+  contains: 'contains',
   isNull: 'is empty',
   isEmpty: 'is empty',
 };
@@ -181,11 +157,8 @@ function specFor(field: FilterField): FieldSpec {
   return FIELD_SPECS.find((s) => s.field === field) ?? DEFAULT_FIELD_SPEC;
 }
 
-/** A fresh leaf condition with a valid operator/value for `field`. */
-function newCondition(field: FilterField): FilterCondition {
-  const spec = specFor(field);
-  const operator = spec.operators[0] ?? 'eq';
-  return { field, operator, value: defaultValue(spec, operator) };
+function isGroup(node: FilterNode): node is FilterGroup {
+  return 'op' in node;
 }
 
 function defaultValue(spec: FieldSpec, operator: FilterOperator): unknown {
@@ -197,27 +170,22 @@ function defaultValue(spec: FieldSpec, operator: FilterOperator): unknown {
       return STATUS_CATEGORIES[0];
     case 'bool':
       return true;
-    case 'date':
-      return '';
     default:
       return '';
   }
 }
 
-// ── AST compilation (filter-dsl.md) ─────────────────────────────────────────────────────────
-
-/** UTF-8-safe base64 of a JSON value (mirrors the server's `Buffer.from(b64,'base64')`). */
-export function encodeFilter(node: FilterNode): string {
-  const json = JSON.stringify(node);
-  // btoa handles only Latin-1; round-trip through encodeURIComponent for full UTF-8 safety.
-  const bytes = new TextEncoder().encode(json);
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary);
+/** A fresh leaf condition with a valid operator/value for `field`. */
+function newCondition(field: FilterField): FilterCondition {
+  const spec = specFor(field);
+  const operator = spec.operators[0] ?? 'eq';
+  return { field, operator, value: defaultValue(spec, operator) };
 }
 
-/** A label condition's `value` is an array of ids; others carry a scalar. Normalize for the AST. */
-function toAstCondition(c: FilterCondition): FilterCondition {
+// ── AST normalization → compiled query (filter-dsl.md) ─────────────────────────────────────
+
+/** A label `in`/`nin` value is an array of ids; `isNull`/`isEmpty` carry no value; others a scalar. */
+function normalizeCondition(c: FilterCondition): FilterCondition {
   const spec = specFor(c.field);
   if (c.operator === 'isNull' || c.operator === 'isEmpty') {
     return { field: c.field, operator: c.operator, value: null };
@@ -236,39 +204,39 @@ function toAstCondition(c: FilterCondition): FilterCondition {
   return { field: c.field, operator: c.operator, value: c.value };
 }
 
-/** Build the compound filter AST from the bar's conditions, or `undefined` if empty. */
+/** Normalize a node, dropping empty sub-groups; returns `undefined` for an empty group. */
+function normalizeNode(node: FilterNode): FilterNode | undefined {
+  if (!isGroup(node)) return normalizeCondition(node);
+  const conditions = node.conditions
+    .map(normalizeNode)
+    .filter((n): n is FilterNode => n !== undefined);
+  if (conditions.length === 0) return undefined;
+  return { op: node.op, conditions };
+}
+
+/** Build the compound filter AST from the bar's root group, or `undefined` if empty. */
 export function buildFilterAst(value: FilterBarValue): FilterGroup | undefined {
-  if (value.conditions.length === 0) return undefined;
-  return { op: value.op, conditions: value.conditions.map(toAstCondition) };
-}
-
-/** Serialize the multi-key sort to the `-priority,due_date` wire form (filter-dsl.md). */
-export function encodeSort(sort: SortKey[]): string | undefined {
-  if (sort.length === 0) return undefined;
-  return sort.map((k) => `${k.dir === 'desc' ? '-' : ''}${snake(k.field)}`).join(',');
-}
-
-function snake(s: string): string {
-  return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+  const normalized = normalizeNode(value.filter);
+  if (!normalized || !isGroup(normalized)) {
+    // A single bare condition is wrapped so the wire form is always a group (server expects a node).
+    return normalized ? { op: 'and', conditions: [normalized] } : undefined;
+  }
+  return normalized;
 }
 
 /** Compile the bar's value into the `WorkItemQuery` consumed by `listAllWorkItems`. */
 export function buildWorkItemQuery(value: FilterBarValue, projectId?: string): WorkItemQuery {
+  const sort = encodeSortSpec(value.sort as SortSpec[]);
   if (value.smart) {
     // A smart view is the live, code-defined set; it ignores the compound filter (D7).
-    return {
-      projectId,
-      smart: value.smart,
-      group: value.group || undefined,
-      sort: encodeSort(value.sort),
-    };
+    return { projectId, smart: value.smart, group: value.group || undefined, sort };
   }
   const ast = buildFilterAst(value);
   return {
     projectId,
-    filter: ast ? encodeFilter(ast) : undefined,
+    filter: ast ? encodeFilterAst(ast) : undefined,
     group: value.group || undefined,
-    sort: encodeSort(value.sort),
+    sort,
   };
 }
 
@@ -331,38 +299,11 @@ export function FilterBar({
   // ── smart-view switcher ─────────────────────────────────────────────────────────────────
   const setSmart = (smart: SmartView) => update({ smart });
 
-  // ── conditions ──────────────────────────────────────────────────────────────────────────
-  const addCondition = () =>
-    update({ smart: '', conditions: [...value.conditions, newCondition('priority')] });
-
-  const removeCondition = (index: number) =>
-    update({ conditions: value.conditions.filter((_, i) => i !== index) });
-
-  const setConditionField = (index: number, field: FilterField) =>
-    update({
-      conditions: value.conditions.map((c, i) => (i === index ? newCondition(field) : c)),
-    });
-
-  const setConditionOperator = (index: number, operator: FilterOperator) =>
-    update({
-      conditions: value.conditions.map((c, i) =>
-        i === index ? { ...c, operator, value: defaultValue(specFor(c.field), operator) } : c,
-      ),
-    });
-
-  const setConditionValue = (index: number, v: unknown) =>
-    update({
-      conditions: value.conditions.map((c, i) => (i === index ? { ...c, value: v } : c)),
-    });
-
   // ── sort ────────────────────────────────────────────────────────────────────────────────
   const addSort = () => update({ sort: [...value.sort, { field: 'priority', dir: 'desc' }] });
-
   const removeSort = (index: number) => update({ sort: value.sort.filter((_, i) => i !== index) });
-
   const setSortField = (index: number, field: SortField) =>
     update({ sort: value.sort.map((k, i) => (i === index ? { ...k, field } : k)) });
-
   const setSortDir = (index: number, dir: 'asc' | 'desc') =>
     update({ sort: value.sort.map((k, i) => (i === index ? { ...k, dir } : k)) });
 
@@ -397,9 +338,10 @@ export function FilterBar({
 
   const activeSummary = useMemo(() => {
     if (value.smart) return SMART_VIEWS.find((s) => s.view === value.smart)?.label ?? value.smart;
-    if (value.conditions.length === 0) return 'No filter';
-    return `${value.conditions.length} condition${value.conditions.length > 1 ? 's' : ''}`;
-  }, [value.smart, value.conditions.length]);
+    const n = value.filter.conditions.length;
+    if (n === 0) return 'No filter';
+    return `${n} condition${n > 1 ? 's' : ''}`;
+  }, [value.smart, value.filter.conditions.length]);
 
   return (
     <section aria-label="Filter and view controls" data-testid="filter-bar" style={WRAP}>
@@ -420,45 +362,15 @@ export function FilterBar({
         ))}
       </fieldset>
 
-      {/* Compound filter */}
+      {/* Compound filter (nested AND/OR) */}
       <fieldset style={FIELDSET} disabled={value.smart !== ''}>
         <legend style={LEGEND}>Filter ({activeSummary})</legend>
-
-        {value.conditions.length > 1 ? (
-          <div style={ROW}>
-            <label htmlFor={`${baseId}-join`} style={LABEL}>
-              Match
-            </label>
-            <select
-              id={`${baseId}-join`}
-              value={value.op}
-              onChange={(e) => update({ op: e.target.value as 'and' | 'or' })}
-            >
-              <option value="and">all (AND)</option>
-              <option value="or">any (OR)</option>
-            </select>
-            <span style={LABEL}>of the following:</span>
-          </div>
-        ) : null}
-
-        <ul style={LIST} aria-label="Filter conditions">
-          {value.conditions.map((c, i) => (
-            <ConditionRow
-              // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and stateless
-              key={i}
-              idPrefix={`${baseId}-c${i}`}
-              condition={c}
-              onField={(f) => setConditionField(i, f)}
-              onOperator={(o) => setConditionOperator(i, o)}
-              onValue={(v) => setConditionValue(i, v)}
-              onRemove={() => removeCondition(i)}
-            />
-          ))}
-        </ul>
-
-        <button type="button" onClick={addCondition} data-testid="add-condition">
-          + Add condition
-        </button>
+        <GroupEditor
+          group={value.filter}
+          idPrefix={`${baseId}-root`}
+          depth={0}
+          onChange={(filter) => update({ filter })}
+        />
       </fieldset>
 
       {/* Group + sort */}
@@ -471,6 +383,7 @@ export function FilterBar({
           value={value.group}
           onChange={(e) => update({ group: e.target.value as GroupField })}
           data-testid="group-select"
+          style={CONTROL}
         >
           {GROUP_FIELDS.map((g) => (
             <option key={g.field || 'none'} value={g.field}>
@@ -496,6 +409,7 @@ export function FilterBar({
                 id={`${baseId}-s${i}-field`}
                 value={k.field}
                 onChange={(e) => setSortField(i, e.target.value as SortField)}
+                style={CONTROL}
               >
                 {SORT_FIELDS.map((f) => (
                   <option key={f.field} value={f.field}>
@@ -510,21 +424,16 @@ export function FilterBar({
                 id={`${baseId}-s${i}-dir`}
                 value={k.dir}
                 onChange={(e) => setSortDir(i, e.target.value as 'asc' | 'desc')}
+                style={CONTROL}
               >
                 <option value="asc">ascending</option>
                 <option value="desc">descending</option>
               </select>
-              <button
-                type="button"
-                onClick={() => removeSort(i)}
-                aria-label={`Remove sort key ${i + 1}`}
-              >
-                ✕
-              </button>
+              <IconButton label={`Remove sort key ${i + 1}`} onClick={() => removeSort(i)} />
             </li>
           ))}
         </ul>
-        <button type="button" onClick={addSort} data-testid="add-sort">
+        <button type="button" onClick={addSort} data-testid="add-sort" style={GHOST_BUTTON}>
           + Add sort key
         </button>
       </fieldset>
@@ -542,6 +451,7 @@ export function FilterBar({
             onChange={(e) => setViewName(e.target.value)}
             placeholder="e.g. Urgent bugs"
             data-testid="view-name"
+            style={CONTROL}
           />
           <label className="sr-only" htmlFor={`${baseId}-view-scope`}>
             View scope
@@ -550,19 +460,136 @@ export function FilterBar({
             id={`${baseId}-view-scope`}
             value={viewScope}
             onChange={(e) => setViewScope(e.target.value as 'PERSONAL' | 'SHARED')}
+            style={CONTROL}
           >
             <option value="PERSONAL">Personal</option>
             <option value="SHARED">Shared</option>
           </select>
-          <button type="submit" disabled={!canSave} data-testid="save-view">
+          <button type="submit" disabled={!canSave} data-testid="save-view" style={ADD_BUTTON}>
             {saving ? 'Saving…' : 'Save view'}
           </button>
-          {value.smart ? <small>Clear the smart view to save a custom filter.</small> : null}
+          {value.smart ? (
+            <small style={{ color: 'var(--fg-muted)' }}>
+              Clear the smart view to save a custom filter.
+            </small>
+          ) : null}
         </form>
       ) : null}
 
-      {saveError ? <p role="alert">{saveError}</p> : null}
+      {saveError ? (
+        <p role="alert" style={{ color: 'var(--error)' }}>
+          {saveError}
+        </p>
+      ) : null}
     </section>
+  );
+}
+
+// ── Group editor (recursive: conditions + nested sub-groups, FR-WEB-040) ─────────────────────
+
+function GroupEditor({
+  group,
+  idPrefix,
+  depth,
+  onChange,
+  onRemove,
+}: {
+  group: FilterGroup;
+  idPrefix: string;
+  depth: number;
+  onChange: (group: FilterGroup) => void;
+  onRemove?: () => void;
+}) {
+  const setOp = (op: 'and' | 'or') => onChange({ ...group, op });
+  const setChild = (index: number, node: FilterNode) =>
+    onChange({ ...group, conditions: group.conditions.map((c, i) => (i === index ? node : c)) });
+  const removeChild = (index: number) =>
+    onChange({ ...group, conditions: group.conditions.filter((_, i) => i !== index) });
+  const addCondition = () =>
+    onChange({ ...group, conditions: [...group.conditions, newCondition('priority')] });
+  const addGroup = () =>
+    onChange({
+      ...group,
+      conditions: [
+        ...group.conditions,
+        { op: group.op === 'and' ? 'or' : 'and', conditions: [newCondition('priority')] },
+      ],
+    });
+
+  return (
+    <div
+      style={depth > 0 ? NESTED_GROUP : undefined}
+      data-testid={depth > 0 ? 'filter-group' : undefined}
+    >
+      <div style={ROW}>
+        {group.conditions.length > 1 ? (
+          <>
+            <label htmlFor={`${idPrefix}-join`} style={LABEL}>
+              Match
+            </label>
+            <select
+              id={`${idPrefix}-join`}
+              value={group.op}
+              onChange={(e) => setOp(e.target.value as 'and' | 'or')}
+              style={CONTROL}
+            >
+              <option value="and">all (AND)</option>
+              <option value="or">any (OR)</option>
+            </select>
+            <span style={LABEL}>of:</span>
+          </>
+        ) : null}
+        {onRemove ? <IconButton label="Remove group" onClick={onRemove} /> : null}
+      </div>
+
+      <ul style={LIST} aria-label="Filter conditions">
+        {group.conditions.map((child, i) =>
+          isGroup(child) ? (
+            <li
+              // biome-ignore lint/suspicious/noArrayIndexKey: nodes are positional and stateless
+              key={i}
+              style={{ listStyle: 'none' }}
+            >
+              <GroupEditor
+                group={child}
+                idPrefix={`${idPrefix}-g${i}`}
+                depth={depth + 1}
+                onChange={(node) => setChild(i, node)}
+                onRemove={() => removeChild(i)}
+              />
+            </li>
+          ) : (
+            <ConditionRow
+              // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and stateless
+              key={i}
+              idPrefix={`${idPrefix}-c${i}`}
+              condition={child}
+              onChange={(c) => setChild(i, c)}
+              onRemove={() => removeChild(i)}
+            />
+          ),
+        )}
+      </ul>
+
+      <div style={ROW}>
+        <button
+          type="button"
+          onClick={addCondition}
+          data-testid={depth === 0 ? 'add-condition' : undefined}
+          style={GHOST_BUTTON}
+        >
+          + Add condition
+        </button>
+        <button
+          type="button"
+          onClick={addGroup}
+          data-testid={depth === 0 ? 'add-group' : undefined}
+          style={GHOST_BUTTON}
+        >
+          + Add group
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -571,20 +598,21 @@ export function FilterBar({
 function ConditionRow({
   idPrefix,
   condition,
-  onField,
-  onOperator,
-  onValue,
+  onChange,
   onRemove,
 }: {
   idPrefix: string;
   condition: FilterCondition;
-  onField: (field: FilterField) => void;
-  onOperator: (operator: FilterOperator) => void;
-  onValue: (value: unknown) => void;
+  onChange: (condition: FilterCondition) => void;
   onRemove: () => void;
 }) {
   const spec = specFor(condition.field);
   const noValue = condition.operator === 'isNull' || condition.operator === 'isEmpty';
+
+  const onField = (field: FilterField) => onChange(newCondition(field));
+  const onOperator = (operator: FilterOperator) =>
+    onChange({ ...condition, operator, value: defaultValue(specFor(condition.field), operator) });
+  const onValue = (value: unknown) => onChange({ ...condition, value });
 
   return (
     <li style={ROW} data-testid="condition-row">
@@ -595,6 +623,7 @@ function ConditionRow({
         id={`${idPrefix}-field`}
         value={condition.field}
         onChange={(e) => onField(e.target.value as FilterField)}
+        style={CONTROL}
       >
         {FIELD_SPECS.map((s) => (
           <option key={s.field} value={s.field}>
@@ -610,6 +639,7 @@ function ConditionRow({
         id={`${idPrefix}-op`}
         value={condition.operator}
         onChange={(e) => onOperator(e.target.value as FilterOperator)}
+        style={CONTROL}
       >
         {spec.operators.map((op) => (
           <option key={op} value={op}>
@@ -622,9 +652,7 @@ function ConditionRow({
         <ConditionValue idPrefix={idPrefix} spec={spec} value={condition.value} onValue={onValue} />
       )}
 
-      <button type="button" onClick={onRemove} aria-label="Remove condition">
-        ✕
-      </button>
+      <IconButton label="Remove condition" onClick={onRemove} />
     </li>
   );
 }
@@ -657,6 +685,7 @@ function ConditionValue({
           id={id}
           value={typeof value === 'string' ? value : 'URGENT'}
           onChange={(e) => onValue(e.target.value)}
+          style={CONTROL}
         >
           {PRIORITIES.map((p) => (
             <option key={p} value={p}>
@@ -671,6 +700,7 @@ function ConditionValue({
           id={id}
           value={typeof value === 'string' ? value : STATUS_CATEGORIES[0]}
           onChange={(e) => onValue(e.target.value)}
+          style={CONTROL}
         >
           {STATUS_CATEGORIES.map((c) => (
             <option key={c} value={c}>
@@ -685,6 +715,7 @@ function ConditionValue({
           id={id}
           value={value === true || value === 'true' ? 'true' : 'false'}
           onChange={(e) => onValue(e.target.value === 'true')}
+          style={CONTROL}
         >
           <option value="true">true</option>
           <option value="false">false</option>
@@ -697,6 +728,7 @@ function ConditionValue({
           type="date"
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onValue(e.target.value)}
+          style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
         />,
       );
     default:
@@ -707,25 +739,36 @@ function ConditionValue({
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onValue(e.target.value)}
           placeholder="value (comma-separate ids for is any of)"
+          style={CONTROL}
         />,
       );
   }
 }
 
-// ── Inline styles (mirrors the existing client components' inline-style approach) ────────────
+/** A small icon-only button (lucide X) used for remove affordances — never an emoji glyph. */
+function IconButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} style={ICON_BUTTON}>
+      <X size={16} aria-hidden="true" />
+    </button>
+  );
+}
+
+// ── Token-only inline styles ─────────────────────────────────────────────────────────────────
 
 const WRAP: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.75rem',
-  padding: '0.75rem',
-  border: '1px solid #e3e5e8',
-  borderRadius: 8,
-  marginBottom: '1rem',
+  gap: 'var(--space-3)',
+  padding: 'var(--space-3)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--surface)',
+  marginBottom: 'var(--space-4)',
 };
 const ROW: React.CSSProperties = {
   display: 'flex',
-  gap: '0.5rem',
+  gap: 'var(--space-2)',
   alignItems: 'center',
   flexWrap: 'wrap',
   listStyle: 'none',
@@ -734,25 +777,80 @@ const ROW: React.CSSProperties = {
 const LIST: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.5rem',
+  gap: 'var(--space-2)',
   listStyle: 'none',
-  margin: '0.5rem 0',
+  margin: 'var(--space-2) 0',
   padding: 0,
 };
-const FIELDSET: React.CSSProperties = { border: '1px solid #e3e5e8', borderRadius: 6, margin: 0 };
-const LEGEND: React.CSSProperties = { fontSize: '0.85rem', fontWeight: 600, padding: '0 0.25rem' };
-const LABEL: React.CSSProperties = { fontSize: '0.85rem', color: '#444' };
+const FIELDSET: React.CSSProperties = {
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-sm)',
+  margin: 0,
+  padding: 'var(--space-2) var(--space-3)',
+};
+const NESTED_GROUP: React.CSSProperties = {
+  borderLeft: '2px solid var(--border-subtle)',
+  paddingLeft: 'var(--space-3)',
+  marginLeft: 'var(--space-2)',
+};
+const LEGEND: React.CSSProperties = {
+  fontSize: 'var(--fs-micro)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  fontWeight: 'var(--w-medium)',
+  color: 'var(--fg-muted)',
+  padding: '0 var(--space-1)',
+};
+const LABEL: React.CSSProperties = { fontSize: 'var(--fs-sm)', color: 'var(--fg-muted)' };
+const CONTROL: React.CSSProperties = {
+  font: 'inherit',
+  color: 'var(--fg)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+};
 const CHIP: React.CSSProperties = {
-  border: '1px solid #d9dce0',
-  background: '#fff',
-  borderRadius: 999,
-  padding: '0.25rem 0.625rem',
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
+  color: 'var(--fg)',
+  borderRadius: 'var(--radius-pill)',
+  padding: 'var(--space-1) var(--space-3)',
   cursor: 'pointer',
   font: 'inherit',
 };
 const CHIP_ON: React.CSSProperties = {
   ...CHIP,
-  background: '#2563eb',
-  color: '#fff',
-  borderColor: '#2563eb',
+  background: 'var(--primary-soft)',
+  color: 'var(--primary-soft-fg)',
+  borderColor: 'var(--primary-border)',
+};
+const GHOST_BUTTON: React.CSSProperties = {
+  font: 'inherit',
+  color: 'var(--fg)',
+  background: 'transparent',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+  cursor: 'pointer',
+};
+const ADD_BUTTON: React.CSSProperties = {
+  font: 'inherit',
+  color: 'var(--fg-on-accent)',
+  background: 'var(--accent)',
+  border: '1px solid var(--accent)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-3)',
+  cursor: 'pointer',
+};
+const ICON_BUTTON: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
+  color: 'var(--fg-muted)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1)',
+  cursor: 'pointer',
 };

@@ -106,6 +106,7 @@ const SORT_FIELD_FROM_SNAKE: Record<string, string> = {
   start_date: 'startDate',
   end_date: 'endDate',
   created_at: 'createdAt',
+  updated_at: 'updatedAt',
   number: 'number',
 };
 
@@ -127,4 +128,250 @@ export function decodeSort(wire: string | null | undefined): DecodedSortKey[] {
     if (field) out.push({ field, dir: desc ? 'desc' : 'asc' });
   }
   return out;
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Structured view model (US7, T067, contracts/view-config.md — mirrors 001 filter-dsl.md).
+//
+// The wire-form `ViewConfig` above is the URL *carrier* used by the Board/List carry-over (its
+// `filter`/`sort` are already-serialized strings). `ViewSpec` is the *structured* model the FilterBar
+// builds and the round-trip serializer (T065) covers: a typed Filter AST + multi-key sort + group +
+// optional smart key / scope / name. `serializeViewSpec`/`deserializeViewSpec` are an exact inverse
+// pair (the round-trip invariant), and `viewSpecToWorkItemQuery` compiles a spec to the same wire
+// query the carrier uses — so saved views, the FilterBar, and the carry-over all hit one query path.
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+
+/** A field the M1 query engine can filter on (filter-dsl.md field registry — full set). */
+export type FilterField =
+  | 'status'
+  | 'statusCategory'
+  | 'priority'
+  | 'assignee'
+  | 'label'
+  | 'project'
+  | 'parent'
+  | 'dueDate'
+  | 'startDate'
+  | 'endDate'
+  | 'overdue'
+  | 'text'
+  | 'createdAt'
+  | 'updatedAt';
+
+/** An operator, validated against the field's type by the server's domain validator. */
+export type FilterOperator =
+  | 'eq'
+  | 'neq'
+  | 'in'
+  | 'nin'
+  | 'gt'
+  | 'lt'
+  | 'before'
+  | 'after'
+  | 'between'
+  | 'contains'
+  | 'isNull'
+  | 'isEmpty';
+
+/** A single leaf condition (`field operator value`). `value` shape depends on the operator. */
+export interface FilterCondition {
+  field: FilterField;
+  operator: FilterOperator;
+  value: unknown;
+}
+
+/** A boolean group of conditions / sub-groups (groups nest arbitrarily — FR-WEB-040). */
+export interface FilterGroup {
+  op: 'and' | 'or';
+  conditions: FilterNode[];
+}
+
+export type FilterNode = FilterGroup | FilterCondition;
+
+/** A sortable field (multi-key — FR-WEB-041). `priority desc` orders URGENT→NONE by ordinal. */
+export type SortKey =
+  | 'priority'
+  | 'dueDate'
+  | 'startDate'
+  | 'endDate'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'number';
+
+/** One key of the multi-key sort. */
+export interface SortSpec {
+  field: SortKey;
+  dir: 'asc' | 'desc';
+}
+
+/** A group-by field (filter-dsl.md grouping). `'none'` = ungrouped. */
+export type GroupKey = 'status' | 'assignee' | 'priority' | 'label' | 'project' | 'none';
+
+/** A code-defined smart view (D7/D14); server-resolved live (`me`/`overdue` bound server-side). */
+export type SmartKey = 'my-issues' | 'due-soon' | 'overdue' | 'urgent';
+
+/**
+ * The structured view a List/Board/My-Work/saved/smart surface renders from (contracts/view-config.md).
+ * When `smart` is set the server resolves the live set and `filter` is ignored. `scope`/`name` carry
+ * a saved view's visibility + label.
+ */
+export interface ViewSpec {
+  layout: ViewLayout;
+  group?: GroupKey;
+  sort?: SortSpec[];
+  filter?: FilterNode;
+  smart?: SmartKey;
+  scope?: 'personal' | 'shared';
+  name?: string;
+}
+
+// ── Filter AST ⇄ base64 JSON (mirrors the server's `Buffer.from(filter,'base64')`, FR-WEB-040) ──
+
+/** UTF-8-safe base64 of a Filter AST → the `?filter=` param the M1 query engine decodes. */
+export function encodeFilterAst(node: FilterNode): string {
+  const json = JSON.stringify(node);
+  // btoa handles only Latin-1; widen to bytes first so multi-byte values survive the round-trip.
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
+/** Decode a `?filter=` base64 JSON param back to a Filter AST (`undefined` on absent/garbled input). */
+export function decodeFilterAst(b64: string | null | undefined): FilterNode | undefined {
+  if (!b64) return undefined;
+  try {
+    const binary = atob(b64);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    const json = new TextDecoder().decode(bytes);
+    return JSON.parse(json) as FilterNode;
+  } catch {
+    return undefined;
+  }
+}
+
+// ── Multi-key sort ⇄ `-priority,due_date` wire form (filter-dsl.md) ──
+
+const SORT_FIELD_TO_SNAKE: Record<SortKey, string> = {
+  priority: 'priority',
+  dueDate: 'due_date',
+  startDate: 'start_date',
+  endDate: 'end_date',
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  number: 'number',
+};
+
+/** Serialize the multi-key sort to the `-priority,due_date` wire form (`undefined` when empty). */
+export function encodeSortSpec(sort: SortSpec[] | undefined): string | undefined {
+  if (!sort || sort.length === 0) return undefined;
+  return sort.map((k) => `${k.dir === 'desc' ? '-' : ''}${SORT_FIELD_TO_SNAKE[k.field]}`).join(',');
+}
+
+/** Decode the `-priority,due_date` wire form back to typed sort keys. */
+export function decodeSortSpec(wire: string | null | undefined): SortSpec[] {
+  return decodeSort(wire).map((k) => ({ field: k.field as SortKey, dir: k.dir }));
+}
+
+// ── Round-trip: ViewSpec ⇄ URLSearchParams (the T065 invariant) ──
+
+/**
+ * Serialize a `ViewSpec` to a stable `URLSearchParams`: `filter`→base64 JSON (or `smart`→key),
+ * `sort`→wire form, `group`/`scope`/`name`→keys, `layout` carried explicitly so the inverse is
+ * total. Params are sorted so the same spec always yields the same string.
+ */
+export function serializeViewSpec(spec: ViewSpec): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set('layout', spec.layout);
+  if (spec.smart) {
+    params.set('smart', spec.smart);
+  } else if (spec.filter) {
+    params.set('filter', encodeFilterAst(spec.filter));
+  }
+  const sort = encodeSortSpec(spec.sort);
+  if (sort) params.set('sort', sort);
+  if (spec.group && spec.group !== 'none') params.set('group', spec.group);
+  if (spec.scope) params.set('scope', spec.scope);
+  if (spec.name) params.set('name', spec.name);
+  params.sort();
+  return params;
+}
+
+/**
+ * Deserialize a `ViewSpec` from search params — the exact inverse of {@link serializeViewSpec}.
+ * `deserializeViewSpec(serializeViewSpec(cfg))` is structurally equal to `cfg` for every supported
+ * field/operator/value, including nested groups (round-trip invariant, view-config.md).
+ */
+export function deserializeViewSpec(params: ParamReader): ViewSpec {
+  const spec: ViewSpec = { layout: (params.get('layout') as ViewLayout) ?? 'list' };
+  const smart = params.get('smart');
+  if (smart) {
+    spec.smart = smart as SmartKey;
+  } else {
+    const filter = decodeFilterAst(params.get('filter'));
+    if (filter) spec.filter = filter;
+  }
+  const sort = decodeSortSpec(params.get('sort'));
+  if (sort.length) spec.sort = sort;
+  const group = params.get('group');
+  if (group) spec.group = group as GroupKey;
+  const scope = params.get('scope');
+  if (scope === 'personal' || scope === 'shared') spec.scope = scope;
+  const name = params.get('name');
+  if (name) spec.name = name;
+  return spec;
+}
+
+/** Compile a `ViewSpec` to the wire `WorkItemQuery` a List/Board read consumes (one query path). */
+export function viewSpecToWorkItemQuery(spec: ViewSpec, projectId?: string): ViewWorkItemQuery {
+  const group = spec.group && spec.group !== 'none' ? spec.group : undefined;
+  const sort = encodeSortSpec(spec.sort);
+  if (spec.smart) {
+    return { projectId, smart: spec.smart, group, sort };
+  }
+  return {
+    projectId,
+    filter: spec.filter ? encodeFilterAst(spec.filter) : undefined,
+    group,
+    sort,
+  };
+}
+
+/** A JSON object that is a Filter AST node (has a group `op` or a leaf `field`), else `undefined`. */
+function asFilterNode(value: unknown): FilterNode | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const obj = value as Record<string, unknown>;
+  if (obj.op === 'and' || obj.op === 'or') return obj as unknown as FilterGroup;
+  if (typeof obj.field === 'string') return obj as unknown as FilterCondition;
+  return undefined;
+}
+
+/** A persisted saved view's stored fields, as restored from `GET /views/{id}` (loose JSON). */
+export interface SavedViewLike {
+  kind: 'BOARD' | 'LIST';
+  scope: 'PERSONAL' | 'SHARED';
+  name: string;
+  projectId: string | null;
+  filters: Record<string, unknown>;
+  grouping: Record<string, unknown> | null;
+  sort: Array<Record<string, unknown>>;
+}
+
+/** Reconstruct a `ViewSpec` from a saved view row so reopening restores its full config (T069). */
+export function savedViewToViewSpec(view: SavedViewLike): ViewSpec {
+  const spec: ViewSpec = { layout: view.kind === 'BOARD' ? 'board' : 'list' };
+  const filter = asFilterNode(view.filters);
+  if (filter) spec.filter = filter;
+  const sort: SortSpec[] = [];
+  for (const k of view.sort ?? []) {
+    const field = k.field as SortKey | undefined;
+    const dir = k.dir === 'desc' ? 'desc' : 'asc';
+    if (field && field in SORT_FIELD_TO_SNAKE) sort.push({ field, dir });
+  }
+  if (sort.length) spec.sort = sort;
+  const group = view.grouping?.field as GroupKey | undefined;
+  if (group && group !== 'none') spec.group = group;
+  spec.scope = view.scope === 'SHARED' ? 'shared' : 'personal';
+  spec.name = view.name;
+  return spec;
 }

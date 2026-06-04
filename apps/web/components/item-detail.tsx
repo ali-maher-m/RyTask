@@ -242,6 +242,12 @@ export function ItemDetail({
   async function changeParent(value: string) {
     const next = value === NONE_VALUE ? null : value;
     if (next === (current.parentId ?? null)) return;
+    // Cyclic-parenting guard (FR-WEB-060): an item can't be its own parent. (A deeper-cycle attempt
+    // — choosing a descendant — is also refused by the server with a kind 400.)
+    if (next === current.id) {
+      setError('An item can’t be its own parent.');
+      return;
+    }
     await patch({ parentId: next });
   }
 
@@ -556,6 +562,7 @@ export function ItemDetail({
             id={startId}
             type="date"
             value={current.startDate ?? ''}
+            max={current.endDate ?? undefined}
             onChange={(e) => changeDate('startDate', e.target.value)}
             disabled={locked(busy)}
             style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
@@ -569,6 +576,7 @@ export function ItemDetail({
             id={endId}
             type="date"
             value={current.endDate ?? ''}
+            min={current.startDate ?? undefined}
             onChange={(e) => changeDate('endDate', e.target.value)}
             disabled={locked(busy)}
             style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}

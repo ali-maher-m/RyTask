@@ -1,6 +1,6 @@
 'use client';
 
-import type { Organization } from '@rytask/contracts';
+import type { Organization, StatusCategory } from '@rytask/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, createContext, useContext, useMemo } from 'react';
 import { getCurrentOrg } from '../api/org';
@@ -22,6 +22,17 @@ interface OrgContextValue {
   formatDay: (day: string | null | undefined) => string;
   /** Format a number in the org locale (render inside <Figure> for the tabular mono face). */
   formatFigure: (n: number | null | undefined) => string;
+  /** Today as `YYYY-MM-DD` in the org timezone (the boundary the overdue test uses, FR-WEB-062). */
+  today: () => string;
+  /**
+   * Whether a work item is overdue **in the org timezone** (FR-WEB-062): a due date strictly before
+   * today, on an item whose status category is not COMPLETED/CANCELLED. A completed/cancelled item is
+   * never overdue (the flag clears on completion). Mirrors the server's `overdue` computation.
+   */
+  isOverdue: (
+    dueDate: string | null | undefined,
+    statusCategory: StatusCategory | null | undefined,
+  ) => boolean;
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null);
@@ -72,7 +83,33 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       return new Intl.NumberFormat(locale).format(n);
     };
 
-    return { org: org ?? null, timezone, locale, formatDate, formatDay, formatFigure };
+    // `en-CA` yields a sortable `YYYY-MM-DD`; computed in the org timezone so "today" flips at the
+    // org's midnight, not the viewer's. Recomputed per call so it stays correct across midnight.
+    const today: OrgContextValue['today'] = () =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+
+    const isOverdue: OrgContextValue['isOverdue'] = (dueDate, statusCategory) => {
+      if (!dueDate) return false;
+      if (statusCategory === 'COMPLETED' || statusCategory === 'CANCELLED') return false;
+      // Both are `YYYY-MM-DD`, so a lexical compare is a chronological compare.
+      return dueDate < today();
+    };
+
+    return {
+      org: org ?? null,
+      timezone,
+      locale,
+      formatDate,
+      formatDay,
+      formatFigure,
+      today,
+      isOverdue,
+    };
   }, [org]);
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;

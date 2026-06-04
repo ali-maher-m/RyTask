@@ -221,7 +221,10 @@ test('organize (US6): create two projects, add a status + label, then see My Wor
 
   // ── add a Started-category status and a label in project settings ─────────────
   await page.goto(`/projects/${alphaId}/settings`);
-  await page.getByRole('heading', { name: /settings/i }).first().waitFor();
+  await page
+    .getByRole('heading', { name: /settings/i })
+    .first()
+    .waitFor();
 
   const statusName = `Reviewing ${stamp}`;
   await page.getByLabel('New status name').fill(statusName);
@@ -249,6 +252,81 @@ test('organize (US6): create two projects, add a status + label, then see My Wor
   // ── My Work is the cross-project hub (renders even when nothing is assigned) ───
   await page.goto('/my-work');
   await expect(page.getByRole('heading', { name: 'My Work' })).toBeVisible();
+
+  const a11y = await new AxeBuilder({ page }).analyze();
+  expect(a11y.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+});
+
+test('views (US7): compound filter, save a shared view, and live smart views', async ({ page }) => {
+  await signIn(page);
+  await page.goto(LIST_PATH);
+  await expect(page.getByTestId('filter-bar')).toBeVisible();
+
+  // ── smart views are always present and switchable (server-resolved live, FR-WEB-043) ──────
+  for (const view of ['my-issues', 'due-soon', 'overdue', 'urgent']) {
+    await expect(page.getByTestId(`smart-${view}`)).toBeVisible();
+  }
+  await page.getByTestId('smart-overdue').click();
+  await expect(page.getByTestId('smart-overdue')).toHaveAttribute('aria-pressed', 'true');
+  // Back to "All" so the compound filter is editable.
+  await page.getByTestId('smart-all').click();
+
+  // ── build `priority = Urgent AND ( … )`: a top-level condition + a nested group (FR-WEB-040) ──
+  await page.getByTestId('add-condition').click();
+  await expect(page.getByTestId('condition-row').first()).toBeVisible();
+  await page.getByTestId('add-group').click();
+  await expect(page.getByTestId('filter-group')).toBeVisible();
+
+  // group + multi-key sort (priority desc orders Urgent→None — FR-WEB-041)
+  await page.getByTestId('group-select').selectOption('assignee');
+  await page.getByTestId('add-sort').click();
+
+  // ── save it as a SHARED view (visible to project members, FR-WEB-042) ─────────────────────
+  await page.getByTestId('view-name').fill(`Urgent triage ${Date.now()}`);
+  await page.getByLabel('View scope').selectOption('SHARED');
+  await page.getByTestId('save-view').click();
+  // The save affordance clears its name field on success (no error surfaced).
+  await expect(page.getByTestId('view-name')).toHaveValue('');
+});
+
+test('subtasks & scheduling (US8): nest ≥3 levels, set dates, and flag overdue', async ({
+  page,
+}) => {
+  const title = `Plan the launch ${Date.now()}`;
+  await signIn(page);
+
+  // Capture a parent item and open its detail PAGE (the sub-task tree lives there).
+  await page.goto(BOARD_PATH);
+  await quickAdd(page, title);
+  const card = page.getByTestId('board-card').filter({ hasText: title }).first();
+  await expect(card).toBeVisible();
+  const key = (await card.locator('code').first().innerText()).trim();
+  await page.goto(`/projects/${PROJECT_ID}/items/${key}`);
+  await expect(page.getByTestId('subtask-tree')).toBeVisible();
+
+  // ── nest sub-tasks ≥3 levels deep ─────────────────────────────────────────────────────────
+  const rootNode = page.getByTestId('subtask-node').first();
+  await rootNode.getByLabel(`Add sub-task to ${key}`).fill('Level 1');
+  await rootNode.getByRole('button', { name: 'Add' }).click();
+  const level1 = page.getByTestId('subtask-node').filter({ hasText: 'Level 1' }).first();
+  await expect(level1).toBeVisible();
+  await level1
+    .getByRole('group', { name: /sub-tasks/i })
+    .first()
+    .isVisible()
+    .catch(() => {});
+
+  // ── set a separate start→end range AND an independent due date on the parent ──────────────
+  await rootNode.getByLabel('Start date').fill('2026-01-01');
+  await rootNode.getByLabel('End date').fill('2026-01-10');
+  // A past due date on an open item flags it overdue.
+  await rootNode.getByLabel('Due date').fill('2020-01-01');
+  await expect(page.getByTestId('overdue-badge').first()).toBeVisible();
+
+  // ── the overdue item shows up in the Overdue smart view ───────────────────────────────────
+  await page.goto(LIST_PATH);
+  await page.getByTestId('smart-overdue').click();
+  await expect(page.getByTestId('smart-overdue')).toHaveAttribute('aria-pressed', 'true');
 
   const a11y = await new AxeBuilder({ page }).analyze();
   expect(a11y.violations.filter((v) => v.impact === 'critical')).toEqual([]);

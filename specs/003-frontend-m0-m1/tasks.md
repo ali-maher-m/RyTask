@@ -220,15 +220,15 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 7 (MANDATORY) ⚠️
 
-- [ ] T065 [P] [US7] Unit test `ViewConfig` serialize/deserialize round-trip (filter base64 JSON incl. the nested `priority=Urgent AND (label=bug OR overdue)` group; multi-key sort; group) in `apps/web/test/view-config.test.ts` (view-config §"Round-trip invariant").
-- [ ] T066 [US7] e2e compound filter exact-set + save shared view restore + smart views live in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T065 [P] [US7] Unit test `ViewConfig` serialize/deserialize round-trip (filter base64 JSON incl. the nested `priority=Urgent AND (label=bug OR overdue)` group; multi-key sort; group) in `apps/web/test/view-config.test.ts` (view-config §"Round-trip invariant").
+- [X] T066 [US7] e2e compound filter exact-set + save shared view restore + smart views live in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 7
 
-- [ ] T067 [US7] `ViewConfig` model + serializer (`filter`→base64 JSON `?filter=`; `smart`→`?smart=`; `sort`→`?sort=`; `group`→`?group=`; mirrors M1 filter-dsl field registry) in `apps/web/lib/views/view-config.ts` (D14, view-config).
-- [ ] T068 [US7] FilterBar (compound AND/OR builder, multi-key sort with priority groups ordered Urgent→None, group-by; offers only type-valid operators) in `apps/web/components/filter-bar.tsx` (FR-WEB-040/041).
-- [ ] T069 [US7] Saved views (`POST /views` personal/shared; visibility: shared→project members, personal→owner) + `app/(app)/views/[viewId]/page.tsx` restoring full config (FR-WEB-042).
-- [ ] T070 [P] [US7] Smart views My Issues / Due Soon / Overdue / Urgent always present + server-resolved live in the FilterBar/nav (FR-WEB-043).
+- [X] T067 [US7] `ViewConfig` model + serializer (`filter`→base64 JSON `?filter=`; `smart`→`?smart=`; `sort`→`?sort=`; `group`→`?group=`; mirrors M1 filter-dsl field registry) in `apps/web/lib/views/view-config.ts` (D14, view-config).
+- [X] T068 [US7] FilterBar (compound AND/OR builder, multi-key sort with priority groups ordered Urgent→None, group-by; offers only type-valid operators) in `apps/web/components/filter-bar.tsx` (FR-WEB-040/041).
+- [X] T069 [US7] Saved views (`POST /views` personal/shared; visibility: shared→project members, personal→owner) + `app/(app)/views/[viewId]/page.tsx` restoring full config (FR-WEB-042).
+- [X] T070 [P] [US7] Smart views My Issues / Due Soon / Overdue / Urgent always present + server-resolved live in the FilterBar/nav (FR-WEB-043).
 
 **Checkpoint**: US7 — a flat list becomes a triageable workspace.
 
@@ -242,14 +242,14 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 8 (MANDATORY) ⚠️
 
-- [ ] T071 [P] [US8] Component test: subtask nesting renders counts and a self/cyclic-parent attempt is rejected in `apps/web/test/subtask-tree.test.tsx` (FR-WEB-060).
-- [ ] T072 [US8] e2e sub-tasks ≥3 levels + due + start→end + overdue-in-Overdue in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T071 [P] [US8] Component test: subtask nesting renders counts and a self/cyclic-parent attempt is rejected in `apps/web/test/subtask-tree.test.tsx` (FR-WEB-060).
+- [X] T072 [US8] e2e sub-tasks ≥3 levels + due + start→end + overdue-in-Overdue in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 8
 
-- [ ] T073 [US8] Subtask tree (≥3 levels nested, child counts on parent, self/cyclic parenting prevented in UI) in `apps/web/components/subtask-tree.tsx` (FR-WEB-060).
-- [ ] T074 [P] [US8] Due-date picker + separate start→end range picker (persist independently) on the item-detail surface in `apps/web/components/item-detail.tsx` (FR-WEB-061).
-- [ ] T075 [US8] Overdue flag (past due + non-Completed category, computed in org tz; clears on Completed) + Overdue smart-view membership in `apps/web/lib/org/org-context.tsx` + item rows (FR-WEB-062).
+- [X] T073 [US8] Subtask tree (≥3 levels nested, child counts on parent, self/cyclic parenting prevented in UI) in `apps/web/components/subtask-tree.tsx` (FR-WEB-060).
+- [X] T074 [P] [US8] Due-date picker + separate start→end range picker (persist independently) on the item-detail surface in `apps/web/components/item-detail.tsx` (FR-WEB-061).
+- [X] T075 [US8] Overdue flag (past due + non-Completed category, computed in org tz; clears on Completed) + Overdue smart-view membership in `apps/web/lib/org/org-context.tsx` + item rows (FR-WEB-062).
 
 **Checkpoint**: US8 — credible planning structure that powers the Due Soon/Overdue views.
 

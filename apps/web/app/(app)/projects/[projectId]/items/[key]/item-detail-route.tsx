@@ -1,6 +1,7 @@
 'use client';
 
 import { ItemDetail } from '@/components/item-detail';
+import { SubtaskTree } from '@/components/subtask-tree';
 import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
 import {
   type MappedError,
@@ -126,6 +127,8 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
         onDeleted={() => router.push(backToBoard)}
         onClose={() => router.push(backToBoard)}
       />
+      {/* US8: break work down into nested sub-tasks (≥3 levels) on the item-detail surface. */}
+      <SubtaskTree root={item} onChange={setItem} />
     </main>
   );
 }
