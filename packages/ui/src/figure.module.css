@@ -1,0 +1,7 @@
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--w-medium);
+  letter-spacing: var(--track-mono);
+  color: inherit;
+}

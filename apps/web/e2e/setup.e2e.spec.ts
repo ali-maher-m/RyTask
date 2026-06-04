@@ -42,8 +42,20 @@ test('first-run wizard reaches a usable workspace (or self-closes if already set
     // Review step → create.
     await page.getByRole('button', { name: 'Create my workspace' }).click();
 
-    // Lands signed in on the home/workspace screen.
+    // Lands signed in on the home/workspace screen (the shell).
     await expect(page.getByRole('heading', { name: 'RyTask' })).toBeVisible();
+
+    // The session survives a reload (the bearer token is persisted; US1.4, FR-WEB-012).
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'RyTask' })).toBeVisible();
+
+    // Sign out ends the session cleanly → back to sign-in.
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+
+    // Reopening /setup no longer offers onboarding (the instance is bootstrapped).
+    await page.goto('/setup');
+    await expect(page.getByRole('heading', { name: "You're all set up" })).toBeVisible();
   }
 
   const results = await new AxeBuilder({ page }).analyze();

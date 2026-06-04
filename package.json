@@ -21,7 +21,9 @@
     "test:coverage": "turbo run test -- --coverage",
     "check:required-tests": "tsx scripts/check-required-tests.ts",
     "check:mcp-parity": "tsx scripts/check-mcp-parity.ts",
+    "check:design-tokens": "tsx scripts/check-design-tokens.ts",
     "check:boundaries": "depcruise apps packages --config packages/config/dependency-cruiser.cjs",
+    "sync:tokens": "tsx scripts/sync-tokens.ts",
     "db:generate": "pnpm --filter @rytask/db generate",
     "db:migrate": "pnpm --filter @rytask/db migrate",
     "db:seed": "pnpm --filter @rytask/db seed"

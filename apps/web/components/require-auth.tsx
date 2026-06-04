@@ -1,31 +1,37 @@
 'use client';
 
+import { decideProtectedRoute } from '@/lib/auth/routing';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
-import { isSignedIn } from '../lib/api';
 
 /**
- * Client-side auth gate for the authenticated app surface (the M1 pages: inbox, my-work, board,
- * list). The M0 session is a cookieless bearer token held in `localStorage`, so the check must
- * run in the browser — middleware can't see it. When there is no access token we redirect to
- * `/login` (preserving the intended path in `?next=` so login can return here); otherwise we
- * render the protected children. Without this gate the M1 pages fire requests that hard-401 with
- * no path back to sign-in.
+ * Client-side auth gate for the authenticated app surface (D18, FR-WEB-002). The M0 session is a
+ * cookieless bearer token in `localStorage`, so the check must run in the browser — middleware
+ * can't see it. It runs the routing state machine: signed-in users pass through; an org-less,
+ * brand-new instance routes to `/setup`; otherwise an unauthenticated hit goes to
+ * `/login?next=<dest>` so sign-in returns the user to where they were headed. Renders nothing
+ * until the decision resolves (no flash of a protected page, no hard-401).
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (isSignedIn()) {
-      setAllowed(true);
-      return;
-    }
-    const next = `${window.location.pathname}${window.location.search}`;
-    router.replace(`/login?next=${encodeURIComponent(next)}`);
+    let active = true;
+    const dest = `${window.location.pathname}${window.location.search}`;
+    void decideProtectedRoute(dest).then((decision) => {
+      if (!active) return;
+      if (decision.kind === 'allow') {
+        setAllowed(true);
+      } else {
+        router.replace(decision.to);
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, [router]);
 
-  // Render nothing until the token check passes (avoids a flash of the protected page + a 401).
   if (!allowed) return null;
   return <>{children}</>;
 }

@@ -1,0 +1,84 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--w-medium);
+  line-height: var(--lh-flat);
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--surface-sunken);
+  color: var(--fg-2);
+}
+.brand {
+  background: var(--primary-soft);
+  color: var(--primary-soft-fg);
+}
+.success {
+  background: var(--success-soft);
+  color: var(--success-fg);
+}
+.warning {
+  background: var(--warning-soft);
+  color: var(--warning-fg);
+}
+.error {
+  background: var(--error-soft);
+  color: var(--error-fg);
+}
+.info {
+  background: var(--info-soft);
+  color: var(--info-fg);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 22px;
+  padding: 0 var(--space-2);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--w-medium);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.chipDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-0_5);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.remove:hover {
+  background: var(--surface-active);
+  color: var(--fg);
+}
+.remove:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}

@@ -1,0 +1,12 @@
+/*
+ * Bind the design-system font tokens to the self-hosted next/font faces (D4). The loaded faces
+ * expose --font-*-loaded variables (set on <html> by next/font); we map the semantic token names
+ * the UI actually references (--font-ui / --font-brand / --font-mono) onto them. Imported AFTER
+ * @rytask/ui/styles so these win over the upstream literal stacks. Every value still resolves
+ * through a var(--font*) — no off-system font is referenced directly.
+ */
+:root {
+  --font-ui: var(--font-ui-loaded), system-ui, -apple-system, sans-serif;
+  --font-brand: var(--font-brand-loaded), var(--font-ui-loaded), system-ui, sans-serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, monospace;
+}

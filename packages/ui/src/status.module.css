@@ -1,0 +1,39 @@
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+
+.dotRing {
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  background: transparent;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--w-semibold);
+  color: var(--fg-2);
+  overflow: hidden;
+  flex: none;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarLg {
+  width: var(--control-height-lg);
+  height: var(--control-height-lg);
+  font-size: var(--fs-sm);
+}

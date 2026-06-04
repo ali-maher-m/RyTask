@@ -1,7 +1,8 @@
 /**
- * Closed-testing gate (ARCHITECTURE §14.2). Discovers every `module.testplan.ts`,
- * and FAILS THE BUILD if any test file a module declares as REQUIRED is missing —
- * not only if existing tests fail. Run via `pnpm check:required-tests`.
+ * Closed-testing gate (ARCHITECTURE §14.2; generalized for the web in D12/NFR-WEB-006).
+ * Discovers every `*.testplan.ts` (server `module.testplan.ts` AND `apps/web/web.testplan.ts`),
+ * and FAILS THE BUILD if any test file a plan declares as REQUIRED is missing — not only if
+ * existing tests fail. Run via `pnpm check:required-tests`.
  */
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
@@ -36,7 +37,7 @@ async function findTestPlans(dir: string, out: string[]): Promise<void> {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       await findTestPlans(full, out);
-    } else if (entry.name === 'module.testplan.ts') {
+    } else if (entry.name.endsWith('.testplan.ts')) {
       out.push(full);
     }
   }
@@ -50,7 +51,7 @@ async function main(): Promise<void> {
 
   if (plans.length === 0) {
     console.error(
-      'No module.testplan.ts found — every module must declare its required tests (§14.2).',
+      'No *.testplan.ts found — every module (and the web app) must declare its required tests (§14.2).',
     );
     process.exit(1);
   }

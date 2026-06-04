@@ -1,12 +1,12 @@
 'use client';
 
+import { ApiError, authedRequest } from '@/lib/api';
 import type {
   Project,
   ProjectListResponse,
   WorkItem,
   WorkItemListResponse,
 } from '@rytask/contracts';
-import { ApiError, authedRequest } from '../../lib/api';
 
 /**
  * Browser API client for the cross-project "My Work" page (US4, T075, FR-PROJ-006). The

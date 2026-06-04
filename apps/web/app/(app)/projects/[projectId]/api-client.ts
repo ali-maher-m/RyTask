@@ -1,5 +1,6 @@
 'use client';
 
+import { ApiError, authedRequest } from '@/lib/api';
 import type {
   CreateWorkItem,
   MoveWorkItem,
@@ -12,7 +13,6 @@ import type {
   WorkItem,
   WorkItemListResponse,
 } from '@rytask/contracts';
-import { ApiError, authedRequest } from '../../../lib/api';
 
 /**
  * Thin browser API client for the US3 Board + List pages. The hand-written `@rytask/sdk`

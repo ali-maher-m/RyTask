@@ -1,0 +1,6 @@
+/*
+ * @rytask/ui/styles — the single global stylesheet the web app imports once (root layout).
+ * Pulls in the generated design tokens (synced from branding/) and the base element resets.
+ */
+@import "./tokens.css";
+@import "./base.css";

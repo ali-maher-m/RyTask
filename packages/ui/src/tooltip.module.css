@@ -1,0 +1,23 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bubble {
+  position: absolute;
+  z-index: 60;
+  bottom: calc(100% + var(--space-1_5));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 240px;
+  width: max-content;
+  padding: var(--space-1) var(--space-2);
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}

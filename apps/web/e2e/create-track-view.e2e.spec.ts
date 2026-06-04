@@ -15,6 +15,8 @@ import { type Page, expect, test } from '@playwright/test';
 
 const PROJECT_ID = '0193b3a0-0000-7000-8000-000000000010'; // SEED_PROJECT_ID
 const BOARD_PATH = `/projects/${PROJECT_ID}/board`;
+const LIST_PATH = `/projects/${PROJECT_ID}/list`;
+const TRASH_PATH = `/projects/${PROJECT_ID}/trash`;
 
 // The M1 surfaces are auth-gated (M0): sign in as the seeded founder before driving the board.
 const FOUNDER_EMAIL = 'founder@rytask.local';
@@ -118,4 +120,85 @@ test('capture → track → view: quick-add, open detail, drag on the board, per
   const results = await new AxeBuilder({ page }).analyze();
   const critical = results.violations.filter((v) => v.impact === 'critical');
   expect(critical).toEqual([]);
+});
+
+/** Quick-add an item on the current surface (Board or List share the `quick-add-input` testid). */
+async function quickAdd(page: Page, title: string): Promise<void> {
+  await page.getByTestId('quick-add-input').fill(title);
+  await page.getByTestId('quick-add-input').press('Enter');
+}
+
+test('item detail (US3): set fields persist on reload; delete → trash → restore', async ({
+  page,
+}) => {
+  const title = `Detail fields ${Date.now()}`;
+  await signIn(page);
+
+  // Capture an item, then open its detail panel.
+  await page.goto(BOARD_PATH);
+  await quickAdd(page, title);
+  await page.getByTestId('board-card').filter({ hasText: title }).first().click();
+  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+
+  // Set fields. Each control reflects the server's confirmed value once its PATCH resolves, so the
+  // assertion below doubles as a wait for persistence before reloading.
+  await page.getByLabel('Priority').selectOption('URGENT');
+  await expect(page.getByLabel('Priority')).toHaveValue('URGENT');
+  await page.getByLabel('Due date').fill('2026-12-31');
+  await expect(page.getByLabel('Due date')).toHaveValue('2026-12-31');
+
+  await page
+    .getByRole('button', { name: /close|back/i })
+    .first()
+    .click();
+
+  // Reload → the values persist (read back from the server).
+  await page.reload();
+  await page.getByTestId('board-card').filter({ hasText: title }).first().click();
+  await expect(page.getByLabel('Priority')).toHaveValue('URGENT');
+  await expect(page.getByLabel('Due date')).toHaveValue('2026-12-31');
+
+  // Delete → the card leaves the active board.
+  await page.getByRole('button', { name: 'Move to trash' }).click();
+  await expect(page.getByTestId('board-card').filter({ hasText: title })).toHaveCount(0);
+
+  // …and is restorable from Trash, intact.
+  await page.goto(TRASH_PATH);
+  const trashRow = page.getByTestId('trash-row').filter({ hasText: title });
+  await expect(trashRow).toBeVisible();
+  await trashRow.getByRole('button', { name: /restore/i }).click();
+  await expect(page.getByTestId('trash-row').filter({ hasText: title })).toHaveCount(0);
+
+  await page.goto(BOARD_PATH);
+  await expect(page.getByTestId('board-card').filter({ hasText: title }).first()).toBeVisible();
+});
+
+test('list inline edit (US4) + Board↔List view carry-over', async ({ page }) => {
+  const title = `Inline edit ${Date.now()}`;
+  await signIn(page);
+
+  // Capture on the List; the newest item (highest number) sorts last by default.
+  await page.goto(LIST_PATH);
+  await quickAdd(page, title);
+  const lastTitle = page.getByTestId('work-item-row').last().getByRole('textbox');
+  await expect(lastTitle).toHaveValue(title);
+
+  // Inline-edit the title; it saves without a full reload and survives one.
+  const edited = `${title} (edited)`;
+  await lastTitle.fill(edited);
+  await lastTitle.blur();
+  await page.reload();
+  await expect(page.getByTestId('work-item-row').last().getByRole('textbox')).toHaveValue(edited);
+
+  // Carry-over: choose a grouping, switch to the Board, and back — the view is preserved on the URL.
+  await page.getByTestId('group-select').selectOption('status');
+  await expect(page.getByRole('link', { name: 'Board view' })).toHaveAttribute(
+    'href',
+    /group=status/,
+  );
+  await page.getByRole('link', { name: 'Board view' }).click();
+  await expect(page).toHaveURL(/group=status/);
+  await page.getByRole('link', { name: 'List view' }).click();
+  await expect(page).toHaveURL(/group=status/);
+  await expect(page.getByTestId('group-select')).toHaveValue('status');
 });

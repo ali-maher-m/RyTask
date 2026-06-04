@@ -1,93 +1,122 @@
 'use client';
 
-import { useState } from 'react';
-import { authedFetch } from '../lib/api';
+import { createWorkItem } from '@/lib/api';
+import { type TokenKind, previewTokens } from '@/lib/quick-add/tokenizer';
+import type { UnresolvedToken, WorkItem } from '@rytask/contracts';
+import { Button, Chip, Figure } from '@rytask/ui';
+import { Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import styles from './quick-add.module.css';
 
 /**
- * Quick-add input (US1, FR-WI-004). One line with inline tokens `@assignee #label
- * !priority ^date`; on submit it POSTs to /work-items and surfaces any `meta.unresolved`
- * tokens as a correction affordance (tokens are never silently dropped — SC-002). The request
- * carries the M0 bearer token via `authedFetch` (the M1 dev-header seam is gone).
+ * Quick-add control (US2, FR-WEB-020/021, SC-002). One line with inline shorthand
+ * `@assignee #label !priority ^date`. The client renders recognized tokens as chips live (preview
+ * only — the SERVER is the parser of record, D13); on submit it POSTs `{ projectId, quickAdd }` and
+ * surfaces the server's `meta.unresolved` inline for correction — tokens are never dropped and
+ * never block capture. The new item appears with its human key without a reload.
  */
-
-interface UnresolvedToken {
-  token: string;
-  kind: 'assignee' | 'label' | 'priority' | 'date';
+interface QuickAddProps {
+  projectId: string;
+  onCreated?: (item: WorkItem) => void;
 }
 
-interface CreatedWorkItem {
-  key: string;
-  title: string;
-}
+const DOT: Record<TokenKind, string> = {
+  assignee: 'var(--info)',
+  label: 'var(--accent)',
+  priority: 'var(--primary)',
+  date: 'var(--status-progress)',
+};
 
-export function QuickAdd({ projectId }: { projectId: string }) {
+export function QuickAdd({ projectId, onCreated }: QuickAddProps) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
-  const [created, setCreated] = useState<CreatedWorkItem | null>(null);
+  const [created, setCreated] = useState<{ key: string; title: string } | null>(null);
   const [unresolved, setUnresolved] = useState<UnresolvedToken[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const chips = useMemo(() => previewTokens(value).chips, [value]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!value.trim() || busy) return;
+    const quickAdd = value.trim();
+    if (!quickAdd || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await authedFetch('/work-items', {
-        method: 'POST',
-        body: JSON.stringify({ projectId, quickAdd: value.trim() }),
-      });
-      if (!res.ok) {
-        setError(`Capture failed (${res.status})`);
-        return;
-      }
-      const body = (await res.json()) as {
-        data: CreatedWorkItem;
-        meta: { unresolved: UnresolvedToken[] };
-      };
-      setCreated(body.data);
-      setUnresolved(body.meta?.unresolved ?? []);
+      const res = await createWorkItem({ projectId, quickAdd });
+      setCreated({ key: res.data.key, title: res.data.title });
+      setUnresolved(res.meta?.unresolved ?? []);
       setValue('');
+      onCreated?.(res.data);
     } catch {
-      setError('Network error');
+      setError('We couldn’t capture that just now. Please try again.');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={submit} aria-label="Quick add work item">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Capture a task…  @assignee #label !priority ^date"
-        aria-label="Quick add"
-        disabled={busy}
-      />
-      <button type="submit" disabled={busy || !value.trim()}>
-        Add
-      </button>
-      <p>
-        <small>
-          Tokens: @assignee · #label · !urgent|high|medium|low · ^today|tomorrow|2026-07-04
-        </small>
-      </p>
+    <form className={styles.root} onSubmit={submit} aria-label="Quick add work item">
+      <div className={styles.row}>
+        <input
+          type="text"
+          className={styles.input}
+          data-testid="quick-add-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Capture a task…  @assignee #label !priority ^date"
+          aria-label="Quick add"
+          disabled={busy}
+        />
+        <Button
+          type="submit"
+          variant="primary"
+          size="sm"
+          loading={busy}
+          disabled={!value.trim()}
+          iconStart={<Plus size={14} aria-hidden="true" />}
+        >
+          Add
+        </Button>
+      </div>
+
+      {chips.length > 0 ? (
+        <div className={styles.chips} aria-label="Recognized tokens">
+          {chips.map((chip) => (
+            <Chip key={`${chip.kind}:${chip.raw}`} dotColor={DOT[chip.kind]}>
+              {chip.raw}
+            </Chip>
+          ))}
+        </div>
+      ) : (
+        <p className={styles.hint}>
+          Type a title and add{' '}
+          <span className={styles.hintMono}>@assignee #label !priority ^date</span> to structure it.
+        </p>
+      )}
+
       {created ? (
-        <output>
-          Created <strong>{created.key}</strong> — {created.title}
+        <output className={styles.created}>
+          Captured <Figure>{created.key}</Figure> — {created.title}
         </output>
       ) : null}
+
       {unresolved.length > 0 ? (
-        <ul aria-label="Unresolved tokens">
+        <ul className={styles.unresolved} aria-label="Tokens to fix">
           {unresolved.map((u) => (
             <li key={`${u.kind}:${u.token}`}>
-              Couldn’t resolve {u.kind} <code>{u.token}</code> — please fix it on the item.
+              We couldn’t match the {u.kind} <Figure>{u.token}</Figure> — it’s saved on the item so
+              you can fix it there.
             </li>
           ))}
         </ul>
       ) : null}
-      {error ? <p role="alert">{error}</p> : null}
+
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

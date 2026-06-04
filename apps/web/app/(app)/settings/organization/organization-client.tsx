@@ -1,10 +1,10 @@
 'use client';
 
+import { ApiError, authedRequest, clearSession } from '@/lib/api';
 import type { Membership, OrgSettings, Organization, Role } from '@rytask/contracts';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useState } from 'react';
-import { ApiError, authedRequest, clearSession } from '../../../lib/api';
 
 /**
  * Organization settings + ownership admin (US8, T108). Owners/Admins edit the org's timezone,

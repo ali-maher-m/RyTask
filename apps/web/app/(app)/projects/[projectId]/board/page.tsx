@@ -1,4 +1,4 @@
-import { RequireAuth } from '../../../../components/require-auth';
+import { RequireAuth } from '@/components/require-auth';
 import { BoardClient } from './board-client';
 
 /**

@@ -40,6 +40,18 @@
       }
     }
   },
+  "overrides": [
+    {
+      "include": ["packages/ui/src/dialog.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "parser": {
       "unsafeParameterDecoratorsEnabled": true

@@ -1,5 +1,6 @@
 'use client';
 
+import { ApiError, authedRequest } from '@/lib/api';
 import type {
   Notification,
   NotificationEnvelope,
@@ -7,7 +8,6 @@ import type {
   UnreadCountResponse,
   UpdateNotification,
 } from '@rytask/contracts';
-import { ApiError, authedRequest } from '../../lib/api';
 
 /**
  * Browser API client for the notification inbox (US7, T115, FR-NOTIF-002, D10). The

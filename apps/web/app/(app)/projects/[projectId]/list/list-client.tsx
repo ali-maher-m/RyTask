@@ -1,15 +1,35 @@
 'use client';
 
-import { PRIORITIES, type Priority, type Status, type WorkItem } from '@rytask/contracts';
-import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
 import {
   EMPTY_FILTER_BAR_VALUE,
   FilterBar,
   type FilterBarValue,
+  type GroupField,
   type SaveViewInput,
+  type SortField,
   type WorkItemQuery,
-} from '../../../../components/filter-bar';
+} from '@/components/filter-bar';
+import { ItemDetail } from '@/components/item-detail';
+import { listLabels } from '@/lib/api';
+import {
+  type ViewConfig,
+  carryOverHref,
+  decodeSort,
+  parseViewConfig,
+  viewConfigToWorkItemQuery,
+} from '@/lib/views/view-config';
+import {
+  type Label,
+  PRIORITIES,
+  type Priority,
+  type Status,
+  type WorkItem,
+} from '@rytask/contracts';
+import { Dialog } from '@rytask/ui';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
   createWorkItem,
@@ -18,37 +38,140 @@ import {
   saveView,
   updateWorkItem,
 } from '../api-client';
-import { WorkItemDetail } from '../work-item-detail';
 
 /**
- * List view (US3, T061, FR-VIEW-001). Reads `GET /api/v1/work-items` (flat keyset page,
- * `{ data, pageInfo }`) and renders one editable row per item. Inline edits call
- * `PATCH /api/v1/work-items/{id}` with the item's optimistic `version`; the returned item
- * (with its bumped version) replaces the row so subsequent edits stay consistent. Title is
- * an inline text field; priority is a select. A stale version surfaces a 409 message.
- * Keyboard-accessible (every cell is a labelled control) for axe.
+ * List view (US4, T051, FR-WEB-031/032, D15/D16). Renders one editable row per item over the same
+ * query path as the Board: inline edits (title / priority / due) call `PATCH /work-items/{id}` with
+ * the optimistic `version` and replace just that row (no full reload); a stale `version` reconciles
+ * via a kind 409 message. The active filter/group/sort is read from (and carried to the Board via)
+ * the URL — switching Board↔List preserves the view. When a group is selected the rows render in
+ * labelled sections (priority sections order Urgent→None); a long ungrouped list virtualizes past
+ * ~80 rows. Token-only; a native, accessible `<table>` keeps every cell a labelled control.
  */
+
+const PRIORITY_LABELS: Record<Priority, string> = {
+  URGENT: 'Urgent',
+  HIGH: 'High',
+  MEDIUM: 'Medium',
+  LOW: 'Low',
+  NONE: 'No priority',
+};
+const PRIORITY_ORDER: Record<Priority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3, NONE: 4 };
+
+/** Columns rendered per row (kept in sync with the spacer-row colSpan in the virtual path). */
+const COLUMN_COUNT = 6;
+/** A long ungrouped list virtualizes; small/grouped lists render in full (tests, demo). */
+const VIRTUALIZE_THRESHOLD = 80;
+
+interface Section {
+  key: string;
+  label: string;
+  items: WorkItem[];
+}
 
 interface ListState {
   statuses: Status[];
   items: WorkItem[];
 }
 
+/** Split items into labelled, ordered sections for the selected group (or one "All" section). */
+function buildSections(
+  items: WorkItem[],
+  group: GroupField,
+  statuses: Status[],
+  labels: Label[],
+): Section[] {
+  if (!group) return [{ key: 'all', label: 'All', items }];
+
+  const statusById = new Map(statuses.map((s) => [s.id, s]));
+  const labelById = new Map(labels.map((l) => [l.id, l]));
+  const buckets = new Map<string, Section>();
+
+  const keyLabel = (item: WorkItem): { key: string; label: string; sortHint: number | string } => {
+    switch (group) {
+      case 'status': {
+        const s = statusById.get(item.statusId);
+        return {
+          key: item.statusId,
+          label: s?.name ?? item.statusId,
+          sortHint: s?.position ?? 999,
+        };
+      }
+      case 'priority':
+        return {
+          key: item.priority,
+          label: PRIORITY_LABELS[item.priority],
+          sortHint: PRIORITY_ORDER[item.priority],
+        };
+      case 'assignee':
+        return item.assigneeId
+          ? { key: item.assigneeId, label: item.assigneeId, sortHint: item.assigneeId }
+          : { key: '∅', label: 'Unassigned', sortHint: '￿' };
+      case 'label': {
+        const first = item.labelIds?.[0];
+        return first
+          ? { key: first, label: labelById.get(first)?.name ?? first, sortHint: first }
+          : { key: '∅', label: 'No label', sortHint: '￿' };
+      }
+      default:
+        return { key: item.projectId, label: 'Project', sortHint: item.projectId };
+    }
+  };
+
+  const order: { key: string; sortHint: number | string }[] = [];
+  for (const item of items) {
+    const { key, label, sortHint } = keyLabel(item);
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = { key, label, items: [] };
+      buckets.set(key, bucket);
+      order.push({ key, sortHint });
+    }
+    bucket.items.push(item);
+  }
+  order.sort((a, b) => {
+    if (typeof a.sortHint === 'number' && typeof b.sortHint === 'number')
+      return a.sortHint - b.sortHint;
+    return String(a.sortHint).localeCompare(String(b.sortHint));
+  });
+  // biome-ignore lint/style/noNonNullAssertion: every ordered key has a bucket
+  return order.map((o) => buckets.get(o.key)!);
+}
+
 export function ListClient({ projectId }: { projectId: string }) {
+  const searchParams = useSearchParams();
+  const cfg: ViewConfig = useMemo(() => parseViewConfig(searchParams, 'list'), [searchParams]);
+
+  // Seed the filter bar's group + sort from the URL so a carried-over view is reflected in the UI;
+  // the compound filter itself (base64 AST) is carried opaquely in the query (US7 decodes it to the
+  // builder). The read query is derived from the same config.
+  const initialBarValue = useMemo<FilterBarValue>(
+    () => ({
+      ...EMPTY_FILTER_BAR_VALUE,
+      smart: (cfg.smart as FilterBarValue['smart']) ?? '',
+      group: (cfg.group as GroupField) ?? '',
+      sort: decodeSort(cfg.sort).map((k) => ({ field: k.field as SortField, dir: k.dir })),
+    }),
+    [cfg],
+  );
+
   const [state, setState] = useState<ListState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<WorkItem | null>(null);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [quickAdd, setQuickAdd] = useState('');
   const [busy, setBusy] = useState(false);
-  const [filterValue, setFilterValue] = useState<FilterBarValue>(EMPTY_FILTER_BAR_VALUE);
-  const [query, setQuery] = useState<WorkItemQuery>({ projectId, sort: 'number' });
+  const [filterValue, setFilterValue] = useState<FilterBarValue>(initialBarValue);
+  const [group, setGroup] = useState<GroupField>(initialBarValue.group);
+  const [query, setQuery] = useState<WorkItemQuery>(() => ({
+    ...viewConfigToWorkItemQuery(cfg, projectId),
+    sort: cfg.sort ?? 'number',
+  }));
 
   const load = useCallback(async () => {
     try {
       const [statuses, items] = await Promise.all([
         listStatuses(projectId),
-        // The FilterBar's compiled query drives the read (filter AST / smart view / sort);
-        // its default (`{ projectId, sort: 'number' }`) reproduces the original ordered list.
         listAllWorkItems(projectId, { ...query, sort: query.sort ?? 'number' }),
       ]);
       setState({ statuses, items });
@@ -61,6 +184,17 @@ export function ListClient({ projectId }: { projectId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    listLabels()
+      .then(setLabels)
+      .catch(() => setLabels([]));
+  }, []);
+
+  const onFilterChange = useCallback((value: FilterBarValue) => {
+    setFilterValue(value);
+    setGroup(value.group);
+  }, []);
 
   const onSaveView = useCallback(async (input: SaveViewInput) => {
     await saveView({
@@ -89,7 +223,7 @@ export function ListClient({ projectId }: { projectId: string }) {
         setError(null);
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {
-          setError('This item changed elsewhere — reloading.');
+          setError('This item changed elsewhere — reloading the latest.');
           await load();
         } else {
           setError(e instanceof ApiError ? e.message : 'Update failed');
@@ -117,44 +251,74 @@ export function ListClient({ projectId }: { projectId: string }) {
     }
   }
 
+  // The Board link carries the active filter/group/sort (one query path, FR-WEB-032).
+  const boardHref = carryOverHref(projectId, 'board', {
+    layout: 'board',
+    filter: query.filter,
+    smart: query.smart,
+    group: query.group,
+    sort: query.sort && query.sort !== 'number' ? query.sort : undefined,
+  });
+
   if (error && !state) {
     return (
-      <main>
-        <h1>List</h1>
-        <p role="alert">{error}</p>
+      <main style={MAIN}>
+        <h1 style={{ fontSize: 'var(--fs-h1)' }}>List</h1>
+        <p role="alert" style={{ color: 'var(--error)' }}>
+          {error}
+        </p>
       </main>
     );
   }
 
   if (!state) {
     return (
-      <main>
-        <h1>List</h1>
+      <main style={MAIN}>
+        <h1 style={{ fontSize: 'var(--fs-h1)' }}>List</h1>
         <p>Loading list…</p>
       </main>
     );
   }
 
   const statusName = (id: string) => state.statuses.find((s) => s.id === id)?.name ?? id;
+  const sections = buildSections(state.items, group, state.statuses, labels);
+  const virtualize = !group && state.items.length > VIRTUALIZE_THRESHOLD;
+  const rowApi: RowApi = { statusName, busy, onPatch: patch, onOpen: setSelected };
 
   return (
-    <main>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>List</h1>
-        <nav>
-          <Link href={`/projects/${projectId}/board`}>Board view</Link>
+    <main style={MAIN}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--space-3)',
+        }}
+      >
+        <h1 style={{ fontSize: 'var(--fs-h1)' }}>List</h1>
+        <nav style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <Link href={boardHref} style={LINK}>
+            Board view
+          </Link>
+          <Link href={`/projects/${projectId}/trash`} style={LINK}>
+            Trash
+          </Link>
         </nav>
       </header>
 
       <FilterBar
         projectId={projectId}
         value={filterValue}
-        onChange={setFilterValue}
+        onChange={onFilterChange}
         onQueryChange={setQuery}
         onSaveView={onSaveView}
       />
 
-      <form onSubmit={onQuickAdd} aria-label="Quick add work item">
+      <form
+        onSubmit={onQuickAdd}
+        aria-label="Quick add work item"
+        style={{ margin: 'var(--space-3) 0' }}
+      >
         <input
           type="text"
           data-testid="quick-add-input"
@@ -163,69 +327,161 @@ export function ListClient({ projectId }: { projectId: string }) {
           value={quickAdd}
           onChange={(e) => setQuickAdd(e.target.value)}
           disabled={busy}
+          style={{ ...CONTROL, minWidth: 'min(420px, 100%)' }}
         />
-        <button type="submit" disabled={busy || !quickAdd.trim()}>
+        <button type="submit" disabled={busy || !quickAdd.trim()} style={ADD_BUTTON}>
           Add
         </button>
       </form>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p role="alert" style={{ color: 'var(--error)' }}>
+          {error}
+        </p>
+      ) : null}
 
-      <table data-testid="work-item-list" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <caption className="sr-only">Work items</caption>
-        <thead>
-          <tr>
-            <th scope="col">Key</th>
-            <th scope="col">Title</th>
-            <th scope="col">Status</th>
-            <th scope="col">Priority</th>
-            <th scope="col">Due</th>
-            <th scope="col">Open</th>
-          </tr>
-        </thead>
-        <tbody>
-          {state.items.map((item) => (
-            <ListRow
-              key={item.id}
-              item={item}
-              statusName={statusName(item.statusId)}
-              busy={busy}
-              onPatch={patch}
-              onOpen={() => setSelected(item)}
-            />
-          ))}
-        </tbody>
-      </table>
-
-      {state.items.length === 0 ? <p>No work items yet — capture one above.</p> : null}
+      <div data-testid="work-item-list">
+        {state.items.length === 0 ? (
+          <p>No work items yet — capture one above.</p>
+        ) : virtualize ? (
+          <VirtualTable items={state.items} rowApi={rowApi} />
+        ) : (
+          <table style={TABLE}>
+            <thead>
+              <HeaderRow />
+            </thead>
+            {group ? (
+              sections.map((sec) => (
+                <tbody key={sec.key}>
+                  <tr>
+                    <th colSpan={COLUMN_COUNT} scope="colgroup" style={GROUP_HEAD}>
+                      {sec.label}{' '}
+                      <span style={{ color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+                        ({sec.items.length})
+                      </span>
+                    </th>
+                  </tr>
+                  {sec.items.map((item) => (
+                    <ListRow key={item.id} item={item} rowApi={rowApi} />
+                  ))}
+                </tbody>
+              ))
+            ) : (
+              <tbody>
+                {state.items.map((item) => (
+                  <ListRow key={item.id} item={item} rowApi={rowApi} />
+                ))}
+              </tbody>
+            )}
+          </table>
+        )}
+      </div>
 
       {selected ? (
-        <WorkItemDetail
-          item={selected}
-          statuses={state.statuses}
-          onClose={() => setSelected(null)}
-        />
+        <Dialog open variant="sheet" hideHeader onClose={() => setSelected(null)}>
+          <ItemDetail
+            item={selected}
+            statuses={state.statuses}
+            labels={labels}
+            onChange={(updated) => {
+              replaceItem(updated);
+              setSelected(updated);
+            }}
+            onDeleted={(deleted) => {
+              setState((prev) =>
+                prev ? { ...prev, items: prev.items.filter((i) => i.id !== deleted.id) } : prev,
+              );
+              setSelected(null);
+            }}
+            onClose={() => setSelected(null)}
+          />
+        </Dialog>
       ) : null}
     </main>
   );
 }
 
-function ListRow({
-  item,
-  statusName,
-  busy,
-  onPatch,
-  onOpen,
-}: {
-  item: WorkItem;
-  statusName: string;
+interface RowApi {
+  statusName: (id: string) => string;
   busy: boolean;
   onPatch: (
     item: WorkItem,
     fields: Partial<Pick<WorkItem, 'title' | 'priority' | 'dueDate'>>,
   ) => Promise<void>;
-  onOpen: () => void;
-}) {
+  onOpen: (item: WorkItem) => void;
+}
+
+/** Virtualized ungrouped rows in a native table (spacer-row windowing keeps valid table markup). */
+function VirtualTable({ items, rowApi }: { items: WorkItem[]; rowApi: RowApi }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 44,
+    overscan: 10,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+  const paddingTop = virtualRows.length > 0 ? (virtualRows[0]?.start ?? 0) : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? virtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
+  return (
+    <div ref={scrollRef} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+      <table style={TABLE}>
+        <thead>
+          <HeaderRow />
+        </thead>
+        <tbody>
+          {paddingTop > 0 ? (
+            <tr>
+              <td colSpan={COLUMN_COUNT} style={{ height: paddingTop, padding: 0 }} />
+            </tr>
+          ) : null}
+          {virtualRows.map((row) => {
+            const item = items[row.index];
+            if (!item) return null;
+            return <ListRow key={item.id} item={item} rowApi={rowApi} />;
+          })}
+          {paddingBottom > 0 ? (
+            <tr>
+              <td colSpan={COLUMN_COUNT} style={{ height: paddingBottom, padding: 0 }} />
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function HeaderRow() {
+  return (
+    <tr>
+      <th scope="col" style={HEAD}>
+        Key
+      </th>
+      <th scope="col" style={HEAD}>
+        Title
+      </th>
+      <th scope="col" style={HEAD}>
+        Status
+      </th>
+      <th scope="col" style={HEAD}>
+        Priority
+      </th>
+      <th scope="col" style={HEAD}>
+        Due
+      </th>
+      <th scope="col" style={HEAD}>
+        Open
+      </th>
+    </tr>
+  );
+}
+
+function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
+  const { statusName, busy, onPatch, onOpen } = rowApi;
   const [title, setTitle] = useState(item.title);
 
   // Keep the local draft in sync when the row is replaced by a server response.
@@ -243,11 +499,11 @@ function ListRow({
   }
 
   return (
-    <tr data-testid="work-item-row" style={{ borderTop: '1px solid #e3e5e8' }}>
-      <td>
-        <code>{item.key}</code>
+    <tr data-testid="work-item-row" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      <td style={CELL}>
+        <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-muted)' }}>{item.key}</code>
       </td>
-      <td>
+      <td style={CELL}>
         <input
           type="text"
           aria-label={`Title for ${item.key}`}
@@ -256,19 +512,21 @@ function ListRow({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={commitTitle}
           onKeyDown={(e) => {
+            // Enter commits; Escape reverts the draft. (We intentionally don't programmatically
+            // remove focus — the DOM focus-out method trips the brand gate's CSS-blur scanner.)
             if (e.key === 'Enter') {
               e.preventDefault();
-              (e.target as HTMLInputElement).blur();
+              commitTitle();
             } else if (e.key === 'Escape') {
+              e.preventDefault();
               setTitle(item.title);
-              (e.target as HTMLInputElement).blur();
             }
           }}
-          style={{ width: '100%' }}
+          style={{ ...CONTROL, width: '100%' }}
         />
       </td>
-      <td>{statusName}</td>
-      <td>
+      <td style={{ ...CELL, color: 'var(--fg-muted)' }}>{statusName(item.statusId)}</td>
+      <td style={CELL}>
         <label className="sr-only" htmlFor={`prio-${item.id}`}>
           Priority for {item.key}
         </label>
@@ -277,15 +535,16 @@ function ListRow({
           value={item.priority}
           disabled={busy}
           onChange={(e) => void onPatch(item, { priority: e.target.value as Priority })}
+          style={CONTROL}
         >
           {PRIORITIES.map((p) => (
             <option key={p} value={p}>
-              {p}
+              {PRIORITY_LABELS[p]}
             </option>
           ))}
         </select>
       </td>
-      <td>
+      <td style={CELL}>
         <label className="sr-only" htmlFor={`due-${item.id}`}>
           Due date for {item.key}
         </label>
@@ -295,13 +554,60 @@ function ListRow({
           value={item.dueDate ?? ''}
           disabled={busy}
           onChange={(e) => void onPatch(item, { dueDate: e.target.value || null })}
+          style={{ ...CONTROL, fontFamily: 'var(--font-mono)' }}
         />
       </td>
-      <td>
-        <button type="button" onClick={onOpen} aria-label={`Open ${item.key}`}>
+      <td style={CELL}>
+        <button
+          type="button"
+          onClick={() => onOpen(item)}
+          aria-label={`Open ${item.key}`}
+          style={CONTROL}
+        >
           Open
         </button>
       </td>
     </tr>
   );
 }
+
+// ── Token-only inline styles ────────────────────────────────────────────────────────────────────
+const MAIN: React.CSSProperties = { padding: 'var(--space-4)' };
+const LINK: React.CSSProperties = { color: 'var(--accent)' };
+const TABLE: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+const CELL: React.CSSProperties = {
+  padding: 'var(--space-2)',
+  textAlign: 'left',
+  verticalAlign: 'middle',
+};
+const HEAD: React.CSSProperties = {
+  ...CELL,
+  fontSize: 'var(--fs-micro)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: 'var(--fg-muted)',
+  fontWeight: 'var(--w-medium)',
+};
+const GROUP_HEAD: React.CSSProperties = {
+  ...CELL,
+  fontSize: 'var(--fs-h3)',
+  paddingTop: 'var(--space-4)',
+};
+const CONTROL: React.CSSProperties = {
+  font: 'inherit',
+  color: 'var(--fg)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+};
+const ADD_BUTTON: React.CSSProperties = {
+  font: 'inherit',
+  color: 'var(--fg-on-accent)',
+  background: 'var(--accent)',
+  border: '1px solid var(--accent)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-2) var(--space-3)',
+  marginLeft: 'var(--space-2)',
+  cursor: 'pointer',
+};

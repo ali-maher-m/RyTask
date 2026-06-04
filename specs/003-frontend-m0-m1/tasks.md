@@ -23,12 +23,12 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 **Purpose**: Add the additive dependencies and the test/CI tooling so every later task is token-native and covered.
 
-- [ ] T001 Add runtime deps to `apps/web/package.json`: `@tanstack/react-query`, `@tanstack/react-virtual`, `lucide-react`, `react-markdown`, `remark-gfm`, `rehype-sanitize`; confirm `@dnd-kit/*` and `cmdk` present (research §"New runtime dependencies").
-- [ ] T002 Add web test dev-deps to `apps/web/package.json` and `packages/ui/package.json`: `vitest`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `vitest-axe`; run `pnpm install` (D12).
-- [ ] T003 [P] Create `apps/web/vitest.config.ts` (jsdom env, React plugin, `vitest-axe` matchers) and `apps/web/test/setup.ts` (RTL cleanup, axe extend).
-- [ ] T004 [P] Create `packages/ui/vitest.config.ts` and add a `test` script to `packages/ui/package.json`.
-- [ ] T005 [P] Add a `test` script to `apps/web/package.json` and ensure the Turborepo `test` pipeline in `turbo.json` covers `apps/web` + `packages/ui` so `turbo run test` is meaningful for the web (D12).
-- [ ] T006 Add root scripts to `package.json`: `check:design-tokens` (`tsx scripts/check-design-tokens.ts`) and `sync:tokens` (`tsx scripts/sync-tokens.ts`).
+- [X] T001 Add runtime deps to `apps/web/package.json`: `@tanstack/react-query`, `@tanstack/react-virtual`, `lucide-react`, `react-markdown`, `remark-gfm`, `rehype-sanitize`; confirm `@dnd-kit/*` and `cmdk` present (research §"New runtime dependencies").
+- [X] T002 Add web test dev-deps to `apps/web/package.json` and `packages/ui/package.json`: `vitest`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `vitest-axe`; run `pnpm install` (D12).
+- [X] T003 [P] Create `apps/web/vitest.config.ts` (jsdom env, React plugin, `vitest-axe` matchers) and `apps/web/test/setup.ts` (RTL cleanup, axe extend).
+- [X] T004 [P] Create `packages/ui/vitest.config.ts` and add a `test` script to `packages/ui/package.json`.
+- [X] T005 [P] Add a `test` script to `apps/web/package.json` and ensure the Turborepo `test` pipeline in `turbo.json` covers `apps/web` + `packages/ui` so `turbo run test` is meaningful for the web (D12).
+- [X] T006 Add root scripts to `package.json`: `check:design-tokens` (`tsx scripts/check-design-tokens.ts`) and `sync:tokens` (`tsx scripts/sync-tokens.ts`).
 
 ---
 
@@ -38,46 +38,46 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Design system: tokens → packages/ui → apps/web (D1/D2)
 
-- [ ] T007 Create `scripts/sync-tokens.ts` that copies `branding/colors_and_type.css` → `packages/ui/src/styles/tokens.css` with a generated-file header (never hand-edited); run `pnpm sync:tokens` to produce the file (D1).
-- [ ] T008 Create `packages/ui/src/styles/base.css` — element resets + base typography (14px UI base), referencing **only** `var(--*)` tokens (D1/D2).
-- [ ] T009 Expose `@rytask/ui/styles` via `packages/ui/package.json` `exports` so `apps/web` imports the stylesheet once; components never import `branding/` directly (D1).
+- [X] T007 Create `scripts/sync-tokens.ts` that copies `branding/colors_and_type.css` → `packages/ui/src/styles/tokens.css` with a generated-file header (never hand-edited); run `pnpm sync:tokens` to produce the file (D1).
+- [X] T008 Create `packages/ui/src/styles/base.css` — element resets + base typography (14px UI base), referencing **only** `var(--*)` tokens (D1/D2).
+- [X] T009 Expose `@rytask/ui/styles` via `packages/ui/package.json` `exports` so `apps/web` imports the stylesheet once; components never import `branding/` directly (D1).
 
 ### packages/ui primitives (token-driven, theme-agnostic — component-contracts §A)
 
-- [ ] T010 Restyle `Button` to token variants in `packages/ui/src/button.tsx` — `variant: primary|secondary|ghost|danger`, `size`, `loading`, `iconStart/iconEnd`; **primary = Sunbeam fill with dark ink `--fg-on-accent`, never white**; native `<button type="button">`.
-- [ ] T011 [P] Add `Input`/`Textarea` in `packages/ui/src/input.tsx` (label + `aria-describedby` error, `invalid` → `--error`, focus ring `--ring`).
-- [ ] T012 [P] Add `Select`/`Menu` (`DropdownMenu`) in `packages/ui/src/menu.tsx` (keyboard nav, `aria-activedescendant`, escape-to-close).
-- [ ] T013 [P] Add `Dialog`/`Sheet` in `packages/ui/src/dialog.tsx` (focus-trap, restore focus on close, `--overlay` scrim, `prefers-reduced-motion`).
-- [ ] T014 [P] Add `Tooltip` in `packages/ui/src/tooltip.tsx` (supplies the "reason" text for disabled controls).
-- [ ] T015 [P] Add `Badge`/`Chip` in `packages/ui/src/badge.tsx` (`tone` → semantic state tokens) and `StatusDot`/`Avatar` in `packages/ui/src/status.tsx`.
-- [ ] T016 [P] Add `Skeleton` in `packages/ui/src/skeleton.tsx` and `Figure` (Geist Mono `tabular-nums` for numbers/dates/IDs, FR-WEB-004) in `packages/ui/src/figure.tsx`.
-- [ ] T017 [P] Add the SurfaceState set `EmptyState`/`ErrorState`/`ForbiddenState`/`NotFoundState` in `packages/ui/src/surface-states.tsx` (FR-WEB-102) with kind, plain copy + recovery CTA.
-- [ ] T018 Export all primitives + styles from `packages/ui/src/index.ts` (depends on T010–T017).
+- [X] T010 Restyle `Button` to token variants in `packages/ui/src/button.tsx` — `variant: primary|secondary|ghost|danger`, `size`, `loading`, `iconStart/iconEnd`; **primary = Sunbeam fill with dark ink `--fg-on-accent`, never white**; native `<button type="button">`.
+- [X] T011 [P] Add `Input`/`Textarea` in `packages/ui/src/input.tsx` (label + `aria-describedby` error, `invalid` → `--error`, focus ring `--ring`).
+- [X] T012 [P] Add `Select`/`Menu` (`DropdownMenu`) in `packages/ui/src/menu.tsx` (keyboard nav, `aria-activedescendant`, escape-to-close).
+- [X] T013 [P] Add `Dialog`/`Sheet` in `packages/ui/src/dialog.tsx` (focus-trap, restore focus on close, `--overlay` scrim, `prefers-reduced-motion`).
+- [X] T014 [P] Add `Tooltip` in `packages/ui/src/tooltip.tsx` (supplies the "reason" text for disabled controls).
+- [X] T015 [P] Add `Badge`/`Chip` in `packages/ui/src/badge.tsx` (`tone` → semantic state tokens) and `StatusDot`/`Avatar` in `packages/ui/src/status.tsx`.
+- [X] T016 [P] Add `Skeleton` in `packages/ui/src/skeleton.tsx` and `Figure` (Geist Mono `tabular-nums` for numbers/dates/IDs, FR-WEB-004) in `packages/ui/src/figure.tsx`.
+- [X] T017 [P] Add the SurfaceState set `EmptyState`/`ErrorState`/`ForbiddenState`/`NotFoundState` in `packages/ui/src/surface-states.tsx` (FR-WEB-102) with kind, plain copy + recovery CTA.
+- [X] T018 Export all primitives + styles from `packages/ui/src/index.ts` (depends on T010–T017).
 
 ### Fonts, theme, root layout (D3/D4/D5)
 
-- [ ] T019 Wire fonts via `next/font/google` (Hanken Grotesk UI, Schibsted Grotesk 800 brand, Geist Mono figures) exposing `--font-ui`/`--font-brand`/`--font-mono` in `apps/web/app/layout.tsx` (D4).
-- [ ] T020 In `apps/web/app/layout.tsx`: import `@rytask/ui/styles` once and add the pre-paint no-FOUC inline script setting `data-theme` from `localStorage` before paint (D3).
-- [ ] T021 `ThemeContext` + header toggle (`light|dark|system`, persisted, applied as `data-theme` on `<html>`; both themes resolve from the same tokens; honors `prefers-reduced-motion`) in `apps/web/lib/theme/theme-context.tsx` (D3).
+- [X] T019 Wire fonts via `next/font/google` (Hanken Grotesk UI, Schibsted Grotesk 800 brand, Geist Mono figures) exposing `--font-ui`/`--font-brand`/`--font-mono` in `apps/web/app/layout.tsx` (D4).
+- [X] T020 In `apps/web/app/layout.tsx`: import `@rytask/ui/styles` once and add the pre-paint no-FOUC inline script setting `data-theme` from `localStorage` before paint (D3).
+- [X] T021 `ThemeContext` + header toggle (`light|dark|system`, persisted, applied as `data-theme` on `<html>`; both themes resolve from the same tokens; honors `prefers-reduced-motion`) in `apps/web/lib/theme/theme-context.tsx` (D3).
 
 ### Providers, contexts, data layer (D7/D8/D9/D10)
 
-- [ ] T022 TanStack Query client + provider (cache, optimistic-mutation defaults) in `apps/web/lib/query/query-provider.tsx` (D7).
-- [ ] T023 `SessionContext` (`status`, `principal` from `whoami`, `signOut` → `/auth/logout` + clear + `/login`) on top of `apps/web/lib/api.ts` in `apps/web/lib/auth/session-context.tsx` (D7).
-- [ ] T024 `OrgContext` + `formatDate`/`formatFigure` (render in `org.timezone`/`org.locale`; figures in Geist Mono tabular face) in `apps/web/lib/org/org-context.tsx` (D7, FR-WEB-004).
-- [ ] T025 Consolidate the scattered per-route `app/**/api-client.ts` into `apps/web/lib/api/` — one module per resource (auth, work-items, projects, statuses, labels, views, members, org, tokens, invites, comments, notifications, search) on the existing `authedRequest`/`publicRequest` helpers; typed against `@rytask/contracts`; do **not** reintroduce the retired `x-user-id` dev-header (D8, quickstart §6).
-- [ ] T026 Client capability map `can()`/`reason()` mirroring the RBAC matrix + `CapabilityContext` in `apps/web/lib/auth/capabilities.ts` (D9, role-capability-matrix; cosmetic only — server authoritative).
-- [ ] T027 Tenant-safe error mapping (`404`/`403` → `NotFoundState`/`ForbiddenState`, **zero** foreign data; human-key deep links resolve via API) in `apps/web/lib/api/errors.ts` (D10, FR-WEB-101).
+- [X] T022 TanStack Query client + provider (cache, optimistic-mutation defaults) in `apps/web/lib/query/query-provider.tsx` (D7).
+- [X] T023 `SessionContext` (`status`, `principal` from `whoami`, `signOut` → `/auth/logout` + clear + `/login`) on top of `apps/web/lib/api.ts` in `apps/web/lib/auth/session-context.tsx` (D7).
+- [X] T024 `OrgContext` + `formatDate`/`formatFigure` (render in `org.timezone`/`org.locale`; figures in Geist Mono tabular face) in `apps/web/lib/org/org-context.tsx` (D7, FR-WEB-004).
+- [X] T025 Consolidate the scattered per-route `app/**/api-client.ts` into `apps/web/lib/api/` — one module per resource (auth, work-items, projects, statuses, labels, views, members, org, tokens, invites, comments, notifications, search) on the existing `authedRequest`/`publicRequest` helpers; typed against `@rytask/contracts`; do **not** reintroduce the retired `x-user-id` dev-header (D8, quickstart §6).
+- [X] T026 Client capability map `can()`/`reason()` mirroring the RBAC matrix + `CapabilityContext` in `apps/web/lib/auth/capabilities.ts` (D9, role-capability-matrix; cosmetic only — server authoritative).
+- [X] T027 Tenant-safe error mapping (`404`/`403` → `NotFoundState`/`ForbiddenState`, **zero** foreign data; human-key deep links resolve via API) in `apps/web/lib/api/errors.ts` (D10, FR-WEB-101).
 
 ### Shell + route-group migration (D6, route-map)
 
-- [ ] T028 Create the persistent app shell `apps/web/app/(app)/layout.tsx` — sidebar nav (My Work, Projects, Inbox, Search, Settings), org + signed-in user, theme toggle, sign-out, global quick-add + command-palette mounts; wraps children in `RequireAuth`; mounts `Session/Org/Capability/Theme` contexts + the Query client once; hides nav entries per capability map (D6, FR-WEB-001).
-- [ ] T029 Move authed routes under `app/(app)/` (`my-work`, `inbox`, `projects`, `settings/*`) and add new `app/(app)/search/` + `app/(app)/views/[viewId]/`; add `app/(app)/page.tsx` redirect `/` → `/my-work`; keep `(auth)`, `setup`, `invite/[token]` bare (route-map, quickstart §6).
+- [X] T028 Create the persistent app shell `apps/web/app/(app)/layout.tsx` — sidebar nav (My Work, Projects, Inbox, Search, Settings), org + signed-in user, theme toggle, sign-out, global quick-add + command-palette mounts; wraps children in `RequireAuth`; mounts `Session/Org/Capability/Theme` contexts + the Query client once; hides nav entries per capability map (D6, FR-WEB-001).
+- [X] T029 Move authed routes under `app/(app)/` (`my-work`, `inbox`, `projects`, `settings/*`) and add new `app/(app)/search/` + `app/(app)/views/[viewId]/`; add `app/(app)/page.tsx` redirect `/` → `/my-work`; keep `(auth)`, `setup`, `invite/[token]` bare (route-map, quickstart §6).
 
 ### The two new CI gates (D11/D12)
 
-- [ ] T030 Create `scripts/check-design-tokens.ts` failing CI on raw hex (`#[0-9a-fA-F]{3,8}`), off-palette named colors, `linear-/radial-gradient`, `backdrop-filter`/`blur(`, floaty colored `box-shadow`/`text-shadow` literals, non-system `font-family` literals, and emoji-as-chrome across `apps/web` + `packages/ui`; allowlist exactly `packages/ui/src/styles/tokens.css` (D11, NFR-WEB-001).
-- [ ] T031 Generalize `scripts/check-required-tests.ts` to match any `*.testplan.ts` (still finds `module.testplan.ts`) and create `apps/web/web.testplan.ts` declaring the required web tests (flagship Playwright journeys + a11y scans) (D12, NFR-WEB-006).
+- [X] T030 Create `scripts/check-design-tokens.ts` failing CI on raw hex (`#[0-9a-fA-F]{3,8}`), off-palette named colors, `linear-/radial-gradient`, `backdrop-filter`/`blur(`, floaty colored `box-shadow`/`text-shadow` literals, non-system `font-family` literals, and emoji-as-chrome across `apps/web` + `packages/ui`; allowlist exactly `packages/ui/src/styles/tokens.css` (D11, NFR-WEB-001).
+- [X] T031 Generalize `scripts/check-required-tests.ts` to match any `*.testplan.ts` (still finds `module.testplan.ts`) and create `apps/web/web.testplan.ts` declaring the required web tests (flagship Playwright journeys + a11y scans) (D12, NFR-WEB-006).
 
 **Checkpoint**: Design system wired, shell + providers mounted, data layer + gates in place. User stories can now proceed (in priority order, or in parallel if staffed).
 
@@ -91,16 +91,16 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 1 (MANDATORY) ⚠️
 
-- [ ] T032 [P] [US1] Component test for the routing state machine (org-less→`/setup`, protected→`/login?next=`, completed≠setup) in `apps/web/test/routing.test.tsx`.
-- [ ] T033 [US1] Extend the first-run Playwright journey (setup ≤5 steps → signed-in → reload persists → sign-out → reopen no setup) in `apps/web/e2e/setup.e2e.spec.ts` and declare it in `apps/web/web.testplan.ts`.
+- [X] T032 [P] [US1] Component test for the routing state machine (org-less→`/setup`, protected→`/login?next=`, completed≠setup) in `apps/web/test/routing.test.tsx`.
+- [X] T033 [US1] Extend the first-run Playwright journey (setup ≤5 steps → signed-in → reload persists → sign-out → reopen no setup) in `apps/web/e2e/setup.e2e.spec.ts` and declare it in `apps/web/web.testplan.ts`.
 
 ### Implementation for User Story 1
 
-- [ ] T034 [US1] Routing state machine (`getSetupState` org-less→`/setup`; unauthenticated protected hit→`/login?next=<dest>` and return after sign-in; completed instance never re-offers setup) in `apps/web/lib/auth/routing.ts` + `apps/web/components/require-auth.tsx` (D18, FR-WEB-002).
-- [ ] T035 [US1] Complete + restyle the first-run wizard to tokens (≤5 steps, jargon-free, lands owner signed-in in a starter project) in `apps/web/app/setup/setup-client.tsx` (FR-WEB-010).
-- [ ] T036 [US1] Complete + restyle sign-in (`?next=` return, single generic non-enumerating error, reflect server throttle/lock state) in `apps/web/app/(auth)/login/login-client.tsx` (FR-WEB-011).
-- [ ] T037 [P] [US1] Restyle self-registration (when org enables it) to tokens with inline validation in `apps/web/app/(auth)/register/register-client.tsx` (FR-WEB-011).
-- [ ] T038 [US1] Session survives reload + silent refresh, ends cleanly on sign-out (→ `/login`, session unusable) wired through `apps/web/lib/auth/session-context.tsx` (FR-WEB-012).
+- [X] T034 [US1] Routing state machine (`getSetupState` org-less→`/setup`; unauthenticated protected hit→`/login?next=<dest>` and return after sign-in; completed instance never re-offers setup) in `apps/web/lib/auth/routing.ts` + `apps/web/components/require-auth.tsx` (D18, FR-WEB-002).
+- [X] T035 [US1] Complete + restyle the first-run wizard to tokens (≤5 steps, jargon-free, lands owner signed-in in a starter project) in `apps/web/app/setup/setup-client.tsx` (FR-WEB-010).
+- [X] T036 [US1] Complete + restyle sign-in (`?next=` return, single generic non-enumerating error, reflect server throttle/lock state) in `apps/web/app/(auth)/login/login-client.tsx` (FR-WEB-011).
+- [X] T037 [P] [US1] Restyle self-registration (when org enables it) to tokens with inline validation in `apps/web/app/(auth)/register/register-client.tsx` (FR-WEB-011).
+- [X] T038 [US1] Session survives reload + silent refresh, ends cleanly on sign-out (→ `/login`, session unusable) wired through `apps/web/lib/auth/session-context.tsx` (FR-WEB-012).
 
 **Checkpoint**: US1 fully functional — a fresh instance is reachable, onboardable, and stays signed in.
 
@@ -114,13 +114,13 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 2 (MANDATORY) ⚠️
 
-- [ ] T039 [P] [US2] Unit test `previewTokens` (bare title → default item; full token line → 4 chips + title; escaped `\@name` stays literal; ambiguous token previewed then reconciled to server `meta.unresolved`) in `apps/web/test/quick-add.test.ts` (quick-add-grammar).
-- [ ] T040 [US2] e2e capture journey (full token line → structured item with key, visible without reload) in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T039 [P] [US2] Unit test `previewTokens` (bare title → default item; full token line → 4 chips + title; escaped `\@name` stays literal; ambiguous token previewed then reconciled to server `meta.unresolved`) in `apps/web/test/quick-add.test.ts` (quick-add-grammar).
+- [X] T040 [US2] e2e capture journey (full token line → structured item with key, visible without reload) in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 2
 
-- [ ] T041 [P] [US2] Display-only preview tokenizer `previewTokens(line)` (chips for `@#!^`, honors escaping/quoting; `resolved=false` until server confirms — NOT authoritative) in `apps/web/lib/quick-add/tokenizer.ts` (D13).
-- [ ] T042 [US2] Complete the quick-add control (live chips, `POST /work-items {projectId, quickAdd}`, surface `meta.unresolved` inline for correction without dropping/blocking, show new item with key no reload) in `apps/web/components/quick-add.tsx` (FR-WEB-020/021, SC-002).
+- [X] T041 [P] [US2] Display-only preview tokenizer `previewTokens(line)` (chips for `@#!^`, honors escaping/quoting; `resolved=false` until server confirms — NOT authoritative) in `apps/web/lib/quick-add/tokenizer.ts` (D13).
+- [X] T042 [US2] Complete the quick-add control (live chips, `POST /work-items {projectId, quickAdd}`, surface `meta.unresolved` inline for correction without dropping/blocking, show new item with key no reload) in `apps/web/components/quick-add.tsx` (FR-WEB-020/021, SC-002).
 
 **Checkpoint**: US2 — fast, on-brand capture works end to end.
 
@@ -134,14 +134,14 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 3 (MANDATORY) ⚠️
 
-- [ ] T043 [P] [US3] Component test: item-detail fields persist and a field change appends an activity entry (field, old→new, actor, time) in `apps/web/test/item-detail.test.tsx`.
-- [ ] T044 [US3] e2e item-detail (set fields → reload persists; delete → trash → restore intact) in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T043 [P] [US3] Component test: item-detail fields persist and a field change appends an activity entry (field, old→new, actor, time) in `apps/web/test/item-detail.test.tsx`.
+- [X] T044 [US3] e2e item-detail (set fields → reload persists; delete → trash → restore intact) in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 3
 
-- [ ] T045 [P] [US3] Markdown renderer (`react-markdown` + `remark-gfm` + `rehype-sanitize`; checklist toggle/persist; code/links/images) in `apps/web/components/markdown.tsx` (D17, FR-WEB-022).
-- [ ] T046 [US3] Complete the item-detail surface (all fields incl. markdown description + parent; per-item activity feed; optimistic `version` writes with `409` reconcile) in `apps/web/components/item-detail.tsx` and route `apps/web/app/(app)/projects/[projectId]/items/[key]/page.tsx` (FR-WEB-022/023, D15).
-- [ ] T047 [US3] Trash surface + soft-delete/restore actions in `apps/web/app/(app)/projects/[projectId]/trash/page.tsx` (FR-WEB-023).
+- [X] T045 [P] [US3] Markdown renderer (`react-markdown` + `remark-gfm` + `rehype-sanitize`; checklist toggle/persist; code/links/images) in `apps/web/components/markdown.tsx` (D17, FR-WEB-022).
+- [X] T046 [US3] Complete the item-detail surface (all fields incl. markdown description + parent; per-item activity feed; optimistic `version` writes with `409` reconcile) in `apps/web/components/item-detail.tsx` and route `apps/web/app/(app)/projects/[projectId]/items/[key]/page.tsx` (FR-WEB-022/023, D15).
+- [X] T047 [US3] Trash surface + soft-delete/restore actions in `apps/web/app/(app)/projects/[projectId]/trash/page.tsx` (FR-WEB-023).
 
 **Checkpoint**: US3 — the atomic work-item record holds and shows its auditable detail.
 
@@ -155,14 +155,14 @@ description: "Task list for The Frontend for M0 & M1 (Web Application)"
 
 ### Tests for User Story 4 (MANDATORY) ⚠️
 
-- [ ] T048 [P] [US4] Component test: optimistic move reverts with a kind message on server `403`/`409` (role-disallowed drag) in `apps/web/test/board-move.test.tsx`.
-- [ ] T049 [US4] e2e Board drag (status + order persist on reload) + List inline edit + Board↔List carry-over in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
+- [X] T048 [P] [US4] Component test: optimistic move reverts with a kind message on server `403`/`409` (role-disallowed drag) in `apps/web/test/board-move.test.tsx`.
+- [X] T049 [US4] e2e Board drag (status + order persist on reload) + List inline edit + Board↔List carry-over in `apps/web/e2e/create-track-view.e2e.spec.ts` + `web.testplan.ts`.
 
 ### Implementation for User Story 4
 
-- [ ] T050 [US4] Board (`@dnd-kit` columns grouped by status, optimistic `POST /work-items/{id}/move` with fractional-order persistence across reload, role-disallowed drag revert, virtualized columns at ~1,000 items) in `apps/web/app/(app)/projects/[projectId]/board/board-client.tsx` (FR-WEB-030, D16).
-- [ ] T051 [US4] List (inline field edit without full reload, labeled group sections, virtualized rows) in `apps/web/app/(app)/projects/[projectId]/list/list-client.tsx` (FR-WEB-031, D16).
-- [ ] T052 [US4] Board↔List `ViewConfig` carry-over over one query path (filter/group/sort) in `apps/web/lib/views/view-config.ts` (FR-WEB-032; the serializer itself is built in US7/T065).
+- [X] T050 [US4] Board (`@dnd-kit` columns grouped by status, optimistic `POST /work-items/{id}/move` with fractional-order persistence across reload, role-disallowed drag revert, virtualized columns at ~1,000 items) in `apps/web/app/(app)/projects/[projectId]/board/board-client.tsx` (FR-WEB-030, D16).
+- [X] T051 [US4] List (inline field edit without full reload, labeled group sections, virtualized rows) in `apps/web/app/(app)/projects/[projectId]/list/list-client.tsx` (FR-WEB-031, D16).
+- [X] T052 [US4] Board↔List `ViewConfig` carry-over over one query path (filter/group/sort) in `apps/web/lib/views/view-config.ts` (FR-WEB-032; the serializer itself is built in US7/T065).
 
 **Checkpoint**: US4 — the day-to-day work surfaces are live and the capture/track loop closes.
 

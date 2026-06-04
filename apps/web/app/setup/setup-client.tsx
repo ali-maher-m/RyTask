@@ -1,19 +1,19 @@
 'use client';
 
+import { AuthShell, authStyles as s } from '@/components/auth-shell';
+import { ApiError, bootstrap, getSetupState, storeSession } from '@/lib/api';
+import { Button, Input } from '@rytask/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
-import { ApiError, bootstrap, getSetupState, storeSession } from '../../lib/api';
 
 /**
- * First-run wizard (US1, T041, SC-001). Plain-language, ≤ 5 short steps to a usable, owned
- * workspace — no jargon (the "Albert/Marissa test"). It first asks `GET /setup`; if an org
- * already exists it shows a friendly "already set up" notice that routes to sign-in. Otherwise it
- * collects the owner's name/email, a password, and an organization name, then `POST /setup` to
- * atomically create everything and sign the owner in. Every field is labelled for accessibility;
- * errors surface in a `role="alert"` region.
+ * First-run wizard (US1, FR-WEB-010). Plain-language, ≤ 5 short steps to a usable, owned
+ * workspace — no jargon (the "Albert/Marissa test"). It asks `GET /setup`; if an org already
+ * exists it shows a friendly "already set up" notice that routes to sign-in. Otherwise it collects
+ * the owner's name/email, a password, and an organization name, then `POST /setup` to atomically
+ * create everything and sign the owner in, landing in a starter project. Restyled to design tokens.
  */
-
 type Phase = 'checking' | 'ready' | 'already-set-up' | 'creating' | 'done';
 
 const STEPS = ['About you', 'Pick a password', 'Name your team', 'Create'] as const;
@@ -36,7 +36,6 @@ export function SetupClient() {
         if (active) setPhase(state.available ? 'ready' : 'already-set-up');
       })
       .catch(() => {
-        // If the check itself fails, let the owner try anyway (the POST re-checks atomically).
         if (active) setPhase('ready');
       });
     return () => {
@@ -65,12 +64,12 @@ export function SetupClient() {
       return;
     }
     setError(null);
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    setStep((value) => Math.min(value + 1, STEPS.length - 1));
   }
 
   function back() {
     setError(null);
-    setStep((s) => Math.max(s - 1, 0));
+    setStep((value) => Math.max(value - 1, 0));
   }
 
   async function create() {
@@ -106,37 +105,38 @@ export function SetupClient() {
 
   if (phase === 'checking') {
     return (
-      <main>
-        <h1>Getting things ready…</h1>
-        <p>One moment.</p>
-      </main>
+      <AuthShell>
+        <h1 className={s.title}>Getting things ready…</h1>
+        <p className={s.subtitle}>One moment.</p>
+      </AuthShell>
     );
   }
 
   if (phase === 'already-set-up') {
     return (
-      <main>
-        <h1>You're all set up</h1>
-        <p>This workspace already has an account. Sign in to pick up where you left off.</p>
-        <p>
-          <Link href="/login">Go to sign in</Link>
+      <AuthShell>
+        <h1 className={s.title}>You're all set up</h1>
+        <p className={s.subtitle}>
+          This workspace already has an account. Sign in to pick up where you left off.
         </p>
-      </main>
+        <Link href="/login">Go to sign in</Link>
+      </AuthShell>
     );
   }
 
   const busy = phase === 'creating';
 
   return (
-    <main>
-      <h1>Welcome to RyTask</h1>
-      <p>Let's set up your workspace. It only takes a minute.</p>
+    <AuthShell>
+      <h1 className={s.title}>Welcome to RyTask</h1>
+      <p className={s.subtitle}>Let's set up your workspace. It only takes a minute.</p>
 
-      <p aria-live="polite">
+      <p className={s.steps} aria-live="polite">
         Step {step + 1} of {STEPS.length}: <strong>{STEPS[step]}</strong>
       </p>
 
       <form
+        className={s.form}
         aria-labelledby={`${formId}-heading`}
         onSubmit={(e) => {
           e.preventDefault();
@@ -151,75 +151,55 @@ export function SetupClient() {
 
         {step === 0 ? (
           <>
-            <p>
-              <label htmlFor={`${formId}-name`}>Your name</label>
-              <br />
-              <input
-                id={`${formId}-name`}
-                type="text"
-                autoComplete="name"
-                required
-                value={name}
-                disabled={busy}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </p>
-            <p>
-              <label htmlFor={`${formId}-email`}>Your email</label>
-              <br />
-              <input
-                id={`${formId}-email`}
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                disabled={busy}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </p>
+            <Input
+              label="Your name"
+              autoComplete="name"
+              required
+              value={name}
+              disabled={busy}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              label="Your email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              disabled={busy}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </>
         ) : null}
 
         {step === 1 ? (
-          <p>
-            <label htmlFor={`${formId}-password`}>Choose a password</label>
-            <br />
-            <input
-              id={`${formId}-password`}
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={password}
-              disabled={busy}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-describedby={`${formId}-password-hint`}
-            />
-            <br />
-            <small id={`${formId}-password-hint`}>At least 8 characters.</small>
-          </p>
+          <Input
+            label="Choose a password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={password}
+            disabled={busy}
+            onChange={(e) => setPassword(e.target.value)}
+            hint="At least 8 characters."
+          />
         ) : null}
 
         {step === 2 ? (
-          <p>
-            <label htmlFor={`${formId}-org`}>What should we call your team?</label>
-            <br />
-            <input
-              id={`${formId}-org`}
-              type="text"
-              autoComplete="organization"
-              required
-              value={orgName}
-              disabled={busy}
-              onChange={(e) => setOrgName(e.target.value)}
-            />
-          </p>
+          <Input
+            label="What should we call your team?"
+            autoComplete="organization"
+            required
+            value={orgName}
+            disabled={busy}
+            onChange={(e) => setOrgName(e.target.value)}
+          />
         ) : null}
 
         {step === 3 ? (
           <div>
             <p>Here's what we'll create:</p>
-            <ul>
+            <ul className={s.reviewList}>
               <li>
                 Your owner account for <strong>{name || 'you'}</strong> ({email})
               </li>
@@ -232,32 +212,32 @@ export function SetupClient() {
         ) : null}
 
         {error ? (
-          <p role="alert" style={{ color: '#b00020' }}>
+          <p className={s.error} role="alert">
             {error}
           </p>
         ) : null}
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className={s.actions}>
           {step > 0 ? (
-            <button type="button" onClick={back} disabled={busy}>
+            <Button variant="secondary" onClick={back} disabled={busy}>
               Back
-            </button>
+            </Button>
           ) : null}
           {step < STEPS.length - 1 ? (
-            <button type="submit" disabled={busy}>
+            <Button type="submit" variant="primary" disabled={busy}>
               Continue
-            </button>
+            </Button>
           ) : (
-            <button type="submit" disabled={busy}>
+            <Button type="submit" variant="primary" loading={busy}>
               {busy ? 'Creating your workspace…' : 'Create my workspace'}
-            </button>
+            </Button>
           )}
         </div>
       </form>
 
-      <p>
+      <p className={s.footer}>
         Already have an account? <Link href="/login">Sign in</Link>
       </p>
-    </main>
+    </AuthShell>
   );
 }

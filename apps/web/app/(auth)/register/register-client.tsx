@@ -1,15 +1,17 @@
 'use client';
 
+import { AuthShell, authStyles as s } from '@/components/auth-shell';
+import { ApiError, register, storeSession } from '@/lib/api';
+import { Button, Input } from '@rytask/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
-import { ApiError, register, storeSession } from '../../../lib/api';
 
 /**
- * Sign-up form (US2, T059). Name + email + password → `POST /auth/register` → tokens stored →
+ * Sign-up form (US1, FR-WEB-011). Name + email + password → `POST /auth/register` → tokens stored →
  * into the app. Self-registration is allowed only when the organization enables public signup; a
  * 403 is shown as a plain "invite-only" message that points to sign-in. A duplicate email (409) is
- * surfaced plainly. Fields are labelled; errors live in a `role="alert"` region.
+ * surfaced plainly. Restyled to design tokens with inline validation.
  */
 export function RegisterClient() {
   const router = useRouter();
@@ -44,81 +46,68 @@ export function RegisterClient() {
 
   if (inviteOnly) {
     return (
-      <main>
-        <h1>This workspace is invite-only</h1>
-        <p>Ask a teammate to send you an invitation, or sign in if you already have an account.</p>
-        <p>
-          <Link href="/login">Go to sign in</Link>
+      <AuthShell>
+        <h1 className={s.title}>This workspace is invite-only</h1>
+        <p className={s.subtitle}>
+          Ask a teammate to send you an invitation, or sign in if you already have an account.
         </p>
-      </main>
+        <Link href="/login">Go to sign in</Link>
+      </AuthShell>
     );
   }
 
   return (
-    <main>
-      <h1>Create your account</h1>
-      <form aria-labelledby={`${formId}-heading`} onSubmit={submit}>
-        <h2 id={`${formId}-heading`} style={{ position: 'absolute', left: '-9999px' }}>
+    <AuthShell>
+      <h1 className={s.title}>Create your account</h1>
+      <p className={s.subtitle}>Join your team's workspace.</p>
+
+      <form className={s.form} aria-labelledby={`${formId}-heading`} onSubmit={submit}>
+        <h2 id={`${formId}-heading`} hidden>
           Create a new account
         </h2>
-        <p>
-          <label htmlFor={`${formId}-name`}>Your name</label>
-          <br />
-          <input
-            id={`${formId}-name`}
-            type="text"
-            autoComplete="name"
-            required
-            value={name}
-            disabled={busy}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </p>
-        <p>
-          <label htmlFor={`${formId}-email`}>Email</label>
-          <br />
-          <input
-            id={`${formId}-email`}
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            disabled={busy}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </p>
-        <p>
-          <label htmlFor={`${formId}-password`}>Password</label>
-          <br />
-          <input
-            id={`${formId}-password`}
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            value={password}
-            disabled={busy}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-describedby={`${formId}-password-hint`}
-          />
-          <br />
-          <small id={`${formId}-password-hint`}>At least 8 characters.</small>
-        </p>
+        <Input
+          label="Your name"
+          autoComplete="name"
+          required
+          value={name}
+          disabled={busy}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Input
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          disabled={busy}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Input
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+          value={password}
+          disabled={busy}
+          onChange={(e) => setPassword(e.target.value)}
+          hint="At least 8 characters."
+        />
 
         {error ? (
-          <p role="alert" style={{ color: '#b00020' }}>
+          <p className={s.error} role="alert">
             {error}
           </p>
         ) : null}
 
-        <button type="submit" disabled={busy}>
+        <Button type="submit" variant="primary" loading={busy}>
           {busy ? 'Creating your account…' : 'Create account'}
-        </button>
+        </Button>
       </form>
 
-      <p>
+      <p className={s.footer}>
         Already have an account? <Link href="/login">Sign in</Link>
       </p>
-    </main>
+    </AuthShell>
   );
 }

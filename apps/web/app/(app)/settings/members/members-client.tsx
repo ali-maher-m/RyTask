@@ -1,9 +1,9 @@
 'use client';
 
+import { ApiError, authedRequest } from '@/lib/api';
 import type { Invitation, InvitationCreated, Membership, Role } from '@rytask/contracts';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
-import { ApiError, authedRequest } from '../../../lib/api';
 
 /**
  * Members + invitations admin (US8/US3, T108). List members and change their role or remove them;

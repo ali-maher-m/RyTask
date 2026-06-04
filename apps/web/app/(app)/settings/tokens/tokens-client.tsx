@@ -1,9 +1,9 @@
 'use client';
 
+import { ApiError, authedRequest } from '@/lib/api';
 import type { ApiTokenDto, ApiTokenSecret, ApiTokenType } from '@rytask/contracts';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
-import { ApiError, authedRequest } from '../../../lib/api';
 
 /**
  * Personal Access Token manager (US7, T100, SC-012). Mint a token with a limited scope (effective
