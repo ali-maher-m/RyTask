@@ -63,6 +63,60 @@ test('first-run wizard reaches a usable workspace (or self-closes if already set
   expect(critical).toEqual([]);
 });
 
+test('password reset is indistinguishable for known and unknown emails (US12, no enumeration)', async ({
+  page,
+}) => {
+  // The confirmation paragraph names the entered address; strip it to compare the wording itself.
+  const stripEmail = (t: string) =>
+    t
+      .replace(/\S+@\S+/, '<email>')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const confirmation = () =>
+    page
+      .locator('p', { hasText: /sent a link to reset your password/i })
+      .first()
+      .innerText();
+
+  // An address that (almost certainly) does not exist.
+  await page.goto('/reset');
+  await page.getByLabel('Email').fill(`nobody-${Date.now()}@rytask.local`);
+  await page.getByRole('button', { name: 'Send reset link' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  const unknownMsg = stripEmail(await confirmation());
+
+  // The seeded founder address — whether or not it exists on this instance, the reply is uniform.
+  await page.goto('/reset');
+  await page.getByLabel('Email').fill('founder@rytask.local');
+  await page.getByRole('button', { name: 'Send reset link' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  const knownMsg = stripEmail(await confirmation());
+
+  // Identical wording → the page reveals nothing about account existence (FR-WEB-013, SC-010).
+  expect(knownMsg).toBe(unknownMsg);
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+});
+
+test('email verification surfaces a plain result for missing and invalid links (US12)', async ({
+  page,
+}) => {
+  // No token → a plain prompt, with no verification attempt and no scary error.
+  await page.goto('/verify');
+  await expect(page.getByRole('heading', { name: 'Verification link needed' })).toBeVisible();
+
+  // A bogus/expired token → the attempt is rejected with a plain "no longer valid" message. (The
+  // success path that lifts the unverified-account restriction needs a real emailed token, exercised
+  // via the mail catcher in a full demo run.)
+  await page.goto('/verify?token=not-a-real-verification-token');
+  await expect(page.getByRole('heading', { name: "This link didn't work" })).toBeVisible();
+  await expect(page.getByText(/no longer valid/i)).toBeVisible();
+
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+});
+
 test('setup wizard exposes a clear step indicator and no developer jargon', async ({ page }) => {
   await page.goto('/setup');
 

@@ -1,30 +1,42 @@
 'use client';
 
-import { ApiError, authedRequest } from '@/lib/api';
+import { ApiError, createToken, listTokens, revokeToken } from '@/lib/api';
+import { useOrg } from '@/lib/org/org-context';
 import type { ApiTokenDto, ApiTokenSecret, ApiTokenType } from '@rytask/contracts';
+import { Badge, Button, Input, Select } from '@rytask/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
 
 /**
- * Personal Access Token manager (US7, T100, SC-012). Mint a token with a limited scope (effective
- * permission is always scope ∩ your role), copy the secret once — it's never shown again — list
- * tokens with their last-used time, and revoke any token. Tokens authenticate non-UI callers
- * (CLI, CI, MCP agents) on your behalf.
+ * Personal Access Token manager (US9, T082, FR-WEB-074, NFR-WEB-005, SC-012). Mint a token with a
+ * limited scope (effective permission is always scope ∩ your role), **copy the secret once** — it is
+ * never shown again, never put in a URL or logged — list tokens with their last-used time, and revoke
+ * any token immediately. Tokens authenticate non-UI callers (CLI, CI, MCP agents) on your behalf.
+ * Token-only styling; figures/dates render in the org timezone/locale via `useOrg`.
  */
 const TOKEN_TYPES: ApiTokenType[] = ['PAT', 'MCP'];
 
-function listTokens(): Promise<ApiTokenDto[]> {
-  return authedRequest<ApiTokenDto[]>('/api-tokens');
-}
-
-function formatWhen(iso: string | null): string {
-  if (!iso) return 'never';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-}
+const MAIN: React.CSSProperties = { padding: 'var(--space-4)', maxWidth: '44rem' };
+const CARD: React.CSSProperties = {
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--surface)',
+  padding: 'var(--space-4)',
+  display: 'grid',
+  gap: 'var(--space-3)',
+  marginTop: 'var(--space-3)',
+};
+const LABEL: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--fs-sm)',
+  color: 'var(--fg-muted)',
+  marginBottom: 'var(--space-1)',
+};
+const MONO: React.CSSProperties = { fontFamily: 'var(--font-mono)' };
 
 export function TokensClient() {
   const formId = useId();
+  const { formatDate } = useOrg();
   const [tokens, setTokens] = useState<ApiTokenDto[] | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<ApiTokenType>('PAT');
@@ -32,6 +44,12 @@ export function TokensClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [minted, setMinted] = useState<ApiTokenSecret | null>(null);
+
+  const formatWhen = useCallback(
+    (iso: string | null): string =>
+      iso ? formatDate(iso, { hour: '2-digit', minute: '2-digit' }) : 'never',
+    [formatDate],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -57,10 +75,7 @@ export function TokensClient() {
         .split(',')
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
-      const token = await authedRequest<ApiTokenSecret>('/api-tokens', {
-        method: 'POST',
-        body: JSON.stringify({ name: name.trim(), type, scopes: parsedScopes }),
-      });
+      const token = await createToken({ name: name.trim(), type, scopes: parsedScopes });
       setMinted(token);
       setName('');
       setScopes('');
@@ -76,7 +91,7 @@ export function TokensClient() {
     setBusy(true);
     setError(null);
     try {
-      await authedRequest<void>(`/api-tokens/${id}`, { method: 'DELETE' });
+      await revokeToken(id);
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not revoke the token.');
@@ -86,38 +101,49 @@ export function TokensClient() {
   }
 
   return (
-    <main>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Access tokens</h1>
+    <main style={MAIN}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+        }}
+      >
+        <h1 style={{ fontSize: 'var(--fs-h1)', margin: 0 }}>Access tokens</h1>
         <nav>
-          <Link href="/">Home</Link>
+          <Link href="/" style={{ color: 'var(--accent)' }}>
+            Home
+          </Link>
         </nav>
       </header>
-      <p>
+      <p style={{ color: 'var(--fg-muted)' }}>
         Tokens let tools and AI agents act on your behalf. A token can only ever do what your role
         allows.
       </p>
 
-      <form aria-labelledby={`${formId}-heading`} onSubmit={mint}>
-        <h2 id={`${formId}-heading`}>Create a token</h2>
-        <p>
-          <label htmlFor={`${formId}-name`}>Name</label>
-          <br />
-          <input
-            id={`${formId}-name`}
-            type="text"
-            required
-            maxLength={120}
-            value={name}
-            disabled={busy}
-            placeholder="e.g. CI deploy bot"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </p>
-        <p>
-          <label htmlFor={`${formId}-type`}>Type</label>
-          <br />
-          <select
+      <form onSubmit={mint} aria-labelledby={`${formId}-heading`} style={CARD}>
+        <h2 id={`${formId}-heading`} style={{ fontSize: 'var(--fs-h2)', margin: 0 }}>
+          Create a token
+        </h2>
+
+        <Input
+          id={`${formId}-name`}
+          label="Name"
+          type="text"
+          required
+          maxLength={120}
+          value={name}
+          disabled={busy}
+          placeholder="e.g. CI deploy bot"
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <div>
+          <label htmlFor={`${formId}-type`} style={LABEL}>
+            Type
+          </label>
+          <Select
             id={`${formId}-type`}
             value={type}
             disabled={busy}
@@ -128,84 +154,96 @@ export function TokensClient() {
                 {t}
               </option>
             ))}
-          </select>
-        </p>
-        <p>
-          <label htmlFor={`${formId}-scopes`}>Scopes</label>
-          <br />
-          <input
-            id={`${formId}-scopes`}
-            type="text"
-            value={scopes}
-            disabled={busy}
-            placeholder="comma-separated, e.g. work-items:read, projects:read"
-            onChange={(e) => setScopes(e.target.value)}
-            aria-describedby={`${formId}-scopes-hint`}
-          />
-          <br />
-          <small id={`${formId}-scopes-hint`}>Leave blank for a token limited to your role.</small>
-        </p>
+          </Select>
+        </div>
+
+        <Input
+          id={`${formId}-scopes`}
+          label="Scopes"
+          type="text"
+          value={scopes}
+          disabled={busy}
+          placeholder="comma-separated, e.g. work-items:read, projects:read"
+          hint="Leave blank for a token limited to your role."
+          onChange={(e) => setScopes(e.target.value)}
+        />
 
         {error ? (
-          <p role="alert" style={{ color: '#b00020' }}>
+          <p role="alert" style={{ color: 'var(--error)' }}>
             {error}
           </p>
         ) : null}
 
-        <button type="submit" disabled={busy}>
-          {busy ? 'Creating…' : 'Create token'}
-        </button>
+        <div>
+          <Button type="submit" variant="primary" loading={busy}>
+            Create token
+          </Button>
+        </div>
       </form>
 
       {minted ? (
-        <section
-          aria-label="New token secret"
-          style={{ border: '1px solid #1a7f37', padding: '0.75rem', margin: '1rem 0' }}
-        >
-          <h2>Copy your new token now</h2>
-          <p>
+        <section aria-label="New token secret" style={{ ...CARD, borderColor: 'var(--success)' }}>
+          <h2 style={{ fontSize: 'var(--fs-h2)', margin: 0 }}>Copy your new token now</h2>
+          <p style={{ margin: 0 }}>
             This is the only time we'll show it. Store it somewhere safe — you won't be able to see
             it again.
           </p>
-          <p>
-            <code data-testid="token-secret" style={{ wordBreak: 'break-all' }}>
-              {minted.secret}
-            </code>
-          </p>
-          <button type="button" onClick={() => setMinted(null)}>
-            I've copied it
-          </button>
+          <code
+            data-testid="token-secret"
+            style={{ ...MONO, wordBreak: 'break-all', color: 'var(--fg)' }}
+          >
+            {minted.secret}
+          </code>
+          <div>
+            <Button type="button" variant="secondary" onClick={() => setMinted(null)}>
+              I've copied it
+            </Button>
+          </div>
         </section>
       ) : null}
 
-      <h2>Your tokens</h2>
+      <h2 style={{ fontSize: 'var(--fs-h2)', marginTop: 'var(--space-5)' }}>Your tokens</h2>
       {!tokens ? (
-        <p>Loading…</p>
+        <p style={{ color: 'var(--fg-muted)' }}>Loading…</p>
       ) : tokens.length === 0 ? (
-        <p>You don't have any tokens yet.</p>
+        <p style={{ color: 'var(--fg-muted)' }}>You don't have any tokens yet.</p>
       ) : (
-        <ul aria-label="Your access tokens" style={{ listStyle: 'none', padding: 0 }}>
+        <ul aria-label="Your access tokens" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {tokens.map((t) => (
             <li
               key={t.id}
-              style={{ borderTop: '1px solid #e3e5e8', padding: '0.5rem 0' }}
               data-testid="token-row"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
+                padding: 'var(--space-3) 0',
+                borderTop: '1px solid var(--border-subtle)',
+              }}
             >
-              <strong>{t.name}</strong> <span>({t.type})</span>
-              <br />
-              <small>
-                Scopes: {t.scopes.length > 0 ? t.scopes.join(', ') : 'role-limited'} · Last used:{' '}
-                {formatWhen(t.lastUsedAt)} · Created: {formatWhen(t.createdAt)}
-              </small>
-              <br />
-              <button
-                type="button"
-                onClick={() => void revoke(t.id)}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 'var(--w-medium)' }}>{t.name}</span>{' '}
+                <Badge tone="neutral">{t.type}</Badge>
+                <span
+                  style={{ display: 'block', fontSize: 'var(--fs-sm)', color: 'var(--fg-muted)' }}
+                >
+                  Scopes:{' '}
+                  <span style={MONO}>
+                    {t.scopes.length > 0 ? t.scopes.join(', ') : 'role-limited'}
+                  </span>{' '}
+                  · Last used: <span style={MONO}>{formatWhen(t.lastUsedAt)}</span> · Created:{' '}
+                  <span style={MONO}>{formatWhen(t.createdAt)}</span>
+                </span>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={busy}
+                onClick={() => revoke(t.id)}
                 aria-label={`Revoke token ${t.name}`}
               >
                 Revoke
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

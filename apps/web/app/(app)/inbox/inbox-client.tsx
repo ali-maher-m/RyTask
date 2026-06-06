@@ -1,26 +1,25 @@
 'use client';
 
-import type { Notification, NotificationType } from '@rytask/contracts';
-import Link from 'next/link';
-import { useCallback, useEffect, useId, useState } from 'react';
 import {
   ApiError,
-  INBOX_STATES,
-  type InboxState,
-  archive,
+  type InboxStateFilter,
   getUnreadCount,
   listNotifications,
-  markRead,
-  markUnread,
-  snooze,
-} from './api-client';
+  updateNotification,
+} from '@/lib/api';
+import { useOrg } from '@/lib/org/org-context';
+import { NOTIFICATION_STATES, type Notification, type NotificationType } from '@rytask/contracts';
+import { Badge, Button, EmptyState } from '@rytask/ui';
+import Link from 'next/link';
+import { useCallback, useEffect, useId, useState } from 'react';
 
 /**
- * Notification inbox (US7, T115, FR-NOTIF-002, D10). Reads `GET /api/v1/notifications` for the
- * selected state (unread / all / snoozed / archived) plus `GET /notifications/unread-count` for
- * the badge, and mutates each row via `PATCH /notifications/{id}` (mark read/unread, snooze 1h,
- * archive). Keyset "Load more" advances the cursor (no OFFSET, SC-011). The list is labelled and
- * every interactive control has an accessible name for axe.
+ * Notification inbox (US10, T086, FR-WEB-082, D10). Reads `GET /notifications?state=` for the selected
+ * state (unread / all / snoozed / archived) plus `GET /notifications/unread-count` for the badge, and
+ * mutates each row via `PATCH /notifications/{id}` — mark read/unread, snooze 1h (re-surfaces),
+ * archive (hides). Each mutation reconciles the local list (a row that no longer matches the current
+ * filter drops out) and refreshes the unread count. Keyset "Load more" advances the cursor (no OFFSET,
+ * SC-011). Dates render in the org timezone/locale (FR-WEB-004). Token-only; every control is labelled.
  */
 
 const TYPE_LABELS: Record<NotificationType, string> = {
@@ -38,11 +37,6 @@ function notificationTitle(n: Notification): string {
   return payloadTitle ?? `${TYPE_LABELS[n.type] ?? n.type} · ${n.entityType} ${n.entityId}`;
 }
 
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-}
-
 /** One hour from now, ISO — the default "snooze" horizon. */
 function oneHourFromNow(): string {
   return new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -53,8 +47,18 @@ interface InboxData {
   nextCursor: string | null;
 }
 
+const MAIN: React.CSSProperties = { padding: 'var(--space-4)', maxWidth: '52rem' };
+const TAB_BASE: React.CSSProperties = {
+  font: 'inherit',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-pill)',
+  padding: 'var(--space-1) var(--space-3)',
+  cursor: 'pointer',
+};
+
 export function InboxClient() {
-  const [state, setState] = useState<InboxState>('unread');
+  const { formatDate } = useOrg();
+  const [state, setState] = useState<InboxStateFilter>('unread');
   const [data, setData] = useState<InboxData | null>(null);
   const [unread, setUnread] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +74,14 @@ export function InboxClient() {
     }
   }, []);
 
-  const load = useCallback(async (nextState: InboxState) => {
+  const load = useCallback(async (nextState: InboxStateFilter) => {
     try {
       setBusy(true);
       const page = await listNotifications(nextState);
-      setData({ items: page.items, nextCursor: page.nextCursor });
+      setData({
+        items: page.data,
+        nextCursor: page.pageInfo.hasNextPage ? page.pageInfo.nextCursor : null,
+      });
       setError(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load notifications');
@@ -93,9 +100,8 @@ export function InboxClient() {
     try {
       setBusy(true);
       const page = await listNotifications(state, data.nextCursor);
-      setData((prev) =>
-        prev ? { items: [...prev.items, ...page.items], nextCursor: page.nextCursor } : prev,
-      );
+      const nextCursor = page.pageInfo.hasNextPage ? page.pageInfo.nextCursor : null;
+      setData((prev) => (prev ? { items: [...prev.items, ...page.data], nextCursor } : prev));
       setError(null);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load more');
@@ -105,9 +111,9 @@ export function InboxClient() {
   }, [data, state, busy]);
 
   /**
-   * Apply a row mutation, then reconcile the local list: in a filtered state (e.g. `unread`) a
-   * row that no longer matches drops out; otherwise it is replaced in place. The unread badge is
-   * always refreshed.
+   * Apply a row mutation, then reconcile the local list: in a filtered state (e.g. `unread`) a row
+   * that no longer matches drops out; otherwise it is replaced in place. The unread badge is always
+   * refreshed so it stays in step with the row's new read state.
    */
   const mutate = useCallback(
     async (id: string, fn: () => Promise<Notification>, dropFromCurrent: boolean) => {
@@ -117,9 +123,7 @@ export function InboxClient() {
         const updated = await fn();
         setData((prev) => {
           if (!prev) return prev;
-          if (dropFromCurrent) {
-            return { ...prev, items: prev.items.filter((n) => n.id !== id) };
-          }
+          if (dropFromCurrent) return { ...prev, items: prev.items.filter((n) => n.id !== id) };
           return { ...prev, items: prev.items.map((n) => (n.id === id ? updated : n)) };
         });
         await refreshCount();
@@ -137,52 +141,90 @@ export function InboxClient() {
   }
 
   return (
-    <main>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>
+    <main style={MAIN}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+        }}
+      >
+        <h1
+          style={{
+            fontSize: 'var(--fs-h1)',
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+          }}
+        >
           Inbox{' '}
           {unread !== null ? (
             <span data-testid="unread-badge" aria-label={`${unread} unread notifications`}>
-              ({unread})
+              <Badge tone={unread > 0 ? 'brand' : 'neutral'}>{unread}</Badge>
             </span>
           ) : null}
         </h1>
         <nav>
-          <Link href="/">Home</Link>
+          <Link href="/" style={{ color: 'var(--accent)' }}>
+            Home
+          </Link>
         </nav>
       </header>
 
-      {/* ── State tabs ─────────────────────────────────────────────────────────── */}
-      <div role="tablist" aria-label="Inbox state" id={tablistId}>
-        {INBOX_STATES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            role="tab"
-            aria-selected={state === s}
-            onClick={() => setState(s)}
-            disabled={busy && state === s}
-            style={{
-              fontWeight: state === s ? 700 : 400,
-              marginRight: '0.5rem',
-            }}
-          >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Inbox state"
+        id={tablistId}
+        style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}
+      >
+        {NOTIFICATION_STATES.map((s) => {
+          const selected = state === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setState(s)}
+              disabled={busy && selected}
+              style={{
+                ...TAB_BASE,
+                background: selected ? 'var(--accent-soft)' : 'var(--surface)',
+                color: selected ? 'var(--accent)' : 'var(--fg-muted)',
+                borderColor: selected ? 'var(--accent)' : 'var(--border)',
+                fontWeight: selected ? 'var(--w-medium)' : 'var(--w-regular)',
+              }}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          );
+        })}
       </div>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p role="alert" style={{ color: 'var(--error)', marginTop: 'var(--space-3)' }}>
+          {error}
+        </p>
+      ) : null}
 
       {!data ? (
-        <p>Loading notifications…</p>
+        <p style={{ color: 'var(--fg-muted)', marginTop: 'var(--space-3)' }}>
+          Loading notifications…
+        </p>
       ) : data.items.length === 0 ? (
-        <p data-testid="inbox-empty">Nothing here. You are all caught up.</p>
+        <div data-testid="inbox-empty" style={{ marginTop: 'var(--space-4)' }}>
+          <EmptyState
+            title="You're all caught up"
+            description="New notifications will show up here."
+          />
+        </div>
       ) : (
         <ul
           aria-label={`${state} notifications`}
           data-testid="inbox-list"
-          style={{ listStyle: 'none', padding: 0 }}
+          style={{ listStyle: 'none', margin: 'var(--space-3) 0 0', padding: 0 }}
         >
           {data.items.map((n) => (
             <li
@@ -190,60 +232,103 @@ export function InboxClient() {
               data-testid="inbox-row"
               aria-current={isUnread(n) ? 'true' : undefined}
               style={{
-                borderTop: '1px solid #e3e5e8',
-                padding: '0.5rem 0',
-                fontWeight: isUnread(n) ? 600 : 400,
+                borderTop: '1px solid var(--border-subtle)',
+                padding: 'var(--space-3) 0',
               }}
             >
-              <p style={{ margin: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontWeight: isUnread(n) ? 'var(--w-medium)' : 'var(--w-regular)',
+                }}
+              >
                 <span data-testid="inbox-type">{TYPE_LABELS[n.type] ?? n.type}</span>
                 {' — '}
                 <span>{notificationTitle(n)}</span>
               </p>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#666' }}>
-                <time dateTime={n.createdAt}>{formatTimestamp(n.createdAt)}</time>
+              <p
+                style={{
+                  margin: 'var(--space-1) 0',
+                  fontSize: 'var(--fs-sm)',
+                  color: 'var(--fg-muted)',
+                }}
+              >
+                <time dateTime={n.createdAt} style={{ fontFamily: 'var(--font-mono)' }}>
+                  {formatDate(n.createdAt, { hour: '2-digit', minute: '2-digit' })}
+                </time>
                 {n.snoozedUntil ? (
-                  <span> · snoozed until {formatTimestamp(n.snoozedUntil)}</span>
+                  <span>
+                    {' · snoozed until '}
+                    <span style={{ fontFamily: 'var(--font-mono)' }}>
+                      {formatDate(n.snoozedUntil, { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </span>
                 ) : null}
               </p>
-              <div>
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                 {isUnread(n) ? (
-                  <button
-                    type="button"
-                    onClick={() => void mutate(n.id, () => markRead(n.id), state === 'unread')}
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     disabled={busy}
+                    onClick={() =>
+                      void mutate(
+                        n.id,
+                        () => updateNotification(n.id, { read: true }),
+                        state === 'unread',
+                      )
+                    }
                     aria-label={`Mark notification "${notificationTitle(n)}" as read`}
                   >
                     Mark read
-                  </button>
+                  </Button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => void mutate(n.id, () => markUnread(n.id), state === 'archived')}
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     disabled={busy}
+                    onClick={() =>
+                      void mutate(
+                        n.id,
+                        () => updateNotification(n.id, { read: false }),
+                        state === 'archived',
+                      )
+                    }
                     aria-label={`Mark notification "${notificationTitle(n)}" as unread`}
                   >
                     Mark unread
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="button"
-                  onClick={() =>
-                    void mutate(n.id, () => snooze(n.id, oneHourFromNow()), state !== 'snoozed')
-                  }
+                <Button
+                  variant="ghost"
+                  size="sm"
                   disabled={busy}
+                  onClick={() =>
+                    void mutate(
+                      n.id,
+                      () => updateNotification(n.id, { snoozedUntil: oneHourFromNow() }),
+                      state !== 'snoozed',
+                    )
+                  }
                   aria-label={`Snooze notification "${notificationTitle(n)}" for one hour`}
                 >
                   Snooze 1h
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void mutate(n.id, () => archive(n.id), state !== 'archived')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   disabled={busy}
+                  onClick={() =>
+                    void mutate(
+                      n.id,
+                      () => updateNotification(n.id, { archived: true }),
+                      state !== 'archived',
+                    )
+                  }
                   aria-label={`Archive notification "${notificationTitle(n)}"`}
                 >
                   Archive
-                </button>
+                </Button>
               </div>
             </li>
           ))}
@@ -251,10 +336,10 @@ export function InboxClient() {
       )}
 
       {data?.nextCursor ? (
-        <p>
-          <button type="button" onClick={() => void loadMore()} disabled={busy}>
-            {busy ? 'Loading…' : 'Load more'}
-          </button>
+        <p style={{ marginTop: 'var(--space-3)' }}>
+          <Button variant="secondary" onClick={() => void loadMore()} loading={busy}>
+            Load more
+          </Button>
         </p>
       ) : null}
     </main>

@@ -11,6 +11,7 @@ import {
 import { useCallback, useEffect, useId, useState } from 'react';
 import { authedFetch } from '../lib/api';
 import { recordTrashed } from '../lib/work-items/trash-registry';
+import { CommentThread } from './comment-thread';
 import { Markdown } from './markdown';
 
 /**
@@ -715,6 +716,9 @@ export function ItemDetail({
           </ol>
         )}
       </section>
+
+      {/* ── Comments (US10) ───────────────────────────────────────────────────── */}
+      <CommentThread workItemId={current.id} />
     </section>
   );
 }

@@ -1,13 +1,15 @@
 'use client';
 
+import { AuthShell, authStyles as s } from '@/components/auth-shell';
+import { ApiError, requestPasswordReset } from '@/lib/api';
+import { Button, Input } from '@rytask/ui';
 import Link from 'next/link';
 import { useId, useState } from 'react';
-import { ApiError, requestPasswordReset } from '../../../lib/api';
 
 /**
- * Request a password reset (US6, T090, SC-010). Submitting always shows the same confirmation —
- * "if that email exists, a link is on its way" — so the page never reveals whether an account
- * exists (no enumeration). The emailed link lands on `/reset/confirm?token=…`.
+ * Request a password reset (US12, T093, FR-WEB-013). Submitting always shows the same confirmation —
+ * "if that email exists, a link is on its way" — so the page never reveals whether an account exists
+ * (no enumeration). The emailed link lands on `/reset/confirm?token=…`. Restyled to design tokens.
  */
 export function ResetRequestClient() {
   const formId = useId();
@@ -34,55 +36,52 @@ export function ResetRequestClient() {
 
   if (sent) {
     return (
-      <main>
-        <h1>Check your email</h1>
-        <p>
+      <AuthShell>
+        <h1 className={s.title}>Check your email</h1>
+        <p className={s.subtitle}>
           If an account exists for <strong>{email}</strong>, we've sent a link to reset your
           password. The link expires soon, so use it promptly.
         </p>
-        <p>
+        <p className={s.footer}>
           <Link href="/login">Back to sign in</Link>
         </p>
-      </main>
+      </AuthShell>
     );
   }
 
   return (
-    <main>
-      <h1>Reset your password</h1>
-      <p>Enter your email and we'll send you a link to choose a new password.</p>
-      <form aria-labelledby={`${formId}-heading`} onSubmit={submit}>
-        <h2 id={`${formId}-heading`} style={{ position: 'absolute', left: '-9999px' }}>
+    <AuthShell>
+      <h1 className={s.title}>Reset your password</h1>
+      <p className={s.subtitle}>Enter your email and we'll send a link to choose a new password.</p>
+
+      <form className={s.form} aria-labelledby={`${formId}-heading`} onSubmit={submit}>
+        <h2 id={`${formId}-heading`} hidden>
           Request a password reset
         </h2>
-        <p>
-          <label htmlFor={`${formId}-email`}>Email</label>
-          <br />
-          <input
-            id={`${formId}-email`}
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            disabled={busy}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </p>
+        <Input
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          disabled={busy}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
         {error ? (
-          <p role="alert" style={{ color: '#b00020' }}>
+          <p className={s.error} role="alert">
             {error}
           </p>
         ) : null}
 
-        <button type="submit" disabled={busy}>
+        <Button type="submit" variant="primary" loading={busy}>
           {busy ? 'Sending…' : 'Send reset link'}
-        </button>
+        </Button>
       </form>
 
-      <p>
+      <p className={s.footer}>
         <Link href="/login">Back to sign in</Link>
       </p>
-    </main>
+    </AuthShell>
   );
 }

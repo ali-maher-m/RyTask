@@ -1,5 +1,6 @@
 'use client';
 
+import { CommandPalette } from '@/components/command-palette';
 import { RequireAuth } from '@/components/require-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useCapabilities } from '@/lib/auth/capability-context';
@@ -8,15 +9,16 @@ import { useOrg } from '@/lib/org/org-context';
 import { Avatar, Button } from '@rytask/ui';
 import { CheckSquare, FolderKanban, Inbox, LogOut, Search, Settings } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { type ReactNode, useState } from 'react';
 import styles from './shell.module.css';
 
 /**
  * Persistent authenticated shell (D6, FR-WEB-001). Reachable from every authed surface: sidebar
  * nav (My Work, Projects, Inbox, Search, Settings — entries hidden per the capability map), the
- * org + signed-in user, a theme toggle, and sign-out. Mounts the global command-palette affordance
- * (Cmd/Ctrl-K). Wraps children in `RequireAuth`; the client providers are mounted one level up.
+ * org + signed-in user, a theme toggle, and sign-out. Mounts the global command palette
+ * (`Cmd/Ctrl-K` from any authed screen, or the topbar Search button). Wraps children in
+ * `RequireAuth`; the client providers are mounted one level up.
  */
 interface NavItem {
   href: string;
@@ -27,22 +29,12 @@ interface NavItem {
 
 function ShellChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { status, principal, signOut } = useSession();
   const { org } = useOrg();
   const { can } = useCapabilities();
-
-  // Global command-palette affordance: Cmd/Ctrl-K opens search from any authed surface (FR-WEB-090).
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        router.push('/search');
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [router]);
+  // The command palette owns the global Cmd/Ctrl-K shortcut itself; the topbar button below opens
+  // it via this controlled state (FR-WEB-090).
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   if (status === 'loading') {
     return <output className={styles.skeletonShell}>Loading your workspace…</output>;
@@ -113,7 +105,7 @@ function ShellChrome({ children }: { children: ReactNode }) {
           <button
             type="button"
             className={styles.search}
-            onClick={() => router.push('/search')}
+            onClick={() => setPaletteOpen(true)}
             aria-label="Search and commands"
           >
             <Search size={14} aria-hidden="true" />
@@ -123,6 +115,8 @@ function ShellChrome({ children }: { children: ReactNode }) {
         </header>
         <main className={styles.content}>{children}</main>
       </div>
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }

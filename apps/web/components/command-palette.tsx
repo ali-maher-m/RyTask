@@ -1,21 +1,23 @@
 'use client';
 
-import type { SearchEnvelope, SearchResult, SearchResultType } from '@rytask/contracts';
+import { search } from '@/lib/api';
+import type { SearchResult, SearchResultType } from '@rytask/contracts';
 import { Command } from 'cmdk';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { authedRequest } from '../lib/api';
+import styles from './command-palette.module.css';
 
 /**
- * Global Cmd/Ctrl-K command palette (US8, T123, FR-SRCH-001/FR-SRCH-004). Opens on
- * `Cmd/Ctrl-K`, debounce-queries `GET /api/v1/search?q=…`, and renders the ranked hits grouped
- * by type (items / projects / labels / users) inside a `cmdk` dialog. Every hit completes a
- * navigate-or-create action in ≤2 keystrokes: type → arrow/Enter (navigate), or — when nothing
- * matches — Enter on the "Create work item" affordance. The dialog is a Radix focus-trapped
- * modal (cmdk `Command.Dialog`): arrow keys move the active item, Enter selects, Escape closes,
- * so it is fully keyboard-accessible for axe. Like the rest of `apps/web`, the hand-written
- * `@rytask/sdk` only covers health today, so this calls `/api/v1` via `authedRequest` — which
- * attaches the M0 bearer token and silently refreshes on a 401 (the M1 dev-header seam is gone).
+ * Global Cmd/Ctrl-K command palette (US11, T089, FR-WEB-090). Opens on `Cmd/Ctrl-K` from any
+ * authed screen, debounce-queries `GET /api/v1/search?q=…` through the consolidated data layer
+ * (`@/lib/api`, D8), and renders the ranked hits grouped by type (items / projects / labels /
+ * people / comments) inside a `cmdk` dialog. Every hit completes a navigate-or-create in ≤2
+ * actions: type → select (Enter or click) to navigate, or — when nothing matches — select the
+ * "Create work item" affordance. The dialog is a focus-trapped Radix modal (cmdk `Command.Dialog`):
+ * arrow keys move the active item, Enter selects, Escape closes — fully keyboard-accessible for axe.
+ *
+ * Token-only by construction (Principle VIII): all visual values live in `command-palette.module.css`
+ * as `var(--*)` tokens; this component carries no inline color/spacing literals.
  */
 
 /** Debounce window for the search query (keystroke → fetch). */
@@ -34,8 +36,8 @@ const GROUPS: ReadonlyArray<{ type: SearchResultType; heading: string }> = [
  * Map a hit to the route it should open. Work items, comments and labels all live under a
  * project's list view today (the only per-item surface in M1); a project opens its own list;
  * a user with no dedicated page falls back to cross-project "My Work". Returns `null` when a
- * hit cannot be navigated (e.g. a user-type hit's id is the user, not a project) so the row is
- * rendered but inert rather than routing nowhere.
+ * hit cannot be navigated (e.g. a label hit with no owning project) so the row is rendered but
+ * inert rather than routing nowhere.
  */
 function routeFor(hit: SearchResult): string | null {
   switch (hit.type) {
@@ -60,75 +62,82 @@ interface SearchState {
 
 const EMPTY_STATE: SearchState = { results: [], loading: false, error: false };
 
-/**
- * Run a search against `GET /api/v1/search`. Returns the ranked hits in server order
- * (`ts_rank_cd` desc); the dialog disables cmdk's own filtering (`shouldFilter={false}`) so the
- * server ranking is preserved. The provided `AbortSignal` cancels superseded requests.
- */
-async function runSearch(q: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const params = new URLSearchParams({ q, limit: '20' });
-  const body = await authedRequest<SearchEnvelope>(`/search?${params.toString()}`, { signal });
-  return body.data ?? [];
-}
-
 export interface CommandPaletteProps {
-  /** Start open (used by tests/storybook). Defaults to closed; Cmd/Ctrl-K toggles it. */
+  /** Start open (uncontrolled; used by tests). Defaults to closed; Cmd/Ctrl-K toggles it. */
   defaultOpen?: boolean;
+  /** Controlled open state — when provided, the parent owns visibility (e.g. the shell topbar). */
+  open?: boolean;
+  /** Controlled open change — fires on Cmd/Ctrl-K, Escape, selection, and scrim click. */
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CommandPalette({ defaultOpen = false }: CommandPaletteProps) {
+export function CommandPalette({
+  defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
+}: CommandPaletteProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  // The global keydown closure reads the latest open state from a ref so it never re-binds.
+  const openRef = useRef(open);
+  openRef.current = open;
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!isControlled) setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [isControlled, onOpenChange],
+  );
+
   const [query, setQuery] = useState('');
   const [state, setState] = useState<SearchState>(EMPTY_STATE);
-  const abortRef = useRef<AbortController | null>(null);
+  // Monotonic request id: only the newest in-flight search may commit its result (last-wins).
+  const seqRef = useRef(0);
 
   // Global Cmd/Ctrl-K toggles the palette from anywhere in the app.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        setOpen(!openRef.current);
       }
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [setOpen]);
 
   // Reset the query + results whenever the dialog closes so it reopens clean.
   useEffect(() => {
     if (!open) {
       setQuery('');
       setState(EMPTY_STATE);
-      abortRef.current?.abort();
-      abortRef.current = null;
+      seqRef.current += 1; // invalidate any in-flight request
     }
   }, [open]);
 
-  // Debounced search: each keystroke schedules a fetch; a new keystroke cancels the prior one.
+  // Debounced search: each keystroke schedules a fetch; a newer keystroke supersedes the prior one.
   useEffect(() => {
     if (!open) return;
     const trimmed = query.trim();
     if (!trimmed) {
-      abortRef.current?.abort();
-      abortRef.current = null;
+      seqRef.current += 1;
       setState(EMPTY_STATE);
       return;
     }
     setState((prev) => ({ ...prev, loading: true, error: false }));
     const handle = setTimeout(() => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      runSearch(trimmed, controller.signal)
+      seqRef.current += 1;
+      const seq = seqRef.current;
+      search(trimmed)
         .then((results) => {
-          if (!controller.signal.aborted) {
-            setState({ results, loading: false, error: false });
-          }
+          if (seq === seqRef.current) setState({ results, loading: false, error: false });
         })
-        .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === 'AbortError') return;
-          setState({ results: [], loading: false, error: true });
+        .catch(() => {
+          if (seq === seqRef.current) setState({ results: [], loading: false, error: true });
         });
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handle);
@@ -141,7 +150,7 @@ export function CommandPalette({ defaultOpen = false }: CommandPaletteProps) {
       setOpen(false);
       router.push(href);
     },
-    [router],
+    [router, setOpen],
   );
 
   const trimmedQuery = query.trim();
@@ -153,32 +162,35 @@ export function CommandPalette({ defaultOpen = false }: CommandPaletteProps) {
     <Command.Dialog
       open={open}
       onOpenChange={setOpen}
-      label="Command palette"
+      label="Search and commands"
       shouldFilter={false}
       loop
-      aria-label="Search and commands"
+      overlayClassName={styles.overlay}
+      contentClassName={styles.content}
     >
       <Command.Input
         value={query}
         onValueChange={setQuery}
-        placeholder="Search items, projects, labels, people…  (⌘K)"
+        placeholder="Search items, projects, labels, people…"
         aria-label="Search"
       />
 
       <Command.List aria-label="Search results">
         {state.loading ? (
-          <Command.Loading label="Searching…">
-            <output>Searching…</output>
+          <Command.Loading>
+            <output className={styles.status}>Searching…</output>
           </Command.Loading>
         ) : null}
 
         {state.error ? (
-          <div role="alert" style={{ padding: '0.5rem 0.75rem', color: '#b00020' }}>
+          <div role="alert" className={styles.error}>
             Search failed — please try again.
           </div>
         ) : null}
 
-        {showEmpty ? <Command.Empty>No matches for “{trimmedQuery}”.</Command.Empty> : null}
+        {showEmpty ? (
+          <Command.Empty className={styles.status}>No matches for “{trimmedQuery}”.</Command.Empty>
+        ) : null}
 
         {GROUPS.map(({ type, heading }) => {
           const hits = grouped[type];
@@ -198,9 +210,7 @@ export function CommandPalette({ defaultOpen = false }: CommandPaletteProps) {
                     }}
                   >
                     <span>{hit.title}</span>
-                    {hit.snippet ? (
-                      <small style={{ display: 'block', opacity: 0.7 }}>{hit.snippet}</small>
-                    ) : null}
+                    {hit.snippet ? <small className={styles.snippet}>{hit.snippet}</small> : null}
                   </Command.Item>
                 );
               })}
@@ -217,7 +227,7 @@ export function CommandPalette({ defaultOpen = false }: CommandPaletteProps) {
                 navigate(`/my-work?create=${encodeURIComponent(trimmedQuery)}`);
               }}
             >
-              Create work item “{trimmedQuery}”
+              <span>Create work item “{trimmedQuery}”</span>
             </Command.Item>
           </Command.Group>
         ) : null}

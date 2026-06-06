@@ -1,0 +1,104 @@
+/*
+ * Command-palette styling (US11, FR-WEB-090). Token-only and flat: the dialog is a calm sheet
+ * over a dimmed scrim — no gradients, no blur, no floaty shadow. cmdk renders the inner elements
+ * with `[cmdk-*]` attributes (not class names), so they are styled by attribute selector under the
+ * scoped `.content` wrapper.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  z-index: 50;
+}
+
+.content {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - var(--space-6)));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 51;
+}
+
+.content [cmdk-input] {
+  width: 100%;
+  height: var(--control-height-lg);
+  padding: 0 var(--space-4);
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  outline: none;
+}
+
+.content [cmdk-input]::placeholder {
+  color: var(--fg-faint);
+}
+
+.content [cmdk-list] {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  scroll-padding-block: var(--space-2);
+}
+
+.content [cmdk-group-heading] {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--fg-muted);
+  font-size: var(--fs-micro);
+  font-weight: var(--w-semibold);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+}
+
+.content [cmdk-item] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0_5);
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--fg-2);
+  font-size: var(--fs-body);
+  cursor: pointer;
+}
+
+.content [cmdk-item][data-selected="true"] {
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+
+.content [cmdk-item][data-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.snippet {
+  color: var(--fg-muted);
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  padding: var(--space-3) var(--space-3);
+  color: var(--fg-muted);
+  font-size: var(--fs-sm);
+}
+
+.error {
+  padding: var(--space-3) var(--space-3);
+  color: var(--error-fg);
+  font-size: var(--fs-sm);
+}

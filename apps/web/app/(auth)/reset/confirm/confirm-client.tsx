@@ -1,13 +1,16 @@
 'use client';
 
+import { AuthShell, authStyles as s } from '@/components/auth-shell';
+import { ApiError, confirmPasswordReset } from '@/lib/api';
+import { Button, Input } from '@rytask/ui';
 import Link from 'next/link';
 import { useEffect, useId, useState } from 'react';
-import { ApiError, confirmPasswordReset } from '../../../../lib/api';
 
 /**
- * Set a new password from a reset link (US6, T090). The single-use token comes from the emailed
- * URL (`?token=…`); we read it from the address bar so no Suspense boundary is needed. A used or
- * expired token is rejected with a plain message that routes back to "request a new link".
+ * Set a new password from a reset link (US12, T094, FR-WEB-013). The single-use token comes from the
+ * emailed URL (`?token=…`); we read it from the address bar so no Suspense boundary is needed. A used
+ * or expired token is rejected with a plain message that routes back to "request a new link".
+ * Restyled to design tokens.
  */
 export function ResetConfirmClient() {
   const formId = useId();
@@ -31,7 +34,7 @@ export function ResetConfirmClient() {
       setDone(true);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 400 || err.status === 404)) {
-        setError('This reset link is invalid or has expired. Please request a new one.');
+        setError('This reset link is no longer valid — it may have expired or already been used.');
       } else {
         setError(err instanceof ApiError ? err.message : 'Could not reset your password.');
       }
@@ -41,63 +44,64 @@ export function ResetConfirmClient() {
 
   if (done) {
     return (
-      <main>
-        <h1>Password updated</h1>
-        <p>Your new password is ready. You can sign in with it now.</p>
-        <p>
+      <AuthShell>
+        <h1 className={s.title}>Password updated</h1>
+        <p className={s.subtitle}>Your new password is ready. You can sign in with it now.</p>
+        <p className={s.footer}>
           <Link href="/login">Go to sign in</Link>
         </p>
-      </main>
+      </AuthShell>
     );
   }
 
   if (token === null) {
     return (
-      <main>
-        <h1>Reset link needed</h1>
-        <p>Open the link from your password-reset email to continue.</p>
-        <p>
+      <AuthShell>
+        <h1 className={s.title}>Reset link needed</h1>
+        <p className={s.subtitle}>Open the link from your password-reset email to continue.</p>
+        <p className={s.footer}>
           <Link href="/reset">Request a new link</Link>
         </p>
-      </main>
+      </AuthShell>
     );
   }
 
   return (
-    <main>
-      <h1>Choose a new password</h1>
-      <form aria-labelledby={`${formId}-heading`} onSubmit={submit}>
-        <h2 id={`${formId}-heading`} style={{ position: 'absolute', left: '-9999px' }}>
+    <AuthShell>
+      <h1 className={s.title}>Choose a new password</h1>
+
+      <form className={s.form} aria-labelledby={`${formId}-heading`} onSubmit={submit}>
+        <h2 id={`${formId}-heading`} hidden>
           Set a new password
         </h2>
-        <p>
-          <label htmlFor={`${formId}-password`}>New password</label>
-          <br />
-          <input
-            id={`${formId}-password`}
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            value={password}
-            disabled={busy}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-describedby={`${formId}-password-hint`}
-          />
-          <br />
-          <small id={`${formId}-password-hint`}>At least 8 characters.</small>
-        </p>
+        <Input
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+          value={password}
+          disabled={busy}
+          onChange={(e) => setPassword(e.target.value)}
+          hint="At least 8 characters."
+        />
 
         {error ? (
-          <p role="alert" style={{ color: '#b00020' }}>
+          <p className={s.error} role="alert">
             {error}
           </p>
         ) : null}
 
-        <button type="submit" disabled={busy}>
+        <Button type="submit" variant="primary" loading={busy}>
           {busy ? 'Saving…' : 'Save new password'}
-        </button>
+        </Button>
       </form>
-    </main>
+
+      {error ? (
+        <p className={s.footer}>
+          <Link href="/reset">Request a new link</Link>
+        </p>
+      ) : null}
+    </AuthShell>
   );
 }

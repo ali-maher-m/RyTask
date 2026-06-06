@@ -1,8 +1,9 @@
 'use client';
 
-import type { AddSubtask, WorkItem, WorkItemListResponse } from '@rytask/contracts';
+import type { AddSubtask, Status, WorkItem, WorkItemListResponse } from '@rytask/contracts';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { authedFetch } from '../lib/api';
+import { useOrg } from '../lib/org/org-context';
 
 /**
  * Sub-task tree (US8, T073, FR-WEB-060). A nested, expand/collapse tree of a work item's children
@@ -54,16 +55,24 @@ function childCountOf(item: WorkItem, loaded: WorkItem[] | undefined): number {
 export interface SubtaskTreeProps {
   /** The root work item whose sub-tasks are shown. The root itself is rendered as the top node. */
   root: WorkItem;
+  /** The project's statuses — used to resolve each node's category for the org-tz overdue flag. */
+  statuses: Status[];
   /** Called after any successful mutation with the server's fresh item (e.g. to refresh a board). */
   onChange?: (item: WorkItem) => void;
 }
 
-export function SubtaskTree({ root, onChange }: SubtaskTreeProps) {
+export function SubtaskTree({ root, statuses, onChange }: SubtaskTreeProps) {
   return (
     <section aria-label={`Sub-tasks of ${root.key}`} data-testid="subtask-tree">
       <h3 style={{ fontSize: 'var(--fs-h3)' }}>Sub-tasks</h3>
       <ul style={{ listStyle: 'none', paddingLeft: 0, margin: 0 }}>
-        <SubtaskNode item={root} depth={0} ancestorIds={[]} onChange={onChange} />
+        <SubtaskNode
+          item={root}
+          depth={0}
+          ancestorIds={[]}
+          statuses={statuses}
+          onChange={onChange}
+        />
       </ul>
     </section>
   );
@@ -72,6 +81,7 @@ export function SubtaskTree({ root, onChange }: SubtaskTreeProps) {
 interface SubtaskNodeProps {
   item: WorkItem;
   depth: number;
+  statuses: Status[];
   /** Ids of every ancestor on the path to this node — used to refuse cyclic children (FR-WEB-060). */
   ancestorIds: readonly string[];
   onChange?: (item: WorkItem) => void;
@@ -82,10 +92,13 @@ interface SubtaskNodeProps {
  * pickers, the add-subtask form, and (lazily) its own children rendered recursively. A child that is
  * already an ancestor of this node is dropped before render so the tree can never loop.
  */
-function SubtaskNode({ item: initial, depth, ancestorIds, onChange }: SubtaskNodeProps) {
+function SubtaskNode({ item: initial, depth, ancestorIds, statuses, onChange }: SubtaskNodeProps) {
+  const { isOverdue } = useOrg();
   const [item, setItem] = useState<WorkItem>(initial);
   const [children, setChildren] = useState<WorkItem[] | undefined>(undefined);
-  const [expanded, setExpanded] = useState(false);
+  // The root node opens by default so its date pickers + add-sub-task control are visible on the
+  // detail page; deeper nodes stay collapsed until opened (children lazy-load on first expand).
+  const [expanded, setExpanded] = useState(depth === 0);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +129,12 @@ function SubtaskNode({ item: initial, depth, ancestorIds, onChange }: SubtaskNod
       setError('Network error');
     }
   }, []);
+
+  // The root opens by default (see `expanded` above), so load its children on mount rather than
+  // waiting for a toggle the user never has to make. Deeper nodes load lazily via `onToggle`.
+  useEffect(() => {
+    if (depth === 0 && !loaded) void loadChildren(item.id);
+  }, [depth, loaded, item.id, loadChildren]);
 
   // Lazily load children the first time the node is expanded. Driven by the native <details>
   // `toggle` event so keyboard disclosure (Enter/Space on <summary>) stays fully supported.
@@ -200,6 +219,11 @@ function SubtaskNode({ item: initial, depth, ancestorIds, onChange }: SubtaskNod
   }
 
   const count = childCountOf(item, children);
+  // Overdue is computed in the org timezone (FR-WEB-062) from the live due date + status category,
+  // so it stays correct right after a date edit — the date PATCH response omits the server's
+  // `overdue` flag, so trusting `item.overdue` would leave the badge stale.
+  const statusCategory = statuses.find((s) => s.id === item.statusId)?.category ?? null;
+  const overdue = isOverdue(item.dueDate, statusCategory);
   // Visual indentation that keeps the semantic list structure intact for screen readers.
   const indent = depth === 0 ? 0 : 16;
   // The path of ids from the root down to (and including) this node — passed to children so a
@@ -229,7 +253,7 @@ function SubtaskNode({ item: initial, depth, ancestorIds, onChange }: SubtaskNod
             {item.key}
           </code>
           <span>{item.title}</span>
-          {item.overdue ? (
+          {overdue ? (
             <span
               data-testid="overdue-badge"
               aria-label={`${item.key} is overdue`}
@@ -308,13 +332,17 @@ function SubtaskNode({ item: initial, depth, ancestorIds, onChange }: SubtaskNod
         </fieldset>
 
         {/* ── Add a direct sub-task ──────────────────────────────────────────────── */}
-        <form onSubmit={addSubtask} aria-label={`Add sub-task to ${item.key}`} style={FIELD}>
+        <form onSubmit={addSubtask} style={FIELD}>
           <label htmlFor={addId} style={LABEL}>
             Add sub-task
           </label>
           <input
             id={addId}
             type="text"
+            // Each node's add-input carries a unique accessible name keyed by the item (the visible
+            // "Add sub-task" label stays a substring of it — WCAG 2.5.3), so it is distinct across
+            // the nested tree rather than every input sharing the name "Add sub-task".
+            aria-label={`Add sub-task to ${item.key}`}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Sub-task title…"
@@ -345,6 +373,7 @@ function SubtaskNode({ item: initial, depth, ancestorIds, onChange }: SubtaskNod
                 item={child}
                 depth={depth + 1}
                 ancestorIds={pathIds}
+                statuses={statuses}
                 onChange={onChange}
               />
             ))}

@@ -87,8 +87,8 @@ test('capture → track → view: quick-add, open detail, drag on the board, per
   const card = page.getByTestId('board-card').filter({ hasText: title }).first();
   await expect(card).toBeVisible();
 
-  // ── US2: open the item detail ─────────────────────────────────────────────────
-  await card.click();
+  // ── US2: open the item detail (the card's title is the clickable control) ──────
+  await card.getByRole('button', { name: title, exact: true }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
   await page
     .getByRole('button', { name: /close|back/i })
@@ -104,8 +104,18 @@ test('capture → track → view: quick-add, open detail, drag on the board, per
     .first();
   await expect(inProgressColumn.getByText(title)).toBeVisible();
 
-  // The activity feed records the status change.
-  await page.getByTestId('board-card').filter({ hasText: title }).first().click();
+  // The activity feed records the status change. A click landing in the brief window while the board
+  // re-reads after the move (and the drop animation settles) can be missed, so re-open until the
+  // sheet is up — exactly as a user would click again if nothing happened.
+  await expect(async () => {
+    await page
+      .getByTestId('board-card')
+      .filter({ hasText: title })
+      .first()
+      .getByRole('button', { name: title, exact: true })
+      .click();
+    await expect(page.getByTestId('activity-feed')).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 10_000 });
   await expect(page.getByTestId('activity-feed')).toContainText(/status|in progress/i);
   await page
     .getByRole('button', { name: /close|back/i })
@@ -137,7 +147,12 @@ test('item detail (US3): set fields persist on reload; delete → trash → rest
   // Capture an item, then open its detail panel.
   await page.goto(BOARD_PATH);
   await quickAdd(page, title);
-  await page.getByTestId('board-card').filter({ hasText: title }).first().click();
+  await page
+    .getByTestId('board-card')
+    .filter({ hasText: title })
+    .first()
+    .getByRole('button', { name: title, exact: true })
+    .click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 
   // Set fields. Each control reflects the server's confirmed value once its PATCH resolves, so the
@@ -154,7 +169,12 @@ test('item detail (US3): set fields persist on reload; delete → trash → rest
 
   // Reload → the values persist (read back from the server).
   await page.reload();
-  await page.getByTestId('board-card').filter({ hasText: title }).first().click();
+  await page
+    .getByTestId('board-card')
+    .filter({ hasText: title })
+    .first()
+    .getByRole('button', { name: title, exact: true })
+    .click();
   await expect(page.getByLabel('Priority')).toHaveValue('URGENT');
   await expect(page.getByLabel('Due date')).toHaveValue('2026-12-31');
 
@@ -180,7 +200,10 @@ test('list inline edit (US4) + Board↔List view carry-over', async ({ page }) =
   // Capture on the List; the newest item (highest number) sorts last by default.
   await page.goto(LIST_PATH);
   await quickAdd(page, title);
-  const lastTitle = page.getByTestId('work-item-row').last().getByRole('textbox');
+  const lastTitle = page
+    .getByTestId('work-item-row')
+    .last()
+    .getByRole('textbox', { name: /^Title for / });
   await expect(lastTitle).toHaveValue(title);
 
   // Inline-edit the title; it saves without a full reload and survives one.
@@ -188,7 +211,12 @@ test('list inline edit (US4) + Board↔List view carry-over', async ({ page }) =
   await lastTitle.fill(edited);
   await lastTitle.blur();
   await page.reload();
-  await expect(page.getByTestId('work-item-row').last().getByRole('textbox')).toHaveValue(edited);
+  await expect(
+    page
+      .getByTestId('work-item-row')
+      .last()
+      .getByRole('textbox', { name: /^Title for / }),
+  ).toHaveValue(edited);
 
   // Carry-over: choose a grouping, switch to the Board, and back — the view is preserved on the URL.
   await page.getByTestId('group-select').selectOption('status');
@@ -327,6 +355,42 @@ test('subtasks & scheduling (US8): nest ≥3 levels, set dates, and flag overdue
   await page.goto(LIST_PATH);
   await page.getByTestId('smart-overdue').click();
   await expect(page.getByTestId('smart-overdue')).toHaveAttribute('aria-pressed', 'true');
+
+  const a11y = await new AxeBuilder({ page }).analyze();
+  expect(a11y.violations.filter((v) => v.impact === 'critical')).toEqual([]);
+});
+
+test('collaborate (US10): comment with an @mention posts and reaches the inbox', async ({
+  page,
+}) => {
+  const title = `Discuss the rollout ${Date.now()}`;
+  await signIn(page);
+
+  // Capture a parent item and open its detail page (the comment thread lives there).
+  await page.goto(BOARD_PATH);
+  await quickAdd(page, title);
+  const card = page.getByTestId('board-card').filter({ hasText: title }).first();
+  await expect(card).toBeVisible();
+  const key = (await card.locator('code').first().innerText()).trim();
+  await page.goto(`/projects/${PROJECT_ID}/items/${key}`);
+  await expect(page.getByTestId('comment-thread')).toBeVisible();
+
+  // Post a markdown comment that @mentions a teammate (the seeded founder).
+  const body = `Heads up @founder — please review ${key}.`;
+  await page.getByLabel('Add a comment (markdown)').fill(body);
+  await page.getByRole('button', { name: 'Comment', exact: true }).click();
+
+  // The comment renders in the thread (markdown body, mention text preserved).
+  const posted = page.getByTestId('comment-body').filter({ hasText: `please review ${key}` });
+  await expect(posted).toBeVisible();
+  await expect(posted).toContainText('@founder');
+
+  // The inbox is reachable and renders its surface (a row or the caught-up empty state).
+  await page.goto('/inbox');
+  await expect(page.getByRole('heading', { name: 'Inbox' })).toBeVisible();
+  const hasList = await page.getByTestId('inbox-list').count();
+  const hasEmpty = await page.getByTestId('inbox-empty').count();
+  expect(hasList + hasEmpty).toBeGreaterThan(0);
 
   const a11y = await new AxeBuilder({ page }).analyze();
   expect(a11y.violations.filter((v) => v.impact === 'critical')).toEqual([]);

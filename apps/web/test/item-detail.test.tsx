@@ -63,7 +63,24 @@ const { authedFetch, mock } = vi.hoisted(() => {
   return { authedFetch: fn, mock: state };
 });
 
-vi.mock('@/lib/api', () => ({ authedFetch }));
+// `ItemDetail` mounts `CommentThread`, which reads the consolidated comments/members API and the org
+// context. Stub those so the panel renders in isolation (the thread just shows "no comments yet").
+vi.mock('@/lib/api', () => ({
+  authedFetch,
+  ApiError: class ApiError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+    }
+  },
+  listComments: vi.fn(async () => []),
+  listMemberships: vi.fn(async () => []),
+  createComment: vi.fn(async () => ({})),
+}));
+vi.mock('@/lib/org/org-context', () => ({
+  useOrg: () => ({ formatDate: (iso: string | null | undefined) => String(iso ?? '') }),
+}));
 
 import { ItemDetail } from '@/components/item-detail';
 

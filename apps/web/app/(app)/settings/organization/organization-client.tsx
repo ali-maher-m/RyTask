@@ -1,25 +1,54 @@
 'use client';
 
-import { ApiError, authedRequest, clearSession } from '@/lib/api';
+import {
+  ApiError,
+  clearSession,
+  deleteCurrentOrg,
+  getCurrentOrg,
+  listMemberships,
+  transferOwnership,
+  updateCurrentOrg,
+} from '@/lib/api';
 import { useCapabilities } from '@/lib/auth/capability-context';
 import type { Membership, OrgSettings, Organization, Role } from '@rytask/contracts';
-import { ForbiddenState } from '@rytask/ui';
+import { Button, ForbiddenState, Input, Select } from '@rytask/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useState } from 'react';
 
 /**
- * Organization settings + ownership admin (US8, T108). Owners/Admins edit the org's timezone,
- * locale, week start, working days/hours, logo, and public-signup policy. Owners can additionally
- * transfer ownership to another member or delete the organization (with explicit confirmation).
- * Settings persist via `PATCH /orgs/current` and take effect immediately (e.g. dates re-render in
- * the new timezone).
+ * Organization settings + ownership admin (US9, T081, FR-WEB-073). Owners/Admins edit the org's
+ * timezone, locale, week start, working days/hours, logo, and public-signup policy; a timezone change
+ * **re-renders dates org-wide** (we invalidate the shared `['org','current']` query so `OrgProvider`
+ * refetches and every `formatDate`/`formatDay` re-runs). Owners can additionally transfer ownership
+ * to another member or delete the organization (with explicit name confirmation). The capability map
+ * gates the surface cosmetically; the server's `RbacGuard`/`LastOwnerPolicy` stay authoritative.
+ * Token-only styling; every field is programmatically labelled (axe).
  */
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DEMOTE_ROLES: Role[] = ['ADMIN', 'MEMBER', 'GUEST', 'VIEWER'];
 
+const MAIN: React.CSSProperties = { padding: 'var(--space-4)', maxWidth: '48rem' };
+const CARD: React.CSSProperties = {
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--surface)',
+  padding: 'var(--space-4)',
+  display: 'grid',
+  gap: 'var(--space-3)',
+  marginTop: 'var(--space-3)',
+};
+const LABEL: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--fs-sm)',
+  color: 'var(--fg-muted)',
+  marginBottom: 'var(--space-1)',
+};
+
 export function OrganizationClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { can } = useCapabilities();
   const formId = useId();
   const [org, setOrg] = useState<Organization | null>(null);
@@ -36,13 +65,13 @@ export function OrganizationClient() {
 
   const load = useCallback(async () => {
     try {
-      const current = await authedRequest<Organization>('/orgs/current');
+      const current = await getCurrentOrg();
       setOrg(current);
       setSettings(current.settings ?? {});
       try {
-        setMembers(await authedRequest<Membership[]>('/memberships'));
+        setMembers(await listMemberships());
       } catch {
-        // Listing members may require Owner/Admin; transfer UI just stays empty otherwise.
+        // Listing members may require Owner/Admin; the transfer UI just stays empty otherwise.
       }
       setError(null);
     } catch (e) {
@@ -74,13 +103,12 @@ export function OrganizationClient() {
     setError(null);
     setSaved(false);
     try {
-      const updated = await authedRequest<Organization>('/orgs/current', {
-        method: 'PATCH',
-        body: JSON.stringify(settings),
-      });
+      const updated = await updateCurrentOrg(settings);
       setOrg(updated);
       setSettings(updated.settings ?? {});
       setSaved(true);
+      // A timezone/locale change must re-render dates everywhere: refresh the shared org query.
+      await queryClient.invalidateQueries({ queryKey: ['org', 'current'] });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save settings.');
     } finally {
@@ -94,12 +122,9 @@ export function OrganizationClient() {
     setBusy(true);
     setError(null);
     try {
-      await authedRequest<void>('/orgs/current/transfer-ownership', {
-        method: 'POST',
-        body: JSON.stringify({
-          toUserId: transferTo,
-          ...(demoteSelfTo ? { demoteSelfTo } : {}),
-        }),
+      await transferOwnership({
+        toUserId: transferTo,
+        ...(demoteSelfTo ? { demoteSelfTo } : {}),
       });
       setTransferTo('');
       setDemoteSelfTo('');
@@ -116,7 +141,7 @@ export function OrganizationClient() {
     setBusy(true);
     setError(null);
     try {
-      await authedRequest<void>('/orgs/current', { method: 'DELETE' });
+      await deleteCurrentOrg();
       clearSession();
       router.push('/login');
     } catch (err) {
@@ -129,8 +154,8 @@ export function OrganizationClient() {
   // authoritative — a non-admin who reaches this route sees a friendly forbidden, not the form.
   if (!can('org:settings:write')) {
     return (
-      <main>
-        <h1>Organization settings</h1>
+      <main style={MAIN}>
+        <h1 style={{ fontSize: 'var(--fs-h1)' }}>Organization settings</h1>
         <ForbiddenState description="Only owners and admins can change organization settings." />
       </main>
     );
@@ -138,9 +163,15 @@ export function OrganizationClient() {
 
   if (!org) {
     return (
-      <main>
-        <h1>Organization settings</h1>
-        {error ? <p role="alert">{error}</p> : <p>Loading…</p>}
+      <main style={MAIN}>
+        <h1 style={{ fontSize: 'var(--fs-h1)' }}>Organization settings</h1>
+        {error ? (
+          <p role="alert" style={{ color: 'var(--error)' }}>
+            {error}
+          </p>
+        ) : (
+          <p style={{ color: 'var(--fg-muted)' }}>Loading…</p>
+        )}
       </main>
     );
   }
@@ -150,51 +181,60 @@ export function OrganizationClient() {
   const canDelete = can('org:delete');
 
   return (
-    <main>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Organization settings</h1>
+    <main style={MAIN}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+        }}
+      >
+        <h1 style={{ fontSize: 'var(--fs-h1)', margin: 0 }}>Organization settings</h1>
         <nav>
-          <Link href="/settings/members">Members</Link>
+          <Link href="/settings/members" style={{ color: 'var(--accent)' }}>
+            Members
+          </Link>
         </nav>
       </header>
 
-      <p>
-        <strong>{org.name}</strong> <small>({org.slug})</small>
+      <p style={{ marginTop: 'var(--space-2)' }}>
+        <strong>{org.name}</strong>{' '}
+        <span style={{ color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+          ({org.slug})
+        </span>
       </p>
 
-      <form aria-labelledby={`${formId}-settings-heading`} onSubmit={save}>
-        <h2 id={`${formId}-settings-heading`}>General</h2>
+      <form onSubmit={save} aria-labelledby={`${formId}-settings-heading`} style={CARD}>
+        <h2 id={`${formId}-settings-heading`} style={{ fontSize: 'var(--fs-h2)', margin: 0 }}>
+          General
+        </h2>
 
-        <p>
-          <label htmlFor={`${formId}-timezone`}>Time zone</label>
-          <br />
-          <input
-            id={`${formId}-timezone`}
-            type="text"
-            value={settings.timezone ?? ''}
-            disabled={busy}
-            placeholder="e.g. America/New_York"
-            onChange={(e) => setField('timezone', e.target.value)}
-          />
-        </p>
+        <Input
+          id={`${formId}-timezone`}
+          label="Time zone"
+          type="text"
+          value={settings.timezone ?? ''}
+          disabled={busy}
+          placeholder="e.g. America/New_York"
+          onChange={(e) => setField('timezone', e.target.value)}
+        />
 
-        <p>
-          <label htmlFor={`${formId}-locale`}>Language / locale</label>
-          <br />
-          <input
-            id={`${formId}-locale`}
-            type="text"
-            value={settings.locale ?? ''}
-            disabled={busy}
-            placeholder="e.g. en-US"
-            onChange={(e) => setField('locale', e.target.value)}
-          />
-        </p>
+        <Input
+          id={`${formId}-locale`}
+          label="Language / locale"
+          type="text"
+          value={settings.locale ?? ''}
+          disabled={busy}
+          placeholder="e.g. en-US"
+          onChange={(e) => setField('locale', e.target.value)}
+        />
 
-        <p>
-          <label htmlFor={`${formId}-weekstart`}>Week starts on</label>
-          <br />
-          <select
+        <div>
+          <label htmlFor={`${formId}-weekstart`} style={LABEL}>
+            Week starts on
+          </label>
+          <Select
             id={`${formId}-weekstart`}
             value={settings.weekStart ?? 'MONDAY'}
             disabled={busy}
@@ -202,13 +242,13 @@ export function OrganizationClient() {
           >
             <option value="MONDAY">Monday</option>
             <option value="SUNDAY">Sunday</option>
-          </select>
-        </p>
+          </Select>
+        </div>
 
-        <fieldset>
-          <legend>Working days</legend>
+        <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
+          <legend style={LABEL}>Working days</legend>
           {DAYS.map((label, day) => (
-            <label key={label} style={{ marginRight: '0.5rem' }}>
+            <label key={label} style={{ marginRight: 'var(--space-3)' }}>
               <input
                 type="checkbox"
                 checked={(settings.workingDays ?? []).includes(day)}
@@ -220,11 +260,13 @@ export function OrganizationClient() {
           ))}
         </fieldset>
 
-        <fieldset>
-          <legend>Working hours</legend>
-          <label htmlFor={`${formId}-hours-start`}>Start</label>{' '}
-          <input
+        <fieldset
+          style={{ border: 0, margin: 0, padding: 0, display: 'flex', gap: 'var(--space-3)' }}
+        >
+          <legend style={LABEL}>Working hours</legend>
+          <Input
             id={`${formId}-hours-start`}
+            label="Start"
             type="time"
             value={settings.workingHours?.start ?? ''}
             disabled={busy}
@@ -234,10 +276,10 @@ export function OrganizationClient() {
                 end: settings.workingHours?.end ?? '',
               })
             }
-          />{' '}
-          <label htmlFor={`${formId}-hours-end`}>End</label>{' '}
-          <input
+          />
+          <Input
             id={`${formId}-hours-end`}
+            label="End"
             type="time"
             value={settings.workingHours?.end ?? ''}
             disabled={busy}
@@ -250,61 +292,59 @@ export function OrganizationClient() {
           />
         </fieldset>
 
-        <p>
-          <label htmlFor={`${formId}-logo`}>Logo URL</label>
-          <br />
-          <input
-            id={`${formId}-logo`}
-            type="url"
-            value={settings.logoUrl ?? ''}
-            disabled={busy}
-            placeholder="https://…"
-            onChange={(e) => setField('logoUrl', e.target.value || null)}
-          />
-        </p>
+        <Input
+          id={`${formId}-logo`}
+          label="Logo URL"
+          type="url"
+          value={settings.logoUrl ?? ''}
+          disabled={busy}
+          placeholder="https://…"
+          onChange={(e) => setField('logoUrl', e.target.value || null)}
+        />
 
-        <p>
-          <label>
-            <input
-              type="checkbox"
-              checked={settings.allowPublicSignup ?? false}
-              disabled={busy}
-              onChange={(e) => setField('allowPublicSignup', e.target.checked)}
-            />{' '}
-            Allow anyone to sign up (otherwise the workspace is invite-only)
-          </label>
-        </p>
+        <label>
+          <input
+            type="checkbox"
+            checked={settings.allowPublicSignup ?? false}
+            disabled={busy}
+            onChange={(e) => setField('allowPublicSignup', e.target.checked)}
+          />{' '}
+          Allow anyone to sign up (otherwise the workspace is invite-only)
+        </label>
 
         {error ? (
           <p role="alert" style={{ color: 'var(--error)' }}>
             {error}
           </p>
         ) : null}
-        {saved ? <output>Settings saved.</output> : null}
+        {saved ? <output style={{ color: 'var(--fg-muted)' }}>Settings saved.</output> : null}
 
-        <button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Save settings'}
-        </button>
+        <div>
+          <Button type="submit" variant="primary" loading={busy}>
+            Save settings
+          </Button>
+        </div>
       </form>
 
       {canTransfer ? (
-        <>
-          <hr />
-          <h2>Transfer ownership</h2>
+        <section
+          aria-labelledby={`${formId}-transfer-heading`}
+          style={{ marginTop: 'var(--space-5)' }}
+        >
+          <h2 id={`${formId}-transfer-heading`} style={{ fontSize: 'var(--fs-h2)' }}>
+            Transfer ownership
+          </h2>
           {transferable.length === 0 ? (
-            <p>Add another member first to transfer ownership.</p>
+            <p style={{ color: 'var(--fg-muted)' }}>
+              Add another member first to transfer ownership.
+            </p>
           ) : (
-            <form aria-labelledby={`${formId}-transfer-heading`} onSubmit={transfer}>
-              <h3
-                id={`${formId}-transfer-heading`}
-                style={{ position: 'absolute', left: '-9999px' }}
-              >
-                Transfer ownership
-              </h3>
-              <p>
-                <label htmlFor={`${formId}-transfer-to`}>New owner</label>
-                <br />
-                <select
+            <form onSubmit={transfer} style={CARD}>
+              <div>
+                <label htmlFor={`${formId}-transfer-to`} style={LABEL}>
+                  New owner
+                </label>
+                <Select
                   id={`${formId}-transfer-to`}
                   value={transferTo}
                   disabled={busy}
@@ -316,61 +356,66 @@ export function OrganizationClient() {
                       {m.user.name} ({m.user.email})
                     </option>
                   ))}
-                </select>
-              </p>
-              <p>
-                <label htmlFor={`${formId}-demote`}>Your role afterwards</label>
-                <br />
-                <select
+                </Select>
+              </div>
+              <div>
+                <label htmlFor={`${formId}-demote`} style={LABEL}>
+                  Your role afterwards
+                </label>
+                <Select
                   id={`${formId}-demote`}
                   value={demoteSelfTo}
                   disabled={busy}
                   onChange={(e) => setDemoteSelfTo(e.target.value as Role | '')}
                 >
-                  <option value="">Stay an Owner</option>
+                  <option value="">Stay an owner</option>
                   {DEMOTE_ROLES.map((r) => (
                     <option key={r} value={r}>
                       {r}
                     </option>
                   ))}
-                </select>
-              </p>
-              <button type="submit" disabled={busy || !transferTo}>
-                Transfer ownership
-              </button>
+                </Select>
+              </div>
+              <div>
+                <Button type="submit" variant="secondary" disabled={busy || !transferTo}>
+                  Transfer ownership
+                </Button>
+              </div>
             </form>
           )}
-        </>
+        </section>
       ) : null}
 
       {canDelete ? (
-        <>
-          <hr />
-          <h2>Delete this organization</h2>
-          <p>
-            This deactivates the organization and signs everyone out. Type the organization name (
-            <strong>{org.name}</strong>) to confirm.
-          </p>
-          <p>
-            <label htmlFor={`${formId}-confirm-delete`}>Confirm name</label>
-            <br />
-            <input
+        <section style={{ marginTop: 'var(--space-5)' }}>
+          <h2 style={{ fontSize: 'var(--fs-h2)', color: 'var(--error)' }}>
+            Delete this organization
+          </h2>
+          <div style={{ ...CARD, borderColor: 'var(--error)' }}>
+            <p style={{ margin: 0 }}>
+              This deactivates the organization and signs everyone out. Type the organization name (
+              <strong>{org.name}</strong>) to confirm.
+            </p>
+            <Input
               id={`${formId}-confirm-delete`}
+              label="Confirm name"
               type="text"
               value={confirmDelete}
               disabled={busy}
               onChange={(e) => setConfirmDelete(e.target.value)}
             />
-          </p>
-          <button
-            type="button"
-            onClick={() => void deleteOrg()}
-            disabled={busy || confirmDelete !== org.name}
-            style={{ color: 'var(--error)' }}
-          >
-            Delete organization
-          </button>
-        </>
+            <div>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={deleteOrg}
+                disabled={busy || confirmDelete !== org.name}
+              >
+                Delete organization
+              </Button>
+            </div>
+          </div>
+        </section>
       ) : null}
     </main>
   );

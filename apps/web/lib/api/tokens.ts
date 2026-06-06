@@ -1,31 +1,28 @@
 'use client';
 
 import type { ApiTokenDto, ApiTokenSecret, CreateApiToken } from '@rytask/contracts';
-import type { ResourceEnvelope } from './client';
 import { authedRequest } from './http';
 
-/** Personal Access Token resource module (D8). `/api-tokens` — mint (secret once), list, revoke. */
-
-interface TokenListResponse {
-  data: ApiTokenDto[];
-}
+/**
+ * Personal Access Token resource module (D8). `/api-tokens` — mint (secret once), list, revoke.
+ * The `/api-tokens` routes return their resources **bare** (no `{ data }` envelope), so we consume
+ * the DTO directly.
+ */
 
 /** GET /api-tokens — the principal's tokens (never includes secrets). */
-export async function listTokens(): Promise<ApiTokenDto[]> {
-  const body = await authedRequest<TokenListResponse>('/api-tokens');
-  return body.data;
+export function listTokens(): Promise<ApiTokenDto[]> {
+  return authedRequest<ApiTokenDto[]>('/api-tokens');
 }
 
 /**
  * POST /api-tokens — mint a scoped PAT. The `secret` is returned EXACTLY ONCE (NFR-WEB-005);
  * surface it with a copy-now affordance and never persist, log, or re-render it.
  */
-export async function createToken(input: CreateApiToken): Promise<ApiTokenSecret> {
-  const body = await authedRequest<ResourceEnvelope<ApiTokenSecret>>('/api-tokens', {
+export function createToken(input: CreateApiToken): Promise<ApiTokenSecret> {
+  return authedRequest<ApiTokenSecret>('/api-tokens', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-  return body.data;
 }
 
 /** DELETE /api-tokens/{id} — revoke immediately. */

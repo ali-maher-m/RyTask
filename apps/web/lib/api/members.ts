@@ -3,25 +3,14 @@
 import type { Membership, SetRole } from '@rytask/contracts';
 import { authedRequest } from './http';
 
-/** Org-membership resource module (D8). `/memberships` — list, change role, remove. */
+/**
+ * Org-membership resource module (D8). `/memberships` — list, change role, remove. The M0
+ * membership route returns a **bare** array (no `{ data }`/`pageInfo` envelope).
+ */
 
-interface MembershipListResponse {
-  data: Membership[];
-  pageInfo?: { nextCursor: string | null; hasNextPage: boolean };
-}
-
-/** GET /memberships — the org's members (walks pages if paginated). */
-export async function listMemberships(): Promise<Membership[]> {
-  const all: Membership[] = [];
-  let cursor: string | null = null;
-  do {
-    const params = new URLSearchParams({ limit: '200' });
-    if (cursor) params.set('cursor', cursor);
-    const page = await authedRequest<MembershipListResponse>(`/memberships?${params.toString()}`);
-    all.push(...page.data);
-    cursor = page.pageInfo?.hasNextPage ? page.pageInfo.nextCursor : null;
-  } while (cursor);
-  return all;
+/** GET /memberships — the org's members. */
+export function listMemberships(): Promise<Membership[]> {
+  return authedRequest<Membership[]>('/memberships?limit=200');
 }
 
 /** PATCH /memberships/{userId} — change a member's role (last-owner guarded server-side → 409). */

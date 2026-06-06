@@ -128,7 +128,7 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
         onClose={() => router.push(backToBoard)}
       />
       {/* US8: break work down into nested sub-tasks (≥3 levels) on the item-detail surface. */}
-      <SubtaskTree root={item} onChange={setItem} />
+      <SubtaskTree root={item} statuses={statuses} onChange={setItem} />
     </main>
   );
 }

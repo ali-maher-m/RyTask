@@ -1,0 +1,96 @@
+/*
+ * Search results surface (US11, FR-WEB-091). Token-only and flat — the page is a calm ranked list
+ * grouped by entity type. No raw values: every color/space/size resolves from a `var(--*)` token.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 760px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--fs-h2);
+  font-weight: var(--w-bold);
+  color: var(--fg);
+}
+
+.subtitle {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+
+.form {
+  display: block;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.groupHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--fg-muted);
+  font-size: var(--fs-micro);
+  font-weight: var(--w-semibold);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  color: var(--fg-faint);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0_5);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--fg-2);
+  text-decoration: none;
+}
+
+.item:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+
+.itemTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--w-medium);
+  color: var(--fg);
+}
+
+.snippet {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

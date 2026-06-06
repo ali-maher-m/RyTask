@@ -8,6 +8,11 @@ RUN corepack enable
 WORKDIR /repo
 
 FROM base AS build
+# NEXT_PUBLIC_* is inlined into the client bundle at build time, so the API URL the browser
+# uses must be present here (a runtime env on the container is too late). Defaults to empty
+# (relative same-origin) for non-Docker builds; the compose stack passes http://localhost:3001.
+ARG NEXT_PUBLIC_API_URL=
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm build

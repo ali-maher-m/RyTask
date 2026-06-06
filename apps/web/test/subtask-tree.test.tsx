@@ -17,6 +17,9 @@ const { authedFetch } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/api', () => ({ authedFetch }));
+// The tree reads the org-tz overdue helper from OrgContext; stub it so the node renders without a
+// full provider tree (these cases use no due date, so the flag is always false anyway).
+vi.mock('@/lib/org/org-context', () => ({ useOrg: () => ({ isOverdue: () => false }) }));
 
 import { SubtaskTree, wouldCreateCycle } from '@/components/subtask-tree';
 
@@ -47,7 +50,7 @@ const ROOT = {
 
 describe('SubtaskTree', () => {
   it('renders the root node with its direct child count', () => {
-    render(<SubtaskTree root={ROOT as never} />);
+    render(<SubtaskTree root={ROOT as never} statuses={[]} />);
     expect(screen.getByTestId('subtask-tree')).toBeTruthy();
     const node = screen.getByTestId('subtask-node');
     expect(node.textContent).toMatch(/3 sub-tasks/);
@@ -55,7 +58,7 @@ describe('SubtaskTree', () => {
   });
 
   it('singularizes the count for a node with one child', () => {
-    render(<SubtaskTree root={{ ...ROOT, childCount: 1 } as never} />);
+    render(<SubtaskTree root={{ ...ROOT, childCount: 1 } as never} statuses={[]} />);
     expect(screen.getByTestId('subtask-node').textContent).toMatch(/1 sub-task(?!s)/);
   });
 });

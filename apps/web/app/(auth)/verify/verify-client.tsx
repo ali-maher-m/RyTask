@@ -1,13 +1,15 @@
 'use client';
 
+import { AuthShell, authStyles as s } from '@/components/auth-shell';
+import { verifyEmail } from '@/lib/api';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { verifyEmail } from '../../../lib/api';
 
 /**
- * Confirm an email address from a verification link (US6, T090). The token comes from the emailed
- * URL (`?token=…`); we read it from the address bar and verify on mount, then show success or a
- * plain "expired link" message. No input is required — it's a one-tap confirmation.
+ * Confirm an email address from a verification link (US12, T095, FR-WEB-013). The token comes from
+ * the emailed URL (`?token=…`); we read it from the address bar and verify on mount, then show
+ * success (which lifts the unverified-account restriction per org policy) or a plain "expired link"
+ * message. No input is required — it's a one-tap confirmation. Restyled to design tokens.
  */
 type State = 'pending' | 'ok' | 'invalid' | 'missing';
 
@@ -26,40 +28,47 @@ export function VerifyEmailClient() {
   }, []);
 
   return (
-    <main aria-live="polite">
-      {state === 'pending' ? (
-        <>
-          <h1>Verifying your email…</h1>
-          <p>One moment.</p>
-        </>
-      ) : null}
+    <AuthShell>
+      <div aria-live="polite">
+        {state === 'pending' ? (
+          <>
+            <h1 className={s.title}>Verifying your email…</h1>
+            <p className={s.subtitle}>One moment.</p>
+          </>
+        ) : null}
 
-      {state === 'ok' ? (
-        <>
-          <h1>Email verified</h1>
-          <p>Thanks — your email address is confirmed.</p>
-          <p>
-            <Link href="/">Go to your workspace</Link>
-          </p>
-        </>
-      ) : null}
+        {state === 'ok' ? (
+          <>
+            <h1 className={s.title}>Email verified</h1>
+            <p className={s.subtitle}>Thanks — your email address is confirmed.</p>
+            <p className={s.footer}>
+              <Link href="/">Go to your workspace</Link>
+            </p>
+          </>
+        ) : null}
 
-      {state === 'invalid' ? (
-        <>
-          <h1>This link didn't work</h1>
-          <p>The verification link is invalid or has expired. Sign in to request a new one.</p>
-          <p>
-            <Link href="/login">Go to sign in</Link>
-          </p>
-        </>
-      ) : null}
+        {state === 'invalid' ? (
+          <>
+            <h1 className={s.title}>This link didn't work</h1>
+            <p className={s.subtitle}>
+              The verification link is no longer valid — it may have expired or already been used.
+              Sign in to request a new one.
+            </p>
+            <p className={s.footer}>
+              <Link href="/login">Go to sign in</Link>
+            </p>
+          </>
+        ) : null}
 
-      {state === 'missing' ? (
-        <>
-          <h1>Verification link needed</h1>
-          <p>Open the link from your verification email to confirm your address.</p>
-        </>
-      ) : null}
-    </main>
+        {state === 'missing' ? (
+          <>
+            <h1 className={s.title}>Verification link needed</h1>
+            <p className={s.subtitle}>
+              Open the link from your verification email to confirm your address.
+            </p>
+          </>
+        ) : null}
+      </div>
+    </AuthShell>
   );
 }

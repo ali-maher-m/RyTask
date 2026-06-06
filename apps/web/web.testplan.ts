@@ -70,6 +70,26 @@ export const testPlan: WebTestPlan = {
       target: 'subtask tree child counts + cyclic-parent guard (US8)',
       file: 'test/subtask-tree.test.tsx',
     },
+    {
+      kind: 'component',
+      target: 'members: last-owner guard + admin-vs-owner gating (US9)',
+      file: 'test/members.test.tsx',
+    },
+    {
+      kind: 'component',
+      target: 'inbox: mark read / snooze / archive update the unread count (US10)',
+      file: 'test/inbox.test.tsx',
+    },
+    {
+      kind: 'component',
+      target: 'command palette: navigate-or-create in ≤2 actions (US11)',
+      file: 'test/command-palette.test.tsx',
+    },
+    {
+      kind: 'component',
+      target: 'password reset: no enumeration + used/expired link (US12)',
+      file: 'test/reset.test.tsx',
+    },
   ],
 };
 

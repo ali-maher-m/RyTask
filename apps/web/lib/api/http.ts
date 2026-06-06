@@ -79,10 +79,14 @@ async function parse<T>(res: Response, method: string, path: string): Promise<T>
     }
     throw new ApiError(res.status, message);
   }
+  // 204 No Content — or any 2xx with an empty body (e.g. 202 Accepted from the uniform
+  // password-reset / verify-email / logout endpoints, which return `void`). Read the body as text
+  // first so an empty response resolves to `undefined` instead of throwing on `res.json()`.
   if (res.status === 204) {
     return undefined as T;
   }
-  return (await res.json()) as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 /** Unauthenticated call — login, register, setup, invite preview/accept, password reset, verify. */

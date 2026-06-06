@@ -1,117 +1,20 @@
 'use client';
 
-import type { Comment, CommentEnvelope, CommentListResponse } from '@rytask/contracts';
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
-import { ApiError, authedRequest } from '../lib/api';
+import { ApiError, createComment, listComments, listMemberships } from '@/lib/api';
+import { useOrg } from '@/lib/org/org-context';
+import type { Comment, UserSummary } from '@rytask/contracts';
+import { Avatar, Button } from '@rytask/ui';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Markdown } from './markdown';
 
 /**
- * Comment thread (US7, T115, FR-COLLAB-001/002, D9/D15). Threaded markdown comments with
- * @mention rendering for a single work item. It is a thin client over the US7 REST surface
- * (contracts/openapi.yaml, under /api/v1):
- *   GET  /work-items/{id}/comments — list (cursor-paginated `{ data, pageInfo }`)
- *   POST /work-items/{id}/comments — post a comment; optional `parentId` for a threaded reply
- *
- * Requests carry the M0 bearer token via `authedRequest` (the M1 dev-header seam is gone). A
- * posted `@mention` notifies the mentioned user and grants them context access to this item
- * (FR-COLLAB-002); the server resolves handles → `mentions` user ids on the returned comment.
- * Markdown rendering here is intentionally minimal (no third-party renderer): paragraphs,
- * inline code via backticks, and highlighted `@mention` spans. Every control has an accessible
- * name for axe.
+ * Comment thread (US10, T085, FR-WEB-080/081, D17). Threaded markdown comments on one work item, with
+ * **@mention autocomplete** resolving teammates via the members API. Bodies render through the shared
+ * `Markdown` component (GFM + sanitized — no `dangerouslySetInnerHTML`). Posting a comment that
+ * mentions a teammate notifies them server-side (the inbox gains one entry — FR-WEB-081); the server
+ * resolves the `@handle`s on the returned comment. Replies are one level deep, assembled from the flat
+ * server list by `parentId`. Token-only styling; every control is programmatically labelled (axe).
  */
-
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-}
-
-/**
- * `@handle` spans: the `@` must follow a non-word boundary (so `founder@rytask.local` does
- * NOT match), mirroring the server's `extractMentions` grammar (work-items/domain/markdown.ts).
- * Captures the leading boundary char so it can be re-emitted verbatim.
- */
-const MENTION_RE = /(^|[^\w@])@([a-zA-Z0-9][a-zA-Z0-9._-]*)/g;
-/** Inline `` `code` `` spans (kept literal, no nested markdown). */
-const INLINE_CODE_RE = /`([^`]+)`/g;
-
-/** Render a single line: inline code first, then highlight `@mention` spans within text runs. */
-function renderInline(line: string, keyPrefix: string): ReactNode[] {
-  const out: ReactNode[] = [];
-  let lastIndex = 0;
-  let codeKey = 0;
-  for (const match of line.matchAll(INLINE_CODE_RE)) {
-    const start = match.index ?? 0;
-    if (start > lastIndex) {
-      out.push(...renderMentions(line.slice(lastIndex, start), `${keyPrefix}-t${start}`));
-    }
-    out.push(
-      <code key={`${keyPrefix}-c${codeKey++}`} data-testid="comment-code">
-        {match[1]}
-      </code>,
-    );
-    lastIndex = start + match[0].length;
-  }
-  if (lastIndex < line.length) {
-    out.push(...renderMentions(line.slice(lastIndex), `${keyPrefix}-t${lastIndex}`));
-  }
-  return out;
-}
-
-/** Wrap each `@mention` of a text run in a highlighted span; plain text stays as strings. */
-function renderMentions(text: string, keyPrefix: string): ReactNode[] {
-  const out: ReactNode[] = [];
-  let lastIndex = 0;
-  let key = 0;
-  for (const match of text.matchAll(MENTION_RE)) {
-    const start = match.index ?? 0;
-    const boundary = match[1] ?? '';
-    const handle = match[2] ?? '';
-    const mentionStart = start + boundary.length;
-    if (mentionStart > lastIndex) {
-      out.push(text.slice(lastIndex, mentionStart));
-    }
-    out.push(
-      <mark
-        key={`${keyPrefix}-m${key++}`}
-        data-testid="comment-mention"
-        aria-label={`mention of ${handle}`}
-        style={{ background: '#eef2ff', color: '#3730a3', borderRadius: 3, padding: '0 2px' }}
-      >
-        @{handle}
-      </mark>,
-    );
-    lastIndex = start + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    out.push(text.slice(lastIndex));
-  }
-  return out;
-}
-
-/**
- * Minimal markdown body renderer: split on blank lines into paragraphs, keep single newlines as
- * `<br>`, and highlight inline code + `@mention` spans. Deliberately dependency-free (D15 says
- * full markdown is the web client's concern; M1 needs safe, legible threads, not a CommonMark
- * engine). Returns React nodes (never `dangerouslySetInnerHTML`, so untrusted markdown can never
- * inject HTML).
- */
-function renderMarkdownBody(body: string): ReactNode {
-  const paragraphs = body.split(/\n{2,}/);
-  return paragraphs.map((para, pIdx) => {
-    const lines = para.split('\n');
-    return (
-      // biome-ignore lint/suspicious/noArrayIndexKey: paragraphs are positionally stable per render
-      <p key={`p${pIdx}`} style={{ margin: '0 0 0.5rem' }}>
-        {lines.map((line, lIdx) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: lines are positionally stable per render
-          <span key={`l${lIdx}`}>
-            {renderInline(line, `p${pIdx}l${lIdx}`)}
-            {lIdx < lines.length - 1 ? <br /> : null}
-          </span>
-        ))}
-      </p>
-    );
-  });
-}
 
 /** A comment plus its direct replies, assembled from the flat server list by `parentId`. */
 interface ThreadNode {
@@ -132,11 +35,27 @@ function buildThreads(comments: Comment[]): ThreadNode[] {
       roots.push(c);
     }
   }
-  return roots.map((comment) => ({
-    comment,
-    replies: repliesByParent.get(comment.id) ?? [],
-  }));
+  return roots.map((comment) => ({ comment, replies: repliesByParent.get(comment.id) ?? [] }));
 }
+
+/** A teammate's @mention handle is the local part of their email (matches the server grammar). */
+function handleOf(user: UserSummary): string {
+  return user.email.split('@')[0] ?? user.email;
+}
+
+/** The active `@query` immediately before the caret, or null when none is being typed. */
+function activeMentionQuery(value: string, caret: number): string | null {
+  const before = value.slice(0, caret);
+  const match = before.match(/(?:^|[^\w@])@([a-zA-Z0-9._-]*)$/);
+  return match ? (match[1] ?? '') : null;
+}
+
+const CARD: React.CSSProperties = {
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--surface)',
+  padding: 'var(--space-3)',
+};
 
 export interface CommentThreadProps {
   /** The work item whose comments to show (path id for the comments routes). */
@@ -144,21 +63,23 @@ export interface CommentThreadProps {
 }
 
 export function CommentThread({ workItemId }: CommentThreadProps) {
+  const { formatDate } = useOrg();
   const [comments, setComments] = useState<Comment[] | null>(null);
+  const [users, setUsers] = useState<UserSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const composerId = useId();
-  const replyId = useId();
   const headingId = useId();
+
+  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+  const authorName = useCallback((id: string) => usersById.get(id)?.name ?? id, [usersById]);
 
   const load = useCallback(async () => {
     try {
-      const json = await authedRequest<CommentListResponse>(`/work-items/${workItemId}/comments`);
-      setComments(json.data ?? []);
+      setComments(await listComments(workItemId));
       setError(null);
     } catch (e) {
       setError(
@@ -173,6 +94,22 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
     void load();
   }, [load]);
 
+  // Teammates power both @mention autocomplete and author-name resolution. Listing members can be
+  // forbidden for a guest — degrade gracefully (handles still type fine; names fall back to ids).
+  useEffect(() => {
+    let active = true;
+    listMemberships()
+      .then((m) => {
+        if (active) setUsers(m.map((x) => x.user));
+      })
+      .catch(() => {
+        /* non-critical */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const post = useCallback(
     async (text: string, parentId?: string): Promise<boolean> => {
       const trimmed = text.trim();
@@ -180,11 +117,11 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
       setBusy(true);
       setError(null);
       try {
-        const json = await authedRequest<CommentEnvelope>(`/work-items/${workItemId}/comments`, {
-          method: 'POST',
-          body: JSON.stringify(parentId ? { body: trimmed, parentId } : { body: trimmed }),
-        });
-        setComments((prev) => [...(prev ?? []), json.data]);
+        const created = await createComment(
+          workItemId,
+          parentId ? { body: trimmed, parentId } : { body: trimmed },
+        );
+        setComments((prev) => [...(prev ?? []), created]);
         return true;
       } catch (e) {
         setError(
@@ -217,32 +154,50 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
 
   return (
     <section aria-labelledby={headingId} data-testid="comment-thread">
-      <h3 id={headingId}>Comments</h3>
+      <h3 id={headingId} style={{ fontSize: 'var(--fs-h3)' }}>
+        Comments
+      </h3>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p role="alert" style={{ color: 'var(--error)' }}>
+          {error}
+        </p>
+      ) : null}
 
       {comments === null ? (
-        <p>Loading comments…</p>
+        <p style={{ color: 'var(--fg-muted)' }}>Loading comments…</p>
       ) : threads.length === 0 ? (
-        <p data-testid="comment-thread-empty">No comments yet. Start the discussion.</p>
+        <p data-testid="comment-thread-empty" style={{ color: 'var(--fg-muted)' }}>
+          No comments yet. Start the discussion.
+        </p>
       ) : (
-        <ol aria-label="Comment thread" style={{ listStyle: 'none', padding: 0 }}>
+        <ol
+          aria-label="Comment thread"
+          style={{
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
+            display: 'grid',
+            gap: 'var(--space-3)',
+          }}
+        >
           {threads.map((node) => (
-            <li key={node.comment.id} data-testid="comment" style={{ marginBottom: '1rem' }}>
-              <CommentBody comment={node.comment} />
-              <p>
-                <button
-                  type="button"
+            <li key={node.comment.id} data-testid="comment">
+              <CommentBody comment={node.comment} authorName={authorName} formatDate={formatDate} />
+              <p style={{ margin: 'var(--space-1) 0' }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
                   onClick={() => {
                     setReplyTo((cur) => (cur === node.comment.id ? null : node.comment.id));
                     setReplyBody('');
                   }}
-                  disabled={busy}
                   aria-expanded={replyTo === node.comment.id}
-                  aria-label={`Reply to comment by ${node.comment.authorId}`}
+                  aria-label={`Reply to comment by ${authorName(node.comment.authorId)}`}
                 >
                   Reply
-                </button>
+                </Button>
               </p>
 
               {node.replies.length > 0 ? (
@@ -250,17 +205,20 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
                   aria-label="Replies"
                   style={{
                     listStyle: 'none',
-                    paddingLeft: '1.25rem',
-                    borderLeft: '2px solid #e3e5e8',
+                    margin: 0,
+                    paddingLeft: 'var(--space-4)',
+                    borderLeft: '2px solid var(--border-subtle)',
+                    display: 'grid',
+                    gap: 'var(--space-2)',
                   }}
                 >
                   {node.replies.map((reply) => (
-                    <li
-                      key={reply.id}
-                      data-testid="comment-reply"
-                      style={{ marginBottom: '0.75rem' }}
-                    >
-                      <CommentBody comment={reply} />
+                    <li key={reply.id} data-testid="comment-reply">
+                      <CommentBody
+                        comment={reply}
+                        authorName={authorName}
+                        formatDate={formatDate}
+                      />
                     </li>
                   ))}
                 </ol>
@@ -269,21 +227,28 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
               {replyTo === node.comment.id ? (
                 <form
                   onSubmit={(e) => void submitReply(e, node.comment.id)}
-                  aria-label={`Reply to comment by ${node.comment.authorId}`}
-                  style={{ paddingLeft: '1.25rem' }}
+                  aria-label={`Reply to comment by ${authorName(node.comment.authorId)}`}
+                  style={{ paddingLeft: 'var(--space-4)', marginTop: 'var(--space-2)' }}
                 >
-                  <label htmlFor={`${replyId}-${node.comment.id}`}>Your reply (markdown)</label>
-                  <textarea
-                    id={`${replyId}-${node.comment.id}`}
+                  <MentionTextarea
+                    label="Your reply (markdown)"
                     value={replyBody}
-                    onChange={(e) => setReplyBody(e.target.value)}
-                    rows={3}
+                    onChange={setReplyBody}
+                    users={users}
                     disabled={busy}
+                    rows={3}
                     placeholder="Reply… **markdown** and @mentions supported"
                   />
-                  <button type="submit" disabled={busy || !replyBody.trim()}>
-                    Post reply
-                  </button>
+                  <div style={{ marginTop: 'var(--space-2)' }}>
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      size="sm"
+                      disabled={busy || !replyBody.trim()}
+                    >
+                      Post reply
+                    </Button>
+                  </div>
                 </form>
               ) : null}
             </li>
@@ -291,35 +256,248 @@ export function CommentThread({ workItemId }: CommentThreadProps) {
         </ol>
       )}
 
-      {/* ── Top-level composer ─────────────────────────────────────────────────── */}
-      <form onSubmit={submitTop} aria-label="Add a comment">
-        <label htmlFor={composerId}>Add a comment (markdown)</label>
-        <textarea
-          id={composerId}
+      <form onSubmit={submitTop} aria-label="Add a comment" style={{ marginTop: 'var(--space-4)' }}>
+        <MentionTextarea
+          label="Add a comment (markdown)"
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={4}
+          onChange={setBody}
+          users={users}
           disabled={busy}
+          rows={4}
           placeholder="Write a comment… **markdown** and @mentions supported"
         />
-        <button type="submit" disabled={busy || !body.trim()}>
-          {busy ? 'Posting…' : 'Comment'}
-        </button>
+        <div style={{ marginTop: 'var(--space-2)' }}>
+          <Button type="submit" variant="primary" loading={busy} disabled={!body.trim()}>
+            Comment
+          </Button>
+        </div>
       </form>
     </section>
   );
 }
 
-/** One rendered comment: author + timestamp header, then the markdown body with mentions. */
-function CommentBody({ comment }: { comment: Comment }) {
+/** One rendered comment: author + timestamp header, then the markdown body. */
+function CommentBody({
+  comment,
+  authorName,
+  formatDate,
+}: {
+  comment: Comment;
+  authorName: (id: string) => string;
+  formatDate: (iso: string | null | undefined, opts?: Intl.DateTimeFormatOptions) => string;
+}) {
+  const name = authorName(comment.authorId);
   return (
-    <article aria-label={`Comment by ${comment.authorId}`}>
-      <header style={{ fontSize: '0.85rem', color: '#666' }}>
-        <strong>{comment.authorId}</strong>{' '}
-        <time dateTime={comment.createdAt}>{formatTimestamp(comment.createdAt)}</time>
-        {comment.editedAt ? <span> (edited)</span> : null}
+    <article aria-label={`Comment by ${name}`} style={CARD}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+          fontSize: 'var(--fs-sm)',
+          color: 'var(--fg-muted)',
+        }}
+      >
+        <Avatar name={name} />
+        <strong style={{ color: 'var(--fg)' }}>{name}</strong>
+        <time dateTime={comment.createdAt} style={{ fontFamily: 'var(--font-mono)' }}>
+          {formatDate(comment.createdAt, { hour: '2-digit', minute: '2-digit' })}
+        </time>
+        {comment.editedAt ? <span>(edited)</span> : null}
       </header>
-      <div data-testid="comment-body">{renderMarkdownBody(comment.body)}</div>
+      <div data-testid="comment-body">
+        <Markdown source={comment.body} />
+      </div>
     </article>
+  );
+}
+
+interface MentionTextareaProps {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  users: UserSummary[];
+  disabled?: boolean;
+  rows?: number;
+  placeholder?: string;
+}
+
+/**
+ * A markdown textarea with @mention autocomplete. As the user types `@partial`, it lists matching
+ * teammates (by handle / name / email); choosing one inserts `@handle ` at the caret. Keyboard:
+ * ↑/↓ move, Enter selects (without inserting a newline), Esc closes the menu.
+ */
+function MentionTextarea({
+  label,
+  value,
+  onChange,
+  users,
+  disabled,
+  rows = 4,
+  placeholder,
+}: MentionTextareaProps) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const [query, setQuery] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listId = useId();
+
+  const candidates = useMemo(() => {
+    if (query === null) return [];
+    const q = query.toLowerCase();
+    return users
+      .filter((u) => {
+        const hay = `${handleOf(u)} ${u.name} ${u.email}`.toLowerCase();
+        return q.length === 0 ? true : hay.includes(q);
+      })
+      .slice(0, 6);
+  }, [query, users]);
+
+  const open = candidates.length > 0;
+  const fieldId = `${listId}-input`;
+
+  function syncQuery(el: HTMLTextAreaElement) {
+    setQuery(activeMentionQuery(el.value, el.selectionStart ?? el.value.length));
+    setActiveIndex(0);
+  }
+
+  function choose(user: UserSummary) {
+    const el = ref.current;
+    if (!el) return;
+    const caret = el.selectionStart ?? value.length;
+    const before = value.slice(0, caret);
+    const after = value.slice(caret);
+    // Replace the active `@partial` (immediately before the caret) with `@handle `.
+    const replaced = before.replace(/@([a-zA-Z0-9._-]*)$/, `@${handleOf(user)} `);
+    const next = replaced + after;
+    onChange(next);
+    setQuery(null);
+    // Restore focus + place the caret right after the inserted handle.
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = replaced.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!open) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % candidates.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + candidates.length) % candidates.length);
+    } else if (e.key === 'Enter') {
+      const pick = candidates[activeIndex];
+      if (pick) {
+        e.preventDefault();
+        choose(pick);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setQuery(null);
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <label
+        htmlFor={fieldId}
+        style={{
+          display: 'block',
+          fontSize: 'var(--fs-sm)',
+          color: 'var(--fg-muted)',
+          marginBottom: 'var(--space-1)',
+        }}
+      >
+        {label}
+      </label>
+      <textarea
+        id={fieldId}
+        ref={ref}
+        value={value}
+        rows={rows}
+        disabled={disabled}
+        placeholder={placeholder}
+        style={{
+          font: 'inherit',
+          width: '100%',
+          color: 'var(--fg)',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          padding: 'var(--space-2)',
+          resize: 'vertical',
+        }}
+        onChange={(e) => {
+          onChange(e.target.value);
+          syncQuery(e.currentTarget);
+        }}
+        onClick={(e) => syncQuery(e.currentTarget)}
+        onKeyUp={(e) => {
+          // Arrow/navigation keys move the caret without changing the value.
+          if (e.key.startsWith('Arrow') || e.key === 'Home' || e.key === 'End') {
+            syncQuery(e.currentTarget);
+          }
+        }}
+        onKeyDown={onKeyDown}
+        onBlur={() => setQuery(null)}
+      />
+      {open ? (
+        // A lightweight suggestion menu of focusable buttons (not an ARIA listbox): the textarea
+        // keeps focus and the caret, ↑/↓/Enter drive selection, and each option is itself clickable.
+        <ul
+          aria-label="Mention a teammate"
+          data-testid="mention-menu"
+          style={{
+            position: 'absolute',
+            zIndex: 1,
+            left: 0,
+            right: 0,
+            margin: 'var(--space-1) 0 0',
+            padding: 'var(--space-1)',
+            listStyle: 'none',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: 'var(--shadow-md)',
+          }}
+        >
+          {candidates.map((u, i) => (
+            <li key={u.id}>
+              <button
+                type="button"
+                // Use mousedown so the choice lands before the textarea blur closes the menu.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  choose(u);
+                }}
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                  padding: 'var(--space-1) var(--space-2)',
+                  border: 0,
+                  borderRadius: 'var(--radius-xs)',
+                  background: i === activeIndex ? 'var(--surface-sunken)' : 'transparent',
+                  color: 'var(--fg)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <Avatar name={u.name} />
+                <span>
+                  <span style={{ fontWeight: 'var(--w-medium)' }}>{u.name}</span>{' '}
+                  <span style={{ color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+                    @{handleOf(u)}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
