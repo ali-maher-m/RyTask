@@ -143,26 +143,30 @@ drizzle-kit migrate         # planned: transactional migrations (never db:push i
 Until code lands, the actionable "commands" are the Spec Kit skills above and the scripts in `.specify/scripts/bash/`.
 
 <!-- SPECKIT START -->
-Active feature: **M0+M1 Frontend — Web Application** (`003-frontend-m0-m1`). The production-grade
-Next.js web UI for everything M0 and M1 already do on the server — a **client** of the existing M0/M1
-REST API and `@rytask/contracts`, introducing **no new server capability**. It completes the existing
-`apps/web` walking skeleton (real `lib/api.ts` auth/refresh + typed M1 clients) and, above all, **wires
-the design system** (currently unwired: bare root layout, no tokens/fonts/theme/shell). For
-technologies, structure, shell commands, and the decisions driving current work, read the plan and its
-artifacts in `specs/003-frontend-m0-m1/`:
-- `plan.md` — technical context, Constitution Check (Principle VIII is the central gate), structure
-- `research.md` — decisions D1–D18 (token wiring, CSS-Modules+tokens, theme/fonts/icons, shell,
-  TanStack Query + Context, capability map, token-conformance gate, web closed-testing, filter-DSL
-  serialization, optimistic `version` reconcile, virtualization, markdown, client auth routing)
-- `data-model.md` — **client-side** state & UI surfaces only (no new persisted server entities)
-- `contracts/` — UI contracts: `route-map`, `role-capability-matrix`, `component-contracts`,
-  `view-config` (serializes the M1 filter DSL), `quick-add-grammar` — plus the consumed M0/M1 REST
-- `quickstart.md` — run/seed/verify each user story + the CI gates
+Active feature: **Fast Capture Everywhere — Slack & MCP (M3)** (`004-fast-capture-slack-mcp`).
+Full-stack milestone adding two new capture/control **channels** onto the complete M0/M1 backend and the
+003 web app: **first-class Slack capture** (D2) and the **first-party MCP server** (D3). No new *domain*
+capability — both channels are clients of the **same** `WorkItemsService` + `parseQuickAdd` + PAT/RBAC
+the web uses (one brain everywhere). For technologies, structure, shell commands, and the decisions
+driving current work, read the plan and its artifacts in `specs/004-fast-capture-slack-mcp/`:
+- `plan.md` — technical context, Constitution Check (Principle IV parity has one tracked, spec-authorized
+  deferral in Complexity Tracking), the Slack-module + MCP-edge structure
+- `research.md` — decisions D1–D17 (Slack = bounded module / MCP = transport edge; `tenant.run` off-request;
+  extend `SlackPort` + real adapter; HMAC signature guard; reuse quick-add verbatim; `work_items.source`;
+  3 s ack + async BullMQ with deterministic `jobId` idempotency; PAT auth scope ∩ role; stdio + HTTP/SSE
+  transports same image; parity exclusions; typed errors; tool-io; pagination; 4 web surfaces)
+- `data-model.md` — NEW server state: `slack_workspaces`, `slack_users` (tenant-scoped) + `work_items.source`
+  (`captureSourceEnum`); PATs reuse M0 `api_tokens`; MCP active workspace is transient
+- `contracts/` — `slack-rest`, `slack-capture-flow`, `mcp-server` (49 tools made live), `web-surfaces`,
+  `capture-source` — plus the reused M0/M1 REST + the MCP registry
+- `quickstart.md` — run/seed (+Slack & MCP env), verify each US, and the CI gates
 
-Two new repo-root CI gates this feature adds: `scripts/check-design-tokens.ts` (token-only brand
-conformance, Principle VIII / NFR-WEB-001) and a generalized `scripts/check-required-tests.ts` +
-`apps/web/web.testplan.ts` (web closed-testing, Principle V / NFR-WEB-006). Tokens flow
-`branding/colors_and_type.css → packages/ui → apps/web` — never copy-pasted. The server stays the sole
-authority; client role gating is cosmetic. Must not break M1's contract
-(`users.organizationId`, `project_members`, `TenantScopedRepository`).
+Key invariants for this work: Slack is a new **bounded module** (`apps/api/src/modules/slack`) that calls
+other modules only via their `*.contract.ts`; MCP is a transport **edge** (`apps/api/src/mcp`), not a back
+door — it resolves a PAT principal, `tenant.run(...)`, and dispatches to the same services. `check-mcp-parity`
+stays **green at 49/49** (M3 adds transport, not tools). Slack webhooks verify HMAC signatures, ack ≤3 s,
+process async, and are idempotent via `jobId`. Tenant is resolved server-side (MCP: PAT principal; Slack:
+verified `team_id`), never client-supplied. New web UI is token-only (`check-design-tokens`). Secrets via
+env only; bot tokens encrypted at rest; PAT secret shown once. Must not break M0/M1 contracts
+(`users.organizationId`, `project_members`, `TenantScopedRepository`, the 49-tool registry).
 <!-- SPECKIT END -->
