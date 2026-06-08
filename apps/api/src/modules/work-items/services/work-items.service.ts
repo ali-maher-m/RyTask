@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import type {
   ActivityEntry,
   AddSubtask,
-  CreateWorkItem,
+  CreateWorkItemInput,
   CreateWorkItemResponse,
   ListWorkItemsQuery,
   MoveWorkItem,
@@ -60,7 +60,7 @@ export class WorkItemsService {
     private readonly watchers: WorkItemWatchersRepository,
   ) {}
 
-  async create(input: CreateWorkItem): Promise<CreateWorkItemResponse> {
+  async create(input: CreateWorkItemInput): Promise<CreateWorkItemResponse> {
     const { item, keyPrefix, labelIds, unresolved } = await this.createProvider.create(input);
     this.events.emit(
       WorkItemCreatedEvent.eventName,

@@ -17,6 +17,7 @@ export type Capability =
   | 'org:settings:write'
   | 'members:invite'
   | 'members:write'
+  | 'integrations:admin'
   | 'org:transfer'
   | 'org:delete';
 
@@ -58,6 +59,9 @@ export function can(role: Role, cap: Capability, ctx: CapabilityCtx = {}): boole
       return false;
     case 'org:settings:write':
       return isOrgAdmin(role);
+    case 'integrations:admin':
+      // Connect / disconnect / map Slack — owners and admins only (mirrors org:settings:write).
+      return isOrgAdmin(role);
     case 'members:invite':
       return isOrgAdmin(role);
     case 'members:write': {
@@ -84,6 +88,7 @@ const REASONS: Record<Capability, string> = {
   'project:create': 'Only owners, admins, and members can create projects.',
   'project:admin': 'Only a project admin can change project settings.',
   'org:settings:write': 'Only owners and admins can change organization settings.',
+  'integrations:admin': 'Only owners and admins can manage integrations.',
   'members:invite': 'Only owners and admins can invite teammates.',
   'members:write': 'You can’t change this person’s role.',
   'org:transfer': 'Only the owner can transfer ownership.',

@@ -28,6 +28,22 @@ export interface Watcher {
 /** DI token for the cross-module work-item access port (watchers + activity + access). */
 export const WORK_ITEM_ACCESS = Symbol('WORK_ITEM_ACCESS');
 
+/** DI token for the cross-module capture port (Slack/edge create — one brain everywhere). */
+export const WORK_ITEM_CAPTURE = Symbol('WORK_ITEM_CAPTURE');
+
+/**
+ * Cross-module capture surface (M3, research D1/D5). The Slack bounded module captures work items
+ * through THIS port — never by importing `WorkItemsService` (Principle III; the dependency-cruiser
+ * `no-cross-module-internals` rule exempts `*.contract.ts`). It is the SAME `create` the web/REST
+ * path uses — one brain everywhere — so a Slack task is created by exactly the code a web task is
+ * (the quick-add grammar, project defaults, activity + `source` provenance are all shared).
+ */
+export interface WorkItemCaptureService {
+  create(
+    input: import('@rytask/contracts').CreateWorkItemInput,
+  ): Promise<import('@rytask/contracts').CreateWorkItemResponse>;
+}
+
 /**
  * Cross-module access to a work item's watchers, activity feed, and mention-granted
  * read access. Lets the comments module seed MENTIONED watchers and append COMMENTED

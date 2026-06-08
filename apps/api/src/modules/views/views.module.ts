@@ -23,5 +23,7 @@ import { ViewsService } from './services/views.service';
     DeleteViewProvider,
     ViewsService,
   ],
+  // Exported for the MCP transport edge (M3, US4), which imports ViewsModule and dispatches to it.
+  exports: [ViewsService],
 })
 export class ViewsModule {}

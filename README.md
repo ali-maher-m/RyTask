@@ -189,6 +189,38 @@ volumes:
 
 Helm charts and horizontal-scaling guidance arrive in Stage 3.
 
+### 💬 Slack capture & 🤖 MCP server (M3)
+
+Both capture channels run **inside the existing `api` image** — there is **no new compose service** to add.
+Configure them with environment variables only (all documented in [`.env.example`](./.env.example)); leave
+them unset to keep the channels inert (the Slack adapter no-ops and `docker compose up` still works).
+
+```bash
+# --- Slack capture (D2) — from your Slack app's "Basic Information" + "OAuth" ---
+SLACK_CLIENT_ID=…
+SLACK_CLIENT_SECRET=…
+SLACK_SIGNING_SECRET=…                       # verifies every inbound webhook (HMAC)
+SLACK_OAUTH_CALLBACK_URL=http://localhost:3001/integrations/slack/oauth/callback
+SLACK_TOKEN_ENC_KEY=$(openssl rand -base64 32) # 32-byte key; encrypts bot tokens at rest (AES-256-GCM)
+
+# --- MCP server (D3) — full-control agent access at 100% UI parity ---
+MCP_PUBLIC_URL=http://localhost:3001/mcp     # base URL of the streamable HTTP/SSE transport
+NEXT_PUBLIC_MCP_URL=http://localhost:3001/mcp # surfaced on the in-app Agent-access page
+```
+
+The MCP server ships **two transports from the one image**:
+
+- **HTTP/SSE** — served by the running `api` at `POST/GET /mcp`, authenticated with a personal access
+  token (`Authorization: Bearer <PAT>`). Nothing extra to start.
+- **stdio** — a local entrypoint for desktop MCP clients, a third entrypoint of the same image
+  (alongside `start` and `WORKER=1`):
+
+  ```bash
+  RYTASK_PAT=<your-PAT> pnpm --filter @rytask/api mcp:stdio   # → node dist/main.mcp.js
+  ```
+
+Create and scope PATs from **Settings → Agent access** in the app (the secret is shown once).
+
 ---
 
 ## 🤝 Contributing

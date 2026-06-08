@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   index,
   integer,
@@ -14,6 +15,7 @@ import {
 import { uuidv7 } from 'uuidv7';
 import {
   activityActionEnum,
+  captureSourceEnum,
   notificationTypeEnum,
   oneTimeTokenPurposeEnum,
   priorityEnum,
@@ -364,6 +366,10 @@ export const workItems = pgTable(
       .notNull()
       .references(() => statuses.id),
     priority: priorityEnum('priority').notNull().default('NONE'),
+    // FR-CAP-002 (M3) — capture provenance: WEB (default) / SLACK / MCP / API. NOT NULL with a
+    // default so the migration backfills existing rows safely. The channel, not the person —
+    // orthogonal to reporterId; set server-side by WorkItemsService.create (data-model §1.3).
+    source: captureSourceEnum('source').notNull().default('WEB'),
     assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
     reporterId: uuid('reporter_id').references(() => users.id, { onDelete: 'set null' }),
     parentId: uuid('parent_id'),
@@ -562,6 +568,85 @@ export const notifications = pgTable(
   ],
 );
 
+// ───────────────────────────────────────────────────────── slack context (M3)
+
+/**
+ * Slack workspace connection (M3, US1, data-model §1.1). Links one Slack team to one RyTask
+ * workspace; holds install/authorization metadata and the (AES-256-GCM-encrypted) bot token
+ * needed to receive commands and reply. Tenant-scoped: `organization_id` NOT NULL leads every
+ * composite index; the webhook resolves a verified `slack_team_id` → this row → org/workspace
+ * server-side (never client-supplied). Disconnect is a soft revoke (`revoked_at`).
+ */
+export const slackWorkspaces = pgTable(
+  'slack_workspaces',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    slackTeamId: text('slack_team_id').notNull(),
+    slackTeamName: text('slack_team_name').notNull(),
+    botUserId: text('bot_user_id').notNull(),
+    botTokenCiphertext: text('bot_token_ciphertext').notNull(),
+    botTokenIv: text('bot_token_iv').notNull(),
+    botTokenTag: text('bot_token_tag').notNull(),
+    scopes: jsonb('scopes').$type<string[]>().notNull().default([]),
+    defaultProjectId: uuid('default_project_id').references(() => projects.id, {
+      onDelete: 'set null',
+    }),
+    installedByUserId: uuid('installed_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    connectedAt: timestamp('connected_at', { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    // A Slack team connects exactly once (global) — the webhook maps team_id → one connection.
+    uniqueIndex('slack_ws_team_unique').on(t.slackTeamId),
+    uniqueIndex('slack_ws_org_team_unique').on(t.organizationId, t.slackTeamId),
+    index('slack_ws_org_idx').on(t.organizationId),
+    index('slack_ws_org_workspace_idx').on(t.organizationId, t.workspaceId),
+  ],
+);
+
+/**
+ * Slack ↔ RyTask user mapping (M3, US1/US5, data-model §1.2). Associates a Slack user with a
+ * RyTask user for attribution. Auto-created on connect by email match; manually linkable for
+ * the rest. An unmapped Slack user (`user_id` null) can still capture (with a link prompt).
+ */
+export const slackUsers = pgTable(
+  'slack_users',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    slackWorkspaceId: uuid('slack_workspace_id')
+      .notNull()
+      .references(() => slackWorkspaces.id, { onDelete: 'cascade' }),
+    slackUserId: text('slack_user_id').notNull(),
+    slackUserName: text('slack_user_name'),
+    slackUserEmail: text('slack_user_email'),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    mappedManually: boolean('mapped_manually').notNull().default(false),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('slack_user_org_ws_uid_unique').on(
+      t.organizationId,
+      t.slackWorkspaceId,
+      t.slackUserId,
+    ),
+    index('slack_user_org_idx').on(t.organizationId),
+    index('slack_user_org_user_idx').on(t.organizationId, t.userId),
+    index('slack_user_email_idx').on(t.organizationId, t.slackUserEmail),
+  ],
+);
+
 // ─────────────────────────────────────────────────────────── schema + types
 
 export const schema = {
@@ -585,6 +670,8 @@ export const schema = {
   activity,
   views,
   notifications,
+  slackWorkspaces,
+  slackUsers,
 };
 export type Schema = typeof schema;
 
@@ -632,3 +719,9 @@ export type View = typeof views.$inferSelect;
 export type NewView = typeof views.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+
+export type SlackWorkspace = typeof slackWorkspaces.$inferSelect;
+export type NewSlackWorkspace = typeof slackWorkspaces.$inferInsert;
+export type SlackUser = typeof slackUsers.$inferSelect;
+export type NewSlackUser = typeof slackUsers.$inferInsert;
+export type CaptureSource = (typeof captureSourceEnum.enumValues)[number];

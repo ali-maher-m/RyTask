@@ -15,5 +15,7 @@ import { CommentsService } from './services/comments.service';
 @Module({
   controllers: [CommentsController],
   providers: [CommentsRepository, CreateCommentProvider, ListCommentsProvider, CommentsService],
+  // Exported for the MCP transport edge (M3, US4), which imports CommentsModule and dispatches to it.
+  exports: [CommentsService],
 })
 export class CommentsModule {}

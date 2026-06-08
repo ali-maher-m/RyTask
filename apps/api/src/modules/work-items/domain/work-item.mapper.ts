@@ -1,4 +1,4 @@
-import type { Priority, WorkItem } from '@rytask/contracts';
+import type { CaptureSource, Priority, WorkItem } from '@rytask/contracts';
 
 /** Structural row shape the mapper reads (decoupled from the Drizzle row / @rytask/db). */
 export interface WorkItemRowLike {
@@ -9,6 +9,7 @@ export interface WorkItemRowLike {
   description: string | null;
   statusId: string;
   priority: string;
+  source: string;
   assigneeId: string | null;
   reporterId: string | null;
   parentId: string | null;
@@ -44,6 +45,7 @@ export function toWorkItemDto(
     description: row.description,
     statusId: row.statusId,
     priority: row.priority as Priority,
+    source: row.source as CaptureSource,
     assigneeId: row.assigneeId,
     reporterId: row.reporterId,
     parentId: row.parentId,

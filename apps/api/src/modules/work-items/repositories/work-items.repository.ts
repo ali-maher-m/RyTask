@@ -25,6 +25,8 @@ export interface CreateWorkItemData {
   description?: string | null;
   statusId: string;
   priority: WorkItemRow['priority'];
+  /** Capture provenance (M3, FR-CAP-002). Defaults to 'WEB' when omitted. */
+  source?: WorkItemRow['source'];
   assigneeId?: string | null;
   reporterId?: string | null;
   parentId?: string | null;
@@ -147,6 +149,7 @@ export class WorkItemsRepository extends TenantScopedRepository {
           description: data.description ?? null,
           statusId: data.statusId,
           priority: data.priority,
+          source: data.source ?? 'WEB',
           assigneeId: data.assigneeId ?? null,
           reporterId: data.reporterId ?? null,
           parentId: data.parentId ?? null,
@@ -204,7 +207,8 @@ export class WorkItemsRepository extends TenantScopedRepository {
         action: 'CREATED',
         field: null,
         oldValue: null,
-        newValue: { title: item.title },
+        // Record the capture source so the history is self-describing (research D6, SC-007).
+        newValue: { title: item.title, source: item.source },
       });
 
       return { item, keyPrefix: project.keyPrefix };

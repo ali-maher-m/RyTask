@@ -28,5 +28,7 @@ import { NotificationsService } from './services/notifications.service';
     InboxProvider,
     NotificationsService,
   ],
+  // Exported for the MCP transport edge (M3, US4), which imports NotificationsModule and dispatches.
+  exports: [NotificationsService],
 })
 export class NotificationsModule {}

@@ -70,3 +70,7 @@ export const watcherReasonEnum = pgEnum('watcher_reason', [
   'MENTIONED',
   'MANUAL',
 ]);
+
+// FR-CAP-002 (M3, data-model §1.3) — where a work item was captured from. Orthogonal to
+// reporterId (the channel, not the person); set server-side at creation, surfaced as a badge.
+export const captureSourceEnum = pgEnum('capture_source', ['WEB', 'SLACK', 'MCP', 'API']);

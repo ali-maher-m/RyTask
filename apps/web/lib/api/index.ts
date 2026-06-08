@@ -18,3 +18,5 @@ export * from './invites';
 export * from './comments';
 export * from './notifications';
 export * from './search';
+export * from './slack';
+export * from './mcp';

@@ -53,6 +53,8 @@ import { WorkspacesService } from './services/workspaces.service';
     AccessServiceImpl,
     { provide: ORG_ACCESS, useExisting: AccessServiceImpl },
   ],
-  exports: [ORG_ACCESS],
+  // Exported for the MCP transport edge (M3, US4) — context + org-settings + membership tools
+  // dispatch to the SAME services/providers the REST controllers use (parity is structural).
+  exports: [ORG_ACCESS, OrgsService, WorkspacesService, MemberAdminProvider, InviteProvider],
 })
 export class OrgsModule {}

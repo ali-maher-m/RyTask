@@ -9,6 +9,15 @@ export const PRIORITIES = ['URGENT', 'HIGH', 'MEDIUM', 'LOW', 'NONE'] as const;
 export const prioritySchema = z.enum(PRIORITIES);
 export type Priority = z.infer<typeof prioritySchema>;
 
+/**
+ * Capture provenance (M3, FR-CAP-002, capture-source.md). The channel a work item was created
+ * from — orthogonal to `reporterId` (the person). Display labels: WEB→Web, SLACK→Slack,
+ * MCP→Agent, API→API. Set **server-side** by the edge/channel, never accepted on a create body.
+ */
+export const CAPTURE_SOURCES = ['WEB', 'SLACK', 'MCP', 'API'] as const;
+export const captureSourceSchema = z.enum(CAPTURE_SOURCES);
+export type CaptureSource = z.infer<typeof captureSourceSchema>;
+
 /** YYYY-MM-DD calendar date. */
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
 
@@ -35,6 +44,23 @@ export const createWorkItemSchema = z
   })
   .strict();
 export type CreateWorkItem = z.infer<typeof createWorkItemSchema>;
+
+/**
+ * Internal create input (M3): the validated public body PLUS the server-set capture `source`.
+ * `source` is deliberately NOT in `createWorkItemSchema` — the edge/channel sets it server-side
+ * (WEB/SLACK/MCP/API), never the client body (capture-source.md §2). Defaults to `WEB` when
+ * omitted, so the existing web path is unchanged. `WorkItemsService.create` accepts this.
+ *
+ * `reporterId` is an OPTIONAL server-side attribution override (M3, Slack capture, research D8):
+ * the Slack worker runs the create under the connection's install-admin context (so project RBAC
+ * never blocks capture — FR-SLK-012) while attributing the item to the mapped captor (or `null`
+ * when the captor is unmapped). When omitted (web/MCP/API), the reporter falls back to the acting
+ * user from the tenant context — existing behavior, unchanged.
+ */
+export interface CreateWorkItemInput extends CreateWorkItem {
+  source?: CaptureSource;
+  reporterId?: string | null;
+}
 
 /**
  * POST /work-items/{id}/subtasks — create a child under an existing item (US6, FR-HIER-001,
@@ -76,6 +102,8 @@ export interface WorkItem {
   description: string | null;
   statusId: string;
   priority: Priority;
+  /** Capture provenance (M3) — the channel this item was created from (never null). */
+  source: CaptureSource;
   assigneeId: string | null;
   reporterId: string | null;
   parentId: string | null;

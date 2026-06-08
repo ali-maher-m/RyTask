@@ -24,6 +24,7 @@ const cannedItem: WorkItem = {
   description: null,
   statusId: 's1',
   priority: 'NONE',
+  source: 'WEB',
   assigneeId: null,
   reporterId: SEED_USER_ID,
   parentId: null,

@@ -11,6 +11,7 @@ import {
 } from '@/components/filter-bar';
 import { ItemDetail } from '@/components/item-detail';
 import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
+import { SourceBadge } from '@/components/work-item/source-badge';
 import { type MappedError, listLabels, listProjectMembers, mapApiError } from '@/lib/api';
 import { useCapabilities } from '@/lib/auth/capability-context';
 import { useSession } from '@/lib/auth/session-context';
@@ -559,7 +560,12 @@ function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
   return (
     <tr data-testid="work-item-row" style={{ borderTop: '1px solid var(--border-subtle)' }}>
       <td style={CELL}>
-        <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-muted)' }}>{item.key}</code>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-muted)' }}>
+            {item.key}
+          </code>
+          <SourceBadge source={item.source} />
+        </span>
       </td>
       <td style={CELL}>
         <input

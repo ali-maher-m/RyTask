@@ -37,6 +37,30 @@ export const testPlan: WebTestPlan = {
         'capture → detail (fields/persist/trash→restore) → track (board drag, list inline edit, view carry-over) (US2/US3/US4)',
       file: 'e2e/create-track-view.e2e.spec.ts',
     },
+    // M3 US1 — connect a Slack workspace (admin connect view + Viewer read-only + axe).
+    {
+      kind: 'e2e',
+      target: 'connect Slack: admin connect control + non-admin read-only (M3 US1)',
+      file: 'e2e/connect-slack.e2e.spec.ts',
+    },
+    // M3 US5 — Slack ↔ user mapping (admin page + non-admin forbidden + axe).
+    {
+      kind: 'e2e',
+      target: 'Slack users: admin mapping page + non-admin forbidden (M3 US5)',
+      file: 'e2e/slack-users.e2e.spec.ts',
+    },
+    // M3 US6 — Agent (MCP) access: endpoint + steps + PAT mint/revoke (secret once) + axe.
+    {
+      kind: 'e2e',
+      target: 'agent access: endpoint + steps + PAT mint/revoke (M3 US6)',
+      file: 'e2e/agent-access.e2e.spec.ts',
+    },
+    // M3 US7 — capture source badge (Web/Slack/Agent/API) on item + activity.
+    {
+      kind: 'e2e',
+      target: 'source badge: web + agent(PAT) origins on list + detail (M3 US7)',
+      file: 'e2e/source-badge.e2e.spec.ts',
+    },
     // Vitest/RTL component & unit tests — appended as each story lands.
     { kind: 'component', target: 'routing state machine (US1)', file: 'test/routing.test.tsx' },
     { kind: 'unit', target: 'quick-add preview tokenizer (US2)', file: 'test/quick-add.test.ts' },
@@ -89,6 +113,12 @@ export const testPlan: WebTestPlan = {
       kind: 'component',
       target: 'password reset: no enumeration + used/expired link (US12)',
       file: 'test/reset.test.tsx',
+    },
+    // M3 US7 — capture-source badge renders Web/Slack/Agent/API with a text label (token-only).
+    {
+      kind: 'component',
+      target: 'source badge renders Web/Slack/Agent/API text label (M3 US7)',
+      file: 'components/work-item/source-badge.spec.tsx',
     },
   ],
 };

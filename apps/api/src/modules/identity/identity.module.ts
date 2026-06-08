@@ -56,6 +56,15 @@ import { UserProvisioningServiceImpl } from './services/user-provisioning.servic
     { provide: IDENTITY_ACCESS, useExisting: IdentityAccessServiceImpl },
     { provide: USER_PROVISIONING, useExisting: UserProvisioningServiceImpl },
   ],
-  exports: [SESSION_ISSUER, IDENTITY_ACCESS, USER_PROVISIONING, TokenVerifier],
+  // WhoamiProvider + ApiTokensProvider are exported for the MCP transport edge (M3, US4): the
+  // context + token tools dispatch to the SAME providers the REST whoami/api-token routes use.
+  exports: [
+    SESSION_ISSUER,
+    IDENTITY_ACCESS,
+    USER_PROVISIONING,
+    TokenVerifier,
+    WhoamiProvider,
+    ApiTokensProvider,
+  ],
 })
 export class IdentityModule {}

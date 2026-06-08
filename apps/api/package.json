@@ -9,12 +9,14 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
     "worker": "WORKER=1 node dist/main.js",
+    "mcp:stdio": "node dist/main.mcp.js",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:coverage": "vitest run --config vitest.coverage.config.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@nestjs/common": "11.0.1",
     "@nestjs/config": "4.0.0",
     "@nestjs/core": "11.0.1",
@@ -25,6 +27,8 @@
     "@nestjs/websockets": "11.0.1",
     "@rytask/contracts": "workspace:*",
     "@rytask/db": "workspace:*",
+    "@slack/oauth": "3.0.5",
+    "@slack/web-api": "7.16.0",
     "argon2": "^0.44.0",
     "bullmq": "^5.77.6",
     "chrono-node": "^2.7.0",

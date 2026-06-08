@@ -12,10 +12,12 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   type ActivityEntry,
   type AddSubtask,
+  type CaptureSource,
   type CreateWorkItem,
   type CreateWorkItemResponse,
   type ListWorkItemsQuery,
@@ -29,6 +31,7 @@ import {
   moveWorkItemSchema,
   updateWorkItemSchema,
 } from '@rytask/contracts';
+import type { RequestWithPrincipal } from '../../../common/auth/principal';
 import { IdempotencyService } from '../../../common/idempotency/idempotency.service';
 import { RequirePermission } from '../../../common/rbac/decorators';
 import { ZodValidationPipe } from '../../../common/validation/zod-validation.pipe';
@@ -83,16 +86,20 @@ export class WorkItemsController {
   @Post()
   @HttpCode(201)
   create(
+    @Req() req: RequestWithPrincipal,
     @Body(new ZodValidationPipe<CreateWorkItem>(createWorkItemSchema)) body: CreateWorkItem,
     @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<CreateWorkItemResponse> {
     if (!body.title && !body.quickAdd) {
       throw new BadRequestException('either title or quickAdd is required');
     }
+    // Capture provenance (M3, capture-source.md §2): a PAT-over-REST caller records `API`; the
+    // signed-in web UI records `WEB`. The channel sets `source` server-side — never the body.
+    const source: CaptureSource = req.principal?.isApiToken ? 'API' : 'WEB';
     // A client retry with the same Idempotency-Key returns the first response instead of
     // creating a duplicate work item (no-op replay); without a key this runs normally.
     return this.idempotency.run(idempotencyKey, 'work-items.create', () =>
-      this.service.create(body),
+      this.service.create({ ...body, source }),
     );
   }
 

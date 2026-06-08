@@ -14,5 +14,7 @@ import { SearchService } from './services/search.service';
 @Module({
   controllers: [SearchController],
   providers: [SearchRepository, SearchProvider, SearchService],
+  // Exported for the MCP transport edge (M3, US4), which imports SearchModule and dispatches to it.
+  exports: [SearchService],
 })
 export class SearchModule {}

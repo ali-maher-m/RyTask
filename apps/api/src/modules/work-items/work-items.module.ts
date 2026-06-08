@@ -18,7 +18,7 @@ import { WorkItemsRepository } from './repositories/work-items.repository';
 import { LabelsService } from './services/labels.service';
 import { WorkItemAccessServiceImpl } from './services/work-item-access.service';
 import { WorkItemsService } from './services/work-items.service';
-import { WORK_ITEM_ACCESS } from './work-items.contract';
+import { WORK_ITEM_ACCESS, WORK_ITEM_CAPTURE } from './work-items.contract';
 
 /**
  * Work-items bounded context (data-model §4): owns `work_items`, `labels`,
@@ -50,7 +50,12 @@ import { WORK_ITEM_ACCESS } from './work-items.contract';
     LabelsService,
     WorkItemAccessServiceImpl,
     { provide: WORK_ITEM_ACCESS, useExisting: WorkItemAccessServiceImpl },
+    // Cross-module capture port (M3) — the SAME create the web/REST path uses (one brain).
+    { provide: WORK_ITEM_CAPTURE, useExisting: WorkItemsService },
   ],
-  exports: [WORK_ITEM_ACCESS],
+  // The MCP transport edge (apps/api/src/mcp, not a module) dispatches to these services so parity
+  // is structural, not duplicated (M3, US4). Exporting the classes keeps them injectable there; the
+  // dependency-cruiser boundary rule still forbids any *module* from importing them directly.
+  exports: [WORK_ITEM_ACCESS, WORK_ITEM_CAPTURE, WorkItemsService, LabelsService],
 })
 export class WorkItemsModule {}

@@ -15,6 +15,12 @@ export interface Principal {
   role?: Role;
   /** PAT scopes (M0). Empty/undefined for a UI session; effective perms = scope ∩ role. */
   scopes?: string[];
+  /**
+   * True when this principal was resolved from a Personal Access Token (PAT/MCP) rather than a
+   * UI session JWT (M3). Lets non-UI REST capture record `source = 'API'` (capture-source.md §2);
+   * a scopeless PAT is otherwise indistinguishable from a session by `scopes` alone.
+   */
+  isApiToken?: boolean;
 }
 
 /** Request augmented with the resolved principal (set by the context middleware). */

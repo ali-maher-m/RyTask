@@ -46,6 +46,7 @@ import { StatusesService } from './services/statuses.service';
     ProjectAccessServiceImpl,
     { provide: PROJECT_ACCESS, useExisting: ProjectAccessServiceImpl },
   ],
-  exports: [PROJECT_ACCESS],
+  // Exported for the MCP transport edge (M3, US4) — it dispatches to the SAME services REST uses.
+  exports: [PROJECT_ACCESS, ProjectsService, StatusesService],
 })
 export class ProjectsModule {}

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { authConfig } from './common/config/auth.config';
+import { integrationsConfig } from './common/config/integrations.config';
 import { DatabaseModule } from './common/database/database.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RbacGuard } from './common/guards/rbac.guard';
@@ -13,6 +14,7 @@ import { PortsModule } from './common/ports/ports.module';
 import { RedisModule } from './common/redis/redis.module';
 import { TenancyModule } from './common/tenancy/tenancy.module';
 import { TenantContextMiddleware } from './common/tenancy/tenant-context.middleware';
+import { McpModule } from './mcp/mcp.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
@@ -20,12 +22,13 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { OrgsModule } from './modules/orgs/orgs.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { SearchModule } from './modules/search/search.module';
+import { SlackModule } from './modules/slack/slack.module';
 import { ViewsModule } from './modules/views/views.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [authConfig] }),
+    ConfigModule.forRoot({ isGlobal: true, load: [authConfig, integrationsConfig] }),
     EventEmitterModule.forRoot(),
     DatabaseModule,
     RedisModule,
@@ -43,6 +46,9 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     ViewsModule,
     SearchModule,
     NotificationsModule,
+    // M3 — Slack capture channel (bounded module) + MCP transport edge (not a domain module).
+    SlackModule,
+    McpModule,
   ],
   providers: [
     // Guard chain (order matters): authenticate → resolve tenant → authorize → throttle.

@@ -4,7 +4,7 @@ import {
   Injectable,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { CreateWorkItem, Priority, UnresolvedToken } from '@rytask/contracts';
+import type { CreateWorkItemInput, Priority, UnresolvedToken } from '@rytask/contracts';
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { PROJECT_ACCESS, type ProjectAccessService } from '../../projects/projects.contract';
@@ -34,7 +34,7 @@ export class CreateWorkItemProvider {
     private readonly tenant: TenantContextService,
   ) {}
 
-  async create(input: CreateWorkItem): Promise<CreateWorkItemResult> {
+  async create(input: CreateWorkItemInput): Promise<CreateWorkItemResult> {
     const projectId = input.projectId;
     if (!projectId) {
       throw new BadRequestException('projectId is required');
@@ -84,7 +84,10 @@ export class CreateWorkItemProvider {
       throw new BadRequestException('project has no status to default to');
     }
 
-    const reporterId = this.tenant.getUserId() ?? null;
+    // Attribution: an explicit `reporterId` override (Slack capture, research D8) wins; otherwise
+    // the reporter is the acting user from the tenant context (web/MCP/API — unchanged).
+    const reporterId =
+      input.reporterId !== undefined ? input.reporterId : (this.tenant.getUserId() ?? null);
     const watchers: Array<{ userId: string; reason: 'AUTHOR' | 'ASSIGNEE' }> = [];
     if (reporterId) watchers.push({ userId: reporterId, reason: 'AUTHOR' });
     if (assigneeId) watchers.push({ userId: assigneeId, reason: 'ASSIGNEE' });
@@ -95,6 +98,8 @@ export class CreateWorkItemProvider {
       description: input.description ?? null,
       statusId,
       priority,
+      // Capture provenance (M3) — set by the channel/edge; defaults to WEB in the repository.
+      source: input.source,
       assigneeId,
       reporterId,
       parentId: input.parentId ?? null,

@@ -7,7 +7,9 @@ import { defineConfig } from 'vitest/config';
  * with vitest-axe matchers wired in test/setup.ts. The `@/` path alias mirrors tsconfig so source
  * modules resolve under Vitest. CSS Modules resolve to their (non-scoped) class names so
  * components mount without a real CSS pipeline. `passWithNoTests` keeps `turbo run test` green
- * before a given story's tests land.
+ * before a given story's tests land. Component tests live under `test/` (`.test.tsx`) or colocated
+ * with their component as a `.spec.tsx` under `components/` (e.g. the M3 SourceBadge); Playwright
+ * e2e under `e2e/` is run separately and is not matched by the include globs below.
  */
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -21,7 +23,7 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     setupFiles: ['./test/setup.ts'],
-    include: ['test/**/*.test.{ts,tsx}'],
+    include: ['test/**/*.test.{ts,tsx}', 'components/**/*.spec.tsx'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },
 });

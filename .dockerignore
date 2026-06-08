@@ -1,0 +1,43 @@
+# Docker build context excludes — build context is the repo root (docker-compose.yml).
+# Mirrors .gitignore plus build-context-only noise so images stay small and no secret leaks in.
+
+# VCS / local tooling
+.git/
+.gitignore
+.claude/
+
+# macOS
+.DS_Store
+
+# Dependencies (reinstalled inside the image)
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# Environment (never bake secrets into the image; only build-args/runtime env)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Docker / infra meta (not needed in the build context)
+Dockerfile*
+.dockerignore
+docker-compose*.yml

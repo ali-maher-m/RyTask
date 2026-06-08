@@ -7,7 +7,16 @@ import { useCapabilities } from '@/lib/auth/capability-context';
 import { useSession } from '@/lib/auth/session-context';
 import { useOrg } from '@/lib/org/org-context';
 import { Avatar, Button } from '@rytask/ui';
-import { CheckSquare, FolderKanban, Inbox, LogOut, Search, Settings } from 'lucide-react';
+import {
+  Bot,
+  CheckSquare,
+  FolderKanban,
+  Inbox,
+  LogOut,
+  Plug,
+  Search,
+  Settings,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -47,6 +56,20 @@ function ShellChrome({ children }: { children: ReactNode }) {
     { href: '/inbox', label: 'Inbox', icon: Inbox, show: true },
     { href: '/search', label: 'Search', icon: Search, show: true },
     { href: settingsHref, label: 'Settings', icon: Settings, show: true },
+    // M3 — manage Slack/MCP integrations (admins; the page itself stays the read-only fallback).
+    {
+      href: '/settings/integrations',
+      label: 'Integrations',
+      icon: Plug,
+      show: can('integrations:admin'),
+    },
+    // M3 — connect AI agents over MCP (everyone manages their own access tokens).
+    {
+      href: '/settings/agent-access',
+      label: 'Agent access',
+      icon: Bot,
+      show: true,
+    },
   ];
 
   const userName = principal?.user.name ?? 'You';

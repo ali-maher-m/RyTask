@@ -85,6 +85,8 @@ export class TokenVerifier {
       role,
       isOrgAdmin: this.orgAccess.isOrgAdminRole(role),
       scopes: row.scopes ?? [],
+      // Non-UI credential — lets REST capture record source = 'API' (M3, capture-source.md §2).
+      isApiToken: true,
     };
   }
 }

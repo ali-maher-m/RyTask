@@ -11,4 +11,7 @@ export * from './views.contract';
 export * from './comments.contract';
 export * from './notifications.contract';
 export * from './search.contract';
+export * from './slack.contract';
 export * from './mcp/registry';
+export * from './mcp/tool-io';
+export * from './mcp/server-config';

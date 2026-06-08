@@ -2,6 +2,8 @@
 
 import {
   type ActivityEntry,
+  CAPTURE_SOURCES,
+  type CaptureSource,
   type Label,
   PRIORITIES,
   type Priority,
@@ -13,6 +15,7 @@ import { authedFetch } from '../lib/api';
 import { recordTrashed } from '../lib/work-items/trash-registry';
 import { CommentThread } from './comment-thread';
 import { Markdown } from './markdown';
+import { SourceBadge } from './work-item/source-badge';
 
 /**
  * Item-detail surface (US3, T046, FR-WEB-022/023, D15). Shows and edits every field of one work
@@ -68,6 +71,18 @@ function describeActivity(entry: ActivityEntry): string {
     return `${entry.action} ${entry.field}: ${renderValue(entry.oldValue)} → ${renderValue(entry.newValue)}`;
   }
   return entry.action;
+}
+
+/**
+ * The capture source recorded on a `CREATED` activity entry's `newValue` (capture-source.md §3) —
+ * so the history shows where each item came from. Returns null for any other action / shape.
+ */
+function createdSource(entry: ActivityEntry): CaptureSource | null {
+  if (entry.action !== 'CREATED' || !entry.newValue || typeof entry.newValue !== 'object') {
+    return null;
+  }
+  const source = (entry.newValue as { source?: unknown }).source;
+  return CAPTURE_SOURCES.includes(source as CaptureSource) ? (source as CaptureSource) : null;
 }
 
 const FIELD: React.CSSProperties = {
@@ -372,13 +387,21 @@ export function ItemDetail({
         }}
       >
         <div>
-          <p style={{ margin: 0 }}>
+          <p
+            style={{
+              margin: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+            }}
+          >
             <code
               style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-muted)' }}
               data-testid="item-key"
             >
               {current.key}
             </code>
+            <SourceBadge source={current.source} />
           </p>
           <h2 style={{ margin: 'var(--space-1) 0 0', fontSize: 'var(--fs-h2)' }}>
             {current.title}
@@ -699,20 +722,28 @@ export function ItemDetail({
               gap: 'var(--space-2)',
             }}
           >
-            {activity.map((entry) => (
-              <li key={entry.id} data-testid="activity-entry" style={{ fontSize: 'var(--fs-sm)' }}>
-                <span>{describeActivity(entry)}</span>{' '}
-                {entry.actorId ? (
-                  <span style={{ color: 'var(--fg-muted)' }}>by {entry.actorId}</span>
-                ) : null}{' '}
-                <time
-                  dateTime={entry.createdAt}
-                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-faint)' }}
+            {activity.map((entry) => {
+              const source = createdSource(entry);
+              return (
+                <li
+                  key={entry.id}
+                  data-testid="activity-entry"
+                  style={{ fontSize: 'var(--fs-sm)' }}
                 >
-                  {formatTimestamp(entry.createdAt)}
-                </time>
-              </li>
-            ))}
+                  <span>{describeActivity(entry)}</span>{' '}
+                  {source ? <SourceBadge source={source} /> : null}{' '}
+                  {entry.actorId ? (
+                    <span style={{ color: 'var(--fg-muted)' }}>by {entry.actorId}</span>
+                  ) : null}{' '}
+                  <time
+                    dateTime={entry.createdAt}
+                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-faint)' }}
+                  >
+                    {formatTimestamp(entry.createdAt)}
+                  </time>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>
