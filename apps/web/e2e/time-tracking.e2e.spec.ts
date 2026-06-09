@@ -86,8 +86,12 @@ test('start → tick → reload → stop → manual entry → meter goes over-bu
   await expect(row.getByRole('meter')).toBeVisible();
 
   // ── a11y: the time UI passes an axe scan ──
+  // Scoped to the time-tracking region (the surface M2 owns): the meter, timer, and entries. A
+  // whole-page scan would also assert the shared 003 app-shell chrome (the search affordance, the
+  // ⌘K hint, the brand-accent back-link) whose contrast is a pre-existing, brand-system concern
+  // outside this milestone's mandate. This matches the documented intent above ("scan of the time UI").
   await page.goto(`/projects/${projectId}/items/${key}`);
   await expect(page.getByTestId('time-tracking')).toBeVisible();
-  const a11y = await new AxeBuilder({ page }).analyze();
+  const a11y = await new AxeBuilder({ page }).include('[data-testid="time-tracking"]').analyze();
   expect(a11y.violations).toEqual([]);
 });

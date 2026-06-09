@@ -92,27 +92,27 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
 
   if (loading) {
     return (
-      <main style={PAGE}>
+      <div style={PAGE}>
         <SurfaceLoading label="Loading item…" />
-      </main>
+      </div>
     );
   }
   if (error || !item) {
     return (
-      <main style={PAGE}>
+      <div style={PAGE}>
         <SurfaceFeedback
           error={error ?? { kind: 'error', status: null, message: 'Something went wrong.' }}
           onRetry={load}
           action={backLink}
         />
-      </main>
+      </div>
     );
   }
 
   const canWrite = can('workitem:write', { projectRole });
 
   return (
-    <main style={PAGE}>
+    <div style={PAGE}>
       <p style={{ marginTop: 0 }}>
         <Link href={backToBoard} style={{ color: 'var(--accent)' }}>
           ← Back to board
@@ -129,6 +129,6 @@ export function ItemDetailRoute({ projectId, itemKey }: { projectId: string; ite
       />
       {/* US8: break work down into nested sub-tasks (≥3 levels) on the item-detail surface. */}
       <SubtaskTree root={item} statuses={statuses} onChange={setItem} />
-    </main>
+    </div>
   );
 }

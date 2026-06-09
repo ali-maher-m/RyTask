@@ -63,10 +63,16 @@
   font-family: var(--font-ui);
 }
 
+/*
+ * Over-budget label text. The fill bar uses `--time-over` (a hue tuned for a saturated bar), but as
+ * 13px text on a light surface that hue only reaches ~3.9:1 — below WCAG AA. Text therefore uses the
+ * semantic danger-foreground token (`--error-fg`), which is tuned for AA contrast on text in both
+ * themes (T084, Principle VIII). The bar stays `--time-over`; only the label shifts.
+ */
 .overText {
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-1);
-  color: var(--time-over);
+  color: var(--error-fg);
   font-family: var(--font-ui);
 }
