@@ -143,30 +143,39 @@ drizzle-kit migrate         # planned: transactional migrations (never db:push i
 Until code lands, the actionable "commands" are the Spec Kit skills above and the scripts in `.specify/scripts/bash/`.
 
 <!-- SPECKIT START -->
-Active feature: **Fast Capture Everywhere — Slack & MCP (M3)** (`004-fast-capture-slack-mcp`).
-Full-stack milestone adding two new capture/control **channels** onto the complete M0/M1 backend and the
-003 web app: **first-class Slack capture** (D2) and the **first-party MCP server** (D3). No new *domain*
-capability — both channels are clients of the **same** `WorkItemsService` + `parseQuickAdd` + PAT/RBAC
-the web uses (one brain everywhere). For technologies, structure, shell commands, and the decisions
-driving current work, read the plan and its artifacts in `specs/004-fast-capture-slack-mcp/`:
+Active feature: **Time Tracking (the flagship) — and finalizing M0→M3 (M2)** (`005-time-tracking-flagship`).
+Full-stack milestone delivering the *tracked* half of CTW (D1/D6): a live, server-persisted **start/stop
+timer**, **manual entries**, **edit/delete with audit**, **planned-vs-interruption** tagging,
+**aggregations**, and the **signature in-row plan-vs-actual meter** — plus the *finalize* work that weaves
+time into the already-shipped M1 feed, the 003 Board/List/detail/My-Work, and the M3 `work_items.source`.
+**No new dependency, no new MCP tool, no new entrypoint.** For technologies, structure, shell commands, and
+the decisions driving current work, read the plan and its artifacts in `specs/005-time-tracking-flagship/`:
 - `plan.md` — technical context, Constitution Check (Principle IV parity has one tracked, spec-authorized
-  deferral in Complexity Tracking), the Slack-module + MCP-edge structure
-- `research.md` — decisions D1–D17 (Slack = bounded module / MCP = transport edge; `tenant.run` off-request;
-  extend `SlackPort` + real adapter; HMAC signature guard; reuse quick-add verbatim; `work_items.source`;
-  3 s ack + async BullMQ with deterministic `jobId` idempotency; PAT auth scope ∩ role; stdio + HTTP/SSE
-  transports same image; parity exclusions; typed errors; tool-io; pagination; 4 web surfaces)
-- `data-model.md` — NEW server state: `slack_workspaces`, `slack_users` (tenant-scoped) + `work_items.source`
-  (`captureSourceEnum`); PATs reuse M0 `api_tokens`; MCP active workspace is transient
-- `contracts/` — `slack-rest`, `slack-capture-flow`, `mcp-server` (49 tools made live), `web-surfaces`,
-  `capture-source` — plus the reused M0/M1 REST + the MCP registry
-- `quickstart.md` — run/seed (+Slack & MCP env), verify each US, and the CI gates
+  deferral in Complexity Tracking — time-control via MCP/Slack is v2), the new time-tracking bounded module
+- `research.md` — decisions D1–D17 (new bounded module mirroring `work-items`; `timers` + `time_logs`;
+  one-active-timer = `UNIQUE(org,user)`; server-`CLOCK` truth + client-derived elapsed, no realtime;
+  integer-seconds durations / estimate reused as hours; classification snapshot + override; audit reuses
+  the M1 `activity` feed via work-items-contract `recordTime*`; RBAC reuses `work:read`/`work:write` +
+  owner-or-admin; query-only aggregation; parallel `/time/rollup` for the row meter; 49/49 by omission;
+  idempotent writes; entry-source vs capture-source; soft-delete retention; one token-only `<Meter>`)
+- `data-model.md` — NEW: `timers`, `time_logs` (tenant-scoped) + enums `timeEntrySourceEnum`,
+  `timeEntryClassEnum` + 5 `TIME_*` `activity_action` values; M1 estimate / M3 `work_items.source` reused
+- `contracts/` — `time-rest` (timer/logs/rollup/summary REST), `time-tracking-flow` (invariants +
+  classification + idempotency), `web-surfaces` (the `<Meter>` + 4 surfaces), `activity-and-source`
+  (feed integration + entry-source vs capture-source) — MCP registry stays 49 tools, unchanged
+- `quickstart.md` — run/migrate/seed, verify each US, and the CI gates
 
-Key invariants for this work: Slack is a new **bounded module** (`apps/api/src/modules/slack`) that calls
-other modules only via their `*.contract.ts`; MCP is a transport **edge** (`apps/api/src/mcp`), not a back
-door — it resolves a PAT principal, `tenant.run(...)`, and dispatches to the same services. `check-mcp-parity`
-stays **green at 49/49** (M3 adds transport, not tools). Slack webhooks verify HMAC signatures, ack ≤3 s,
-process async, and are idempotent via `jobId`. Tenant is resolved server-side (MCP: PAT principal; Slack:
-verified `team_id`), never client-supplied. New web UI is token-only (`check-design-tokens`). Secrets via
-env only; bot tokens encrypted at rest; PAT secret shown once. Must not break M0/M1 contracts
-(`users.organizationId`, `project_members`, `TenantScopedRepository`, the 49-tool registry).
+Key invariants for this work: time tracking is a new **bounded module** (`apps/api/src/modules/time-tracking`)
+that calls other modules only via their `*.contract.ts`; it appends time events to the **M1 activity feed**
+through new work-items-contract `recordTime*` methods (the `comments`→`recordCommented` pattern), never
+touching the `activity` table directly. The **one-active-timer-per-user** invariant is a DB
+`UNIQUE(organization_id, user_id)` on `timers`; the **server `CLOCK` is the source of truth** so a timer
+survives reload/restart (client derives elapsed from `startedAt`; the realtime seam stays deferred). Writes
+are idempotent via the existing `IdempotencyService`. RBAC **reuses** `work:read`/`work:write` with
+**owner-or-admin** edit/delete enforced default-deny in the provider (M0 role matrix untouched). A time
+entry's `source` (`TIMER`/`MANUAL`/…) is **distinct** from the item's capture `source` (M3). New web UI is
+token-only (`check-design-tokens`) and reuses the existing `--time-*` tokens (no new tokens).
+`check-mcp-parity` stays **green at 49/49** (time-control = documented v2 deferral; `module.testplan.ts`
+declares `mcpTools: []`). Must not break M0/M1/M3 contracts (`users.organizationId`, `project_members`,
+`TenantScopedRepository`, `work_items.source`, the 49-tool registry).
 <!-- SPECKIT END -->
