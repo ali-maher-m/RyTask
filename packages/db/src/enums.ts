@@ -48,7 +48,8 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'OVERDUE',
 ]);
 
-// FR-WI-009 — per-item activity actions.
+// FR-WI-009 — per-item activity actions. M2 (data-model §1) APPENDS the five TIME_* values at the
+// end (never reorder existing values — migration safety: `ALTER TYPE … ADD VALUE` is positional).
 export const activityActionEnum = pgEnum('activity_action', [
   'CREATED',
   'UPDATED',
@@ -61,6 +62,12 @@ export const activityActionEnum = pgEnum('activity_action', [
   'SUBTASK_ADDED',
   'LABEL_ADDED',
   'LABEL_REMOVED',
+  // M2 — time events in the existing per-item activity feed (FR-FIN-001, research D7).
+  'TIME_STARTED',
+  'TIME_STOPPED',
+  'TIME_LOGGED',
+  'TIME_EDITED',
+  'TIME_DELETED',
 ]);
 
 // Why a user watches an item (drives notification fan-out + mention context access, D9).
@@ -74,3 +81,20 @@ export const watcherReasonEnum = pgEnum('watcher_reason', [
 // FR-CAP-002 (M3, data-model §1.3) — where a work item was captured from. Orthogonal to
 // reporterId (the channel, not the person); set server-side at creation, surfaced as a badge.
 export const captureSourceEnum = pgEnum('capture_source', ['WEB', 'SLACK', 'MCP', 'API']);
+
+// M2 (data-model §1, research D14) — HOW a time entry was logged. Distinct from `captureSourceEnum`
+// (the item's capture provenance): TIMER/MANUAL are time-only, WEB is capture-only, the SLACK/MCP/API
+// channel words are the only shared sub-vocabulary — never the same enum (FR-FIN-002). M2 produces
+// only TIMER and MANUAL; SLACK/MCP/API are reserved for the v2 time channels (FR-TT-004).
+export const timeEntrySourceEnum = pgEnum('time_entry_source', [
+  'TIMER',
+  'MANUAL',
+  'SLACK',
+  'MCP',
+  'API',
+]);
+
+// M2 (data-model §1, FR-TT-006, research D6) — planned vs interruption. Derived once at creation
+// (item priority URGENT ⇒ INTERRUPTION, else PLANNED), snapshotted, explicitly overridable. Exactly
+// two values so planned + interruption ALWAYS sum to the total (SC-005).
+export const timeEntryClassEnum = pgEnum('time_entry_class', ['PLANNED', 'INTERRUPTION']);

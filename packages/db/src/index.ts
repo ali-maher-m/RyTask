@@ -11,4 +11,6 @@ export {
   SEED_USER_PASSWORD,
   SEED_PROJECT_ID,
   SEED_STATUS_IDS,
+  SEED_TIME_LOG_IDS,
+  SEED_TIMER_ID,
 } from './seed';

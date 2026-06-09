@@ -3,6 +3,7 @@
 import { ItemDetail } from '@/components/item-detail';
 import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
 import { type MappedError, listLabels, listProjectMembers, mapApiError } from '@/lib/api';
+import { getProjectRollup } from '@/lib/api/time';
 import { useCapabilities } from '@/lib/auth/capability-context';
 import { useSession } from '@/lib/auth/session-context';
 import {
@@ -28,8 +29,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Label, ProjectRoleDto, Status, WorkItem } from '@rytask/contracts';
-import { Dialog, Tooltip } from '@rytask/ui';
+import type { ItemRollup, Label, ProjectRoleDto, Status, WorkItem } from '@rytask/contracts';
+import { Dialog, Meter, Tooltip } from '@rytask/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { GripVertical } from 'lucide-react';
 import Link from 'next/link';
@@ -72,6 +73,8 @@ const VIRTUALIZE_THRESHOLD = 60;
 interface BoardState {
   statuses: Status[];
   items: WorkItem[];
+  /** Per-item logged seconds for the in-row meter (research D11) — merged client-side, never via work-items. */
+  rollup: Map<string, number>;
 }
 
 /** A kind, recoverable message for a server-refused move (revert reason). */
@@ -100,11 +103,15 @@ export function useBoard(projectId: string, query?: ViewWorkItemQuery) {
 
   const reload = useCallback(async () => {
     try {
-      const [statuses, items] = await Promise.all([
+      // The items list AND the per-item time rollup load in parallel (research D11); the meter data
+      // is supplementary, so a rollup failure degrades to empty (no meter) without failing the board.
+      const [statuses, items, rollupRows] = await Promise.all([
         listStatuses(projectId),
         listAllWorkItems(projectId, query ?? { projectId }),
+        getProjectRollup(projectId).catch((): ItemRollup[] => []),
       ]);
-      setState({ statuses, items });
+      const rollup = new Map(rollupRows.map((r) => [r.workItemId, r.loggedSeconds]));
+      setState({ statuses, items, rollup });
       setError(null);
       setLoadError(null);
     } catch (e) {
@@ -365,6 +372,7 @@ export function BoardClient({ projectId }: { projectId: string }) {
               key={status.id}
               status={status}
               items={columns.get(status.id) ?? []}
+              rollup={state.rollup}
               onSelect={setSelected}
               canDrag={canWrite}
             />
@@ -399,11 +407,14 @@ export function BoardClient({ projectId }: { projectId: string }) {
 function BoardColumn({
   status,
   items,
+  rollup,
   onSelect,
   canDrag,
 }: {
   status: Status;
   items: WorkItem[];
+  /** Per-item logged seconds for the in-row meter. */
+  rollup: Map<string, number>;
   onSelect: (item: WorkItem) => void;
   /** Whether cards may be dragged (cosmetic — the server still authorizes the move). */
   canDrag: boolean;
@@ -459,6 +470,7 @@ function BoardColumn({
                   <BoardCard
                     key={item.id}
                     item={item}
+                    loggedSeconds={rollup.get(item.id) ?? 0}
                     onSelect={onSelect}
                     canDrag={canDrag}
                     positionStyle={{ position: 'absolute', top: row.start, left: 0, width: '100%' }}
@@ -470,7 +482,13 @@ function BoardColumn({
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, minHeight: 24 }}>
             {items.map((item) => (
-              <BoardCard key={item.id} item={item} onSelect={onSelect} canDrag={canDrag} />
+              <BoardCard
+                key={item.id}
+                item={item}
+                loggedSeconds={rollup.get(item.id) ?? 0}
+                onSelect={onSelect}
+                canDrag={canDrag}
+              />
             ))}
           </ul>
         )}
@@ -481,11 +499,14 @@ function BoardColumn({
 
 function BoardCard({
   item,
+  loggedSeconds,
   onSelect,
   canDrag,
   positionStyle,
 }: {
   item: WorkItem;
+  /** Time logged against this item (seconds), for the in-row plan-vs-actual meter. */
+  loggedSeconds: number;
   onSelect: (item: WorkItem) => void;
   canDrag: boolean;
   /** Absolute placement supplied by the column virtualizer (omitted in the non-virtual path). */
@@ -539,6 +560,15 @@ function BoardCard({
         {item.priority !== 'NONE' ? ` · ${item.priority}` : ''}
         {item.overdue ? ' · overdue' : ''}
       </small>
+      {item.estimateValue != null || loggedSeconds > 0 ? (
+        <div style={{ marginTop: 'var(--space-1)' }}>
+          <Meter
+            size="row"
+            loggedSeconds={loggedSeconds}
+            estimateSeconds={item.estimateValue != null ? item.estimateValue * 3600 : null}
+          />
+        </div>
+      ) : null}
     </li>
   );
 }

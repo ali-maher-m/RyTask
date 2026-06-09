@@ -2,11 +2,13 @@
 
 import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
 import { type MappedError, listProjects, listWorkItemsPage, mapApiError } from '@/lib/api';
+import { getTimeSummary } from '@/lib/api/time';
+import { SessionContext } from '@/lib/auth/session-context';
 import { useOrg } from '@/lib/org/org-context';
 import type { Project, WorkItem } from '@rytask/contracts';
-import { Button, EmptyState } from '@rytask/ui';
+import { Button, EmptyState, Figure } from '@rytask/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 
 /**
  * "My Work" cross-project hub (US6, T064, FR-WEB-053). Reads `GET /work-items?smart=my-work` — the
@@ -22,9 +24,36 @@ interface MyWorkState {
   nextCursor: string | null;
 }
 
+/** "My time" totals (US7) — today, this week, and the planned/interruption split for the week. */
+interface MyTime {
+  todaySeconds: number;
+  weekSeconds: number;
+  plannedSeconds: number;
+  interruptionSeconds: number;
+}
+
+/** ISO `YYYY-MM-DD` for a date `daysAgo` before today (UTC — aligns with the server day buckets). */
+function isoDay(daysAgo: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - daysAgo);
+  return d.toISOString().slice(0, 10);
+}
+
+/** A logged span as plain, friendly time: `2h 15m`, `45m`, `0m` (Albert/Marissa copy). */
+function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return `${m}m`;
+}
+
 export function MyWorkClient() {
   const { formatDay } = useOrg();
+  const session = useContext(SessionContext);
+  const myUserId = session?.principal?.user.id ?? null;
   const [state, setState] = useState<MyWorkState | null>(null);
+  const [myTime, setMyTime] = useState<MyTime | null>(null);
   const [error, setError] = useState<MappedError | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +78,36 @@ export function MyWorkClient() {
   useEffect(() => {
     void loadFirst();
   }, [loadFirst]);
+
+  /**
+   * Load "my time today / this week" (US7, web-surfaces.md §5). One per-day query over this week
+   * scoped to the current user; today's figure is the row for today, the week figure is the sum, and
+   * the planned/interruption split sums the buckets. The server is authoritative — these are pure SUMs.
+   */
+  const loadMyTime = useCallback(async () => {
+    if (!myUserId) return;
+    try {
+      const today = isoDay(0);
+      const rows = await getTimeSummary({
+        groupBy: 'period',
+        period: 'day',
+        userId: myUserId,
+        from: isoDay(6),
+        to: today,
+      });
+      const weekSeconds = rows.reduce((sum, r) => sum + r.loggedSeconds, 0);
+      const plannedSeconds = rows.reduce((sum, r) => sum + r.plannedSeconds, 0);
+      const interruptionSeconds = rows.reduce((sum, r) => sum + r.interruptionSeconds, 0);
+      const todaySeconds = rows.find((r) => r.key === today)?.loggedSeconds ?? 0;
+      setMyTime({ todaySeconds, weekSeconds, plannedSeconds, interruptionSeconds });
+    } catch {
+      // The "my time" summary is non-critical; leave it hidden on a transient failure.
+    }
+  }, [myUserId]);
+
+  useEffect(() => {
+    void loadMyTime();
+  }, [loadMyTime]);
 
   const loadMore = useCallback(async () => {
     if (!state?.nextCursor || busy) return;
@@ -91,6 +150,40 @@ export function MyWorkClient() {
       <p style={{ color: 'var(--fg-muted)' }}>
         Everything assigned to you, across every project you can access.
       </p>
+
+      {myTime ? (
+        <section
+          data-testid="my-time"
+          aria-label="My time"
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            flexWrap: 'wrap',
+            gap: 'var(--space-3)',
+            margin: 'var(--space-2) 0 var(--space-3)',
+            color: 'var(--fg-muted)',
+          }}
+        >
+          <span style={{ fontWeight: 'var(--w-medium)', color: 'var(--fg)' }}>My time</span>
+          <span>
+            Today:{' '}
+            <Figure title="Time you logged today">{formatDuration(myTime.todaySeconds)}</Figure>
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>
+            This week:{' '}
+            <Figure title="Time you logged in the last 7 days">
+              {formatDuration(myTime.weekSeconds)}
+            </Figure>
+          </span>
+          {myTime.weekSeconds > 0 ? (
+            <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--fg-faint)' }}>
+              (<Figure>{formatDuration(myTime.plannedSeconds)}</Figure> planned ·{' '}
+              <Figure>{formatDuration(myTime.interruptionSeconds)}</Figure> interruptions)
+            </span>
+          ) : null}
+        </section>
+      ) : null}
 
       {error ? (
         <p role="alert" style={{ color: 'var(--error)' }}>

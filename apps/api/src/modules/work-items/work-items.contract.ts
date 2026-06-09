@@ -66,6 +66,31 @@ export interface WorkItemAccessService {
   /** Append a COMMENTED activity row (same owning module as the item). */
   recordCommented(workItemId: string, actorId: string | null): Promise<void>;
   /**
+   * Append the M2 time events to the item's activity feed (FR-FIN-001, activity-and-source.md §1.2).
+   * `activity` is owned by work-items; the time-tracking module appends through THESE methods (the
+   * exact `recordCommented` pattern) — never by touching `ActivityRepository`. Synchronous with the
+   * time write, so the audit row never diverges from the data. Each records `new`/`old` JSON (§1.3).
+   */
+  recordTimeStarted(workItemId: string, actorId: string | null, startedAt: string): Promise<void>;
+  recordTimeStopped(
+    workItemId: string,
+    actorId: string | null,
+    durationSeconds: number,
+  ): Promise<void>;
+  recordTimeLogged(
+    workItemId: string,
+    actorId: string | null,
+    durationSeconds: number,
+  ): Promise<void>;
+  /** Edit audit (incl. classification override): who-changed-what (FR-TT-003). */
+  recordTimeEdited(
+    workItemId: string,
+    actorId: string | null,
+    before: unknown,
+    after: unknown,
+  ): Promise<void>;
+  recordTimeDeleted(workItemId: string, actorId: string | null, before: unknown): Promise<void>;
+  /**
    * SYSTEM read-model for the due-soon/overdue notification scan (FR-NOTIF-001): every non-deleted,
    * non-completed item with a due date on or before `today + soonDays`, across ALL tenants (the
    * scheduled scan runs outside any request). The caller re-scopes per `organizationId` when it
@@ -89,9 +114,17 @@ export interface DueWorkItem {
 /** Minimal item context the collaboration modules need (no internal row shape leaked). */
 export interface WorkItemContext {
   id: string;
+  /** The item's workspace — time-tracking needs it to insert tenant-scoped `timers`/`time_logs` (M2). */
+  workspaceId: string;
   projectId: string;
   assigneeId: string | null;
   reporterId: string | null;
   title: string;
   key: string;
+  /**
+   * The item's priority — the deterministic baseline for a time entry's planned-vs-interruption
+   * class (`URGENT ⇒ INTERRUPTION`, else `PLANNED`; M2 US5, research D6). Snapshotted onto the
+   * `time_log` at creation, so a later priority change never re-splits history.
+   */
+  priority: import('@rytask/contracts').Priority;
 }

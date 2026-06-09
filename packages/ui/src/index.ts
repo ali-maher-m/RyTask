@@ -27,6 +27,9 @@ export type { SkeletonProps } from './skeleton';
 export { Figure } from './figure';
 export type { FigureProps } from './figure';
 
+export { Meter } from './meter';
+export type { MeterProps } from './meter';
+
 export {
   EmptyState,
   ErrorState,

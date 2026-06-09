@@ -13,6 +13,7 @@ import { ItemDetail } from '@/components/item-detail';
 import { SurfaceFeedback, SurfaceLoading } from '@/components/surface-feedback';
 import { SourceBadge } from '@/components/work-item/source-badge';
 import { type MappedError, listLabels, listProjectMembers, mapApiError } from '@/lib/api';
+import { getProjectRollup } from '@/lib/api/time';
 import { useCapabilities } from '@/lib/auth/capability-context';
 import { useSession } from '@/lib/auth/session-context';
 import { useOrg } from '@/lib/org/org-context';
@@ -24,6 +25,7 @@ import {
   viewConfigToWorkItemQuery,
 } from '@/lib/views/view-config';
 import {
+  type ItemRollup,
   type Label,
   PRIORITIES,
   type Priority,
@@ -31,7 +33,7 @@ import {
   type Status,
   type WorkItem,
 } from '@rytask/contracts';
-import { Dialog, EmptyState } from '@rytask/ui';
+import { Dialog, EmptyState, Meter } from '@rytask/ui';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -65,7 +67,7 @@ const PRIORITY_LABELS: Record<Priority, string> = {
 const PRIORITY_ORDER: Record<Priority, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3, NONE: 4 };
 
 /** Columns rendered per row (kept in sync with the spacer-row colSpan in the virtual path). */
-const COLUMN_COUNT = 6;
+const COLUMN_COUNT = 7;
 /** A long ungrouped list virtualizes; small/grouped lists render in full (tests, demo). */
 const VIRTUALIZE_THRESHOLD = 80;
 
@@ -78,6 +80,8 @@ interface Section {
 interface ListState {
   statuses: Status[];
   items: WorkItem[];
+  /** Per-item logged seconds for the in-row meter (research D11) — merged client-side. */
+  rollup: Map<string, number>;
 }
 
 /** Split items into labelled, ordered sections for the selected group (or one "All" section). */
@@ -181,11 +185,15 @@ export function ListClient({ projectId }: { projectId: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [statuses, items] = await Promise.all([
+      // Items AND the per-item time rollup load in parallel (research D11); a rollup failure degrades
+      // to an empty map (the Time column shows no meter) rather than failing the whole list.
+      const [statuses, items, rollupRows] = await Promise.all([
         listStatuses(projectId),
         listAllWorkItems(projectId, { ...query, sort: query.sort ?? 'number' }),
+        getProjectRollup(projectId).catch((): ItemRollup[] => []),
       ]);
-      setState({ statuses, items });
+      const rollup = new Map(rollupRows.map((r) => [r.workItemId, r.loggedSeconds]));
+      setState({ statuses, items, rollup });
       setError(null);
       setLoadError(null);
     } catch (e) {
@@ -315,6 +323,7 @@ export function ListClient({ projectId }: { projectId: string }) {
   const rowApi: RowApi = {
     statusName,
     overdueOf,
+    loggedOf: (item) => state.rollup.get(item.id) ?? 0,
     busy,
     canWrite,
     onPatch: patch,
@@ -458,6 +467,8 @@ interface RowApi {
   statusName: (id: string) => string;
   /** Whether an item is overdue, computed in the org timezone (US8, FR-WEB-062). */
   overdueOf: (item: WorkItem) => boolean;
+  /** Time logged against an item (seconds) for the in-row plan-vs-actual meter (US2). */
+  loggedOf: (item: WorkItem) => number;
   busy: boolean;
   /** Cosmetic write gate — inline editing controls are disabled when false (US5, FR-WEB-100). */
   canWrite: boolean;
@@ -531,6 +542,9 @@ function HeaderRow() {
         Due
       </th>
       <th scope="col" style={HEAD}>
+        Time
+      </th>
+      <th scope="col" style={HEAD}>
         Open
       </th>
     </tr>
@@ -538,7 +552,7 @@ function HeaderRow() {
 }
 
 function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
-  const { statusName, overdueOf, busy, canWrite, onPatch, onOpen } = rowApi;
+  const { statusName, overdueOf, loggedOf, busy, canWrite, onPatch, onOpen } = rowApi;
   const disabled = busy || !canWrite;
   const overdue = overdueOf(item);
   const [title, setTitle] = useState(item.title);
@@ -632,6 +646,14 @@ function ListRow({ item, rowApi }: { item: WorkItem; rowApi: RowApi }) {
             </span>
           ) : null}
         </span>
+      </td>
+      <td style={{ ...CELL, minWidth: 120 }} data-testid="time-cell">
+        <Meter
+          size="row"
+          showFigures
+          loggedSeconds={loggedOf(item)}
+          estimateSeconds={item.estimateValue != null ? item.estimateValue * 3600 : null}
+        />
       </td>
       <td style={CELL}>
         <button

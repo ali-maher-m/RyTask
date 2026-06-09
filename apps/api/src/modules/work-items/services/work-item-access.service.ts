@@ -29,11 +29,14 @@ export class WorkItemAccessServiceImpl implements WorkItemAccessService {
     const { item, keyPrefix } = found;
     return {
       id: item.id,
+      workspaceId: item.workspaceId,
       projectId: item.projectId,
       assigneeId: item.assigneeId,
       reporterId: item.reporterId,
       title: item.title,
       key: `${keyPrefix}-${item.number}`,
+      // The priority snapshot drives a new time entry's default classification (M2 US5, research D6).
+      priority: item.priority,
     };
   }
 
@@ -63,6 +66,77 @@ export class WorkItemAccessServiceImpl implements WorkItemAccessService {
 
   async recordCommented(workItemId: string, actorId: string | null): Promise<void> {
     await this.activity.append({ workItemId, actorId, action: 'COMMENTED' });
+  }
+
+  // M2 time events in the per-item activity feed (activity-and-source.md §1.2/§1.3). The
+  // time-tracking module appends through these (the `recordCommented` pattern) — never by touching
+  // `ActivityRepository`, which work-items owns (Principle III). All stay tenant-scoped via the repo.
+
+  async recordTimeStarted(
+    workItemId: string,
+    actorId: string | null,
+    startedAt: string,
+  ): Promise<void> {
+    await this.activity.append({
+      workItemId,
+      actorId,
+      action: 'TIME_STARTED',
+      newValue: { startedAt },
+    });
+  }
+
+  async recordTimeStopped(
+    workItemId: string,
+    actorId: string | null,
+    durationSeconds: number,
+  ): Promise<void> {
+    await this.activity.append({
+      workItemId,
+      actorId,
+      action: 'TIME_STOPPED',
+      newValue: { durationSeconds },
+    });
+  }
+
+  async recordTimeLogged(
+    workItemId: string,
+    actorId: string | null,
+    durationSeconds: number,
+  ): Promise<void> {
+    await this.activity.append({
+      workItemId,
+      actorId,
+      action: 'TIME_LOGGED',
+      newValue: { durationSeconds },
+    });
+  }
+
+  async recordTimeEdited(
+    workItemId: string,
+    actorId: string | null,
+    before: unknown,
+    after: unknown,
+  ): Promise<void> {
+    await this.activity.append({
+      workItemId,
+      actorId,
+      action: 'TIME_EDITED',
+      oldValue: before,
+      newValue: after,
+    });
+  }
+
+  async recordTimeDeleted(
+    workItemId: string,
+    actorId: string | null,
+    before: unknown,
+  ): Promise<void> {
+    await this.activity.append({
+      workItemId,
+      actorId,
+      action: 'TIME_DELETED',
+      oldValue: before,
+    });
   }
 
   /** SYSTEM read-model for the scheduled due scan — classify each candidate + build its key. */

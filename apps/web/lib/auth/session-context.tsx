@@ -31,7 +31,12 @@ interface SessionContextValue {
   signOut: () => Promise<void>;
 }
 
-const SessionContext = createContext<SessionContextValue | null>(null);
+/**
+ * Exported so a component can read the session **optionally** via `useContext(SessionContext)` (which
+ * returns `null` outside a provider) instead of `useSession()` (which throws) — e.g. the item-detail
+ * panel's cosmetic owner-or-admin gate, which must still render in isolated component tests.
+ */
+export const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const router = useRouter();

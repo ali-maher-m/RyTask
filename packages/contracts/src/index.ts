@@ -6,6 +6,7 @@ export * from './orgs.contract';
 export * from './projects.contract';
 export * from './statuses.contract';
 export * from './work-items.contract';
+export * from './time-tracking.contract';
 export * from './labels.contract';
 export * from './views.contract';
 export * from './comments.contract';

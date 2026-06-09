@@ -151,11 +151,36 @@ export const updateWorkItemSchema = z
   .strict();
 export type UpdateWorkItem = z.infer<typeof updateWorkItemSchema>;
 
+/**
+ * The per-item activity action set (OpenAPI `ActivityEntry.action`). Output-only — this is the
+ * value-set the feed RENDERS, never an input contract. M2 (activity-and-source.md §1.4) APPENDS the
+ * five `TIME_*` actions so time events interleave in the existing feed; the set mirrors the
+ * `activity_action` DB enum exactly so the work-items mapper (`row.action`) stays assignable.
+ */
+export type ActivityAction =
+  | 'CREATED'
+  | 'UPDATED'
+  | 'STATUS_CHANGED'
+  | 'ASSIGNED'
+  | 'MOVED'
+  | 'DELETED'
+  | 'RESTORED'
+  | 'COMMENTED'
+  | 'SUBTASK_ADDED'
+  | 'LABEL_ADDED'
+  | 'LABEL_REMOVED'
+  // M2 — time events in the existing per-item feed (FR-FIN-001, research D7/D8).
+  | 'TIME_STARTED'
+  | 'TIME_STOPPED'
+  | 'TIME_LOGGED'
+  | 'TIME_EDITED'
+  | 'TIME_DELETED';
+
 /** One immutable per-item activity entry (OpenAPI `ActivityEntry`, FR-WI-009). */
 export interface ActivityEntry {
   id: string;
   actorId: string | null;
-  action: string;
+  action: ActivityAction;
   field: string | null;
   oldValue: unknown;
   newValue: unknown;

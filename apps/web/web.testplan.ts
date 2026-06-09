@@ -120,6 +120,25 @@ export const testPlan: WebTestPlan = {
       target: 'source badge renders Web/Slack/Agent/API text label (M3 US7)',
       file: 'components/work-item/source-badge.spec.tsx',
     },
+    // M2 US2 — the signature plan-vs-actual <Meter>: under/over/no-estimate states + tabular-nums.
+    {
+      kind: 'component',
+      target: 'Meter renders under/over-budget + no-estimate states (M2 US2)',
+      file: 'test/meter.test.tsx',
+    },
+    // M2 US6 — item detail maps TIME_* activity to friendly lines + entry-source distinct from the
+    // M3 capture-source badge.
+    {
+      kind: 'component',
+      target: 'item detail: TIME_* friendly lines + entry-source vs capture-source (M2 US6)',
+      file: 'test/item-detail-time.test.tsx',
+    },
+    // M2 flagship — the signature timer→reload→stop→manual→over-budget journey + axe (US1/US2/US3).
+    {
+      kind: 'e2e',
+      target: 'flagship: start→tick→reload→stop→manual entry→meter over-budget + axe (M2)',
+      file: 'e2e/time-tracking.e2e.spec.ts',
+    },
   ],
 };
 

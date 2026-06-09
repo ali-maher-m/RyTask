@@ -1,0 +1,72 @@
+.meter {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  width: 100%;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  background: var(--time-track-bg);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.row .track {
+  height: 6px;
+}
+.detail .track {
+  height: 8px;
+}
+
+/* Honey fill — logged/actual time progressing toward the plan. */
+.fill {
+  height: 100%;
+  background: var(--time-actual);
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+/* Over the estimate — the fill flips to the over-budget hue. */
+.over {
+  background: var(--time-over);
+}
+
+/* The planned tick marks the estimate boundary; `left` is set inline as a percentage. */
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--time-plan);
+}
+
+.figures {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--fg-2);
+  line-height: var(--lh-flat);
+}
+
+.row .figures {
+  font-size: var(--fs-time-sm);
+}
+.detail .figures {
+  font-size: var(--fs-time);
+}
+
+.muted {
+  color: var(--fg-muted);
+  font-family: var(--font-ui);
+}
+
+.overText {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--time-over);
+  font-family: var(--font-ui);
+}

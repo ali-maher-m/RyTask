@@ -22,6 +22,8 @@ import {
   projectRoleEnum,
   roleEnum,
   statusCategoryEnum,
+  timeEntryClassEnum,
+  timeEntrySourceEnum,
   tokenTypeEnum,
   viewKindEnum,
   viewScopeEnum,
@@ -647,6 +649,90 @@ export const slackUsers = pgTable(
   ],
 );
 
+// ─────────────────────────────────────────────────── time-tracking context (M2)
+
+/**
+ * The single in-progress accrual per user (M2, US1, data-model §2.1, research D2/D3). A short-lived
+ * row exists ONLY while a timer runs — its mere existence means "running"; there is no `end` here
+ * (that belongs to a finalized `time_log`). Stopping deletes this row and inserts a `time_log` in one
+ * transaction. The `UNIQUE(organization_id, user_id)` index IS the one-active-timer-per-user invariant
+ * (FR-TT-001, SC-002) — it holds under concurrency where an app-level check would race. `started_at`
+ * is set from the server `CLOCK` (research D4); elapsed is derived (`now − started_at`), never stored.
+ */
+export const timers = pgTable(
+  'timers',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    // A running timer dies with a purged item (research D15); no `deleted_at` — transient state only.
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    note: text('note'),
+    ...timestamps,
+  },
+  (t) => [
+    // THE invariant: at most one active timer per user (FR-TT-001, SC-002, research D3).
+    uniqueIndex('timers_org_user_unique').on(t.organizationId, t.userId),
+    index('timers_org_work_item_idx').on(t.organizationId, t.workItemId),
+  ],
+);
+
+/**
+ * A finalized time entry (M2, data-model §2.2, research D2/D5) — the atomic unit ALL aggregation sums.
+ * `duration_seconds` is exact integer seconds (no float drift; lossless `SUM`, SC-005); a stopped timer
+ * stores `round(ended_at − started_at)`, a manual entry stores the supplied duration OR the derived
+ * `ended_at − started_at` (the two forms are normalized to one stored shape). `source` is set
+ * server-side by the path (TIMER from stop, MANUAL from the manual endpoint — never client-supplied),
+ * distinct from the item's capture `source` (FR-FIN-002). `classification` is derived once and
+ * snapshotted with an override flag (research D6). Soft-delete via `deleted_at` (recoverable, audited).
+ */
+export const timeLogs = pgTable(
+  'time_logs',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    // Denormalized for the per-project/period rollup (research D10) so aggregation never re-joins items.
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }), // cascade on hard purge (research D15)
+    // `set null` so removing a user keeps the team's logged history (totals preserved); mirrors reporterId.
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
+    durationSeconds: integer('duration_seconds').notNull(), // exact; = ended − started (research D5)
+    note: text('note'),
+    billable: boolean('billable').notNull().default(false), // flag only (rates/cost are v3)
+    source: timeEntrySourceEnum('source').notNull(), // TIMER | MANUAL (M2); others = v2
+    classification: timeEntryClassEnum('classification').notNull(), // PLANNED | INTERRUPTION (snapshot)
+    classificationOverridden: boolean('classification_overridden').notNull().default(false),
+    ...timestamps,
+    deletedAt: timestamp('deleted_at', { withTimezone: true }), // soft-delete (recoverable; audited)
+  },
+  (t) => [
+    index('time_logs_org_work_item_idx').on(t.organizationId, t.workItemId), // per-item rollup + meter
+    index('time_logs_org_project_started_idx').on(t.organizationId, t.projectId, t.startedAt), // project/period
+    index('time_logs_org_user_started_idx').on(t.organizationId, t.userId, t.startedAt), // "my time"
+  ],
+);
+
 // ─────────────────────────────────────────────────────────── schema + types
 
 export const schema = {
@@ -672,6 +758,8 @@ export const schema = {
   notifications,
   slackWorkspaces,
   slackUsers,
+  timers,
+  timeLogs,
 };
 export type Schema = typeof schema;
 
@@ -725,3 +813,10 @@ export type NewSlackWorkspace = typeof slackWorkspaces.$inferInsert;
 export type SlackUser = typeof slackUsers.$inferSelect;
 export type NewSlackUser = typeof slackUsers.$inferInsert;
 export type CaptureSource = (typeof captureSourceEnum.enumValues)[number];
+
+export type Timer = typeof timers.$inferSelect;
+export type NewTimer = typeof timers.$inferInsert;
+export type TimeLog = typeof timeLogs.$inferSelect;
+export type NewTimeLog = typeof timeLogs.$inferInsert;
+export type TimeEntrySource = (typeof timeEntrySourceEnum.enumValues)[number];
+export type TimeEntryClass = (typeof timeEntryClassEnum.enumValues)[number];

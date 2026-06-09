@@ -23,6 +23,7 @@ import { OrgsModule } from './modules/orgs/orgs.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { SearchModule } from './modules/search/search.module';
 import { SlackModule } from './modules/slack/slack.module';
+import { TimeTrackingModule } from './modules/time-tracking/time-tracking.module';
 import { ViewsModule } from './modules/views/views.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
 
@@ -49,6 +50,8 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     // M3 — Slack capture channel (bounded module) + MCP transport edge (not a domain module).
     SlackModule,
     McpModule,
+    // M2 — time tracking (the flagship): live timer, manual entries, plan-vs-actual meter.
+    TimeTrackingModule,
   ],
   providers: [
     // Guard chain (order matters): authenticate → resolve tenant → authorize → throttle.
