@@ -143,39 +143,39 @@ drizzle-kit migrate         # planned: transactional migrations (never db:push i
 Until code lands, the actionable "commands" are the Spec Kit skills above and the scripts in `.specify/scripts/bash/`.
 
 <!-- SPECKIT START -->
-Active feature: **Time Tracking (the flagship) — and finalizing M0→M3 (M2)** (`005-time-tracking-flagship`).
-Full-stack milestone delivering the *tracked* half of CTW (D1/D6): a live, server-persisted **start/stop
-timer**, **manual entries**, **edit/delete with audit**, **planned-vs-interruption** tagging,
-**aggregations**, and the **signature in-row plan-vs-actual meter** — plus the *finalize* work that weaves
-time into the already-shipped M1 feed, the 003 Board/List/detail/My-Work, and the M3 `work_items.source`.
-**No new dependency, no new MCP tool, no new entrypoint.** For technologies, structure, shell commands, and
-the decisions driving current work, read the plan and its artifacts in `specs/005-time-tracking-flagship/`:
-- `plan.md` — technical context, Constitution Check (Principle IV parity has one tracked, spec-authorized
-  deferral in Complexity Tracking — time-control via MCP/Slack is v2), the new time-tracking bounded module
-- `research.md` — decisions D1–D17 (new bounded module mirroring `work-items`; `timers` + `time_logs`;
-  one-active-timer = `UNIQUE(org,user)`; server-`CLOCK` truth + client-derived elapsed, no realtime;
-  integer-seconds durations / estimate reused as hours; classification snapshot + override; audit reuses
-  the M1 `activity` feed via work-items-contract `recordTime*`; RBAC reuses `work:read`/`work:write` +
-  owner-or-admin; query-only aggregation; parallel `/time/rollup` for the row meter; 49/49 by omission;
-  idempotent writes; entry-source vs capture-source; soft-delete retention; one token-only `<Meter>`)
-- `data-model.md` — NEW: `timers`, `time_logs` (tenant-scoped) + enums `timeEntrySourceEnum`,
-  `timeEntryClassEnum` + 5 `TIME_*` `activity_action` values; M1 estimate / M3 `work_items.source` reused
-- `contracts/` — `time-rest` (timer/logs/rollup/summary REST), `time-tracking-flow` (invariants +
-  classification + idempotency), `web-surfaces` (the `<Meter>` + 4 surfaces), `activity-and-source`
-  (feed integration + entry-source vs capture-source) — MCP registry stays 49 tools, unchanged
-- `quickstart.md` — run/migrate/seed, verify each US, and the CI gates
+Active feature: **M4 Reporting — the flagship "Where did my time go?" report** (`006-m4-reporting`),
+the last remaining Stage 1 (MVP) feature. Read-only, full-stack: the flagship planned-vs-interruption
+report with plain-language narrative (FR-RPT-001), the **interruption ledger** with capture source /
+"raised by" / per-week evidence (FR-RPT-002), **My week** with tracked-beside-estimate + completed items
++ copy-as-text digest (FR-RPT-007), and client-side **CSV export**. **Zero schema change, zero migration,
+zero new dependency, zero new MCP tool (49/49), zero new permission.** For technologies, structure, and
+the decisions driving current work, read the plan and its artifacts in `specs/006-m4-reporting/`:
+- `plan.md` — technical context, Constitution Check (all PASS; Principle IV has one tracked,
+  spec-authorized deferral — reports-via-API/MCP is FR-RPT-009 v2), structure, risks
+- `research.md` — decisions D1–D14 (reporting = read-model providers **inside the time-tracking
+  module**, no new module; shared-schema joins per the shipped `summarize` precedent; visibility via
+  `accessibleProjectIds()` incl. **hardening the org-wide `/time/summary` path**; 3 GET endpoints
+  `/time/reports/{overview,interruptions,week}`; UTC day / ISO-Monday-week bucketing identical to M2;
+  completed-this-week via new work-items-contract `listCompletedForUser`; CSV + narrative + digest
+  built client-side from rendered DTOs; figures-first UI, one token-only `<SplitBar>` (honey planned /
+  amber interruption), no chart library; trashed items' time excluded everywhere — spec amended)
+- `data-model.md` — NO new tables/enums/indexes; 3 computed read-models (`ReportOverview`,
+  `InterruptionLedger`, `WeeklySummary`) + repository query shapes
+- `contracts/` — `reports-rest` (3 routes, DTOs, errors, `/time/summary` hardening),
+  `web-surfaces` (`/reports` + `/reports/week`, nav entry, CSV/copy behavior, tokens, a11y)
+- `quickstart.md` — run/verify each US and the CI gates
 
-Key invariants for this work: time tracking is a new **bounded module** (`apps/api/src/modules/time-tracking`)
-that calls other modules only via their `*.contract.ts`; it appends time events to the **M1 activity feed**
-through new work-items-contract `recordTime*` methods (the `comments`→`recordCommented` pattern), never
-touching the `activity` table directly. The **one-active-timer-per-user** invariant is a DB
-`UNIQUE(organization_id, user_id)` on `timers`; the **server `CLOCK` is the source of truth** so a timer
-survives reload/restart (client derives elapsed from `startedAt`; the realtime seam stays deferred). Writes
-are idempotent via the existing `IdempotencyService`. RBAC **reuses** `work:read`/`work:write` with
-**owner-or-admin** edit/delete enforced default-deny in the provider (M0 role matrix untouched). A time
-entry's `source` (`TIMER`/`MANUAL`/…) is **distinct** from the item's capture `source` (M3). New web UI is
-token-only (`check-design-tokens`) and reuses the existing `--time-*` tokens (no new tokens).
-`check-mcp-parity` stays **green at 49/49** (time-control = documented v2 deferral; `module.testplan.ts`
-declares `mcpTools: []`). Must not break M0/M1/M3 contracts (`users.organizationId`, `project_members`,
-`TenantScopedRepository`, `work_items.source`, the 49-tool registry).
+Key invariants for this work: **read-only by contract** (no writes, no activity rows, no notifications —
+FR-015); **reconciliation everywhere** — planned + interruption == logged at every level and the ledger
+total == the headline interruption figure for the same range/scope (SC-002/003, one integration spec is
+the authority); **visibility never exceeds readable projects** — `assertRole(VIEWER)` when `projectId`
+is supplied, else `IN accessibleProjectIds()`, applied to the new routes AND the shipped org-wide
+`/time/summary` (FR-013/SC-007); soft-deleted entries and trashed items' time are excluded from every
+figure (the M2 D15 invariant); all routes `@RequirePermission('work:read')`; weeks are ISO Monday (UTC,
+`date_trunc` — M2's convention); `weekStart` must be a Monday (400 otherwise). New UI is token-only
+(`check-design-tokens`), **no new tokens** — `--time-actual`/`--warning`/`--time-track-bg` for the
+split, `--time-over` red reserved for over-estimate; every figure Geist Mono `tabular-nums`.
+`check-mcp-parity` stays **green at 49/49** (`module.testplan.ts` keeps `mcpTools: []`; omission +
+comment cites FR-RPT-009 v2). Must not break M0–M3/005 contracts (`TenantScopedRepository`, the
+work-items/projects contracts, `/time/summary|rollup` consumers, the 49-tool registry).
 <!-- SPECKIT END -->

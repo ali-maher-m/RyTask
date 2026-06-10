@@ -150,8 +150,11 @@ on-screen report exactly.
   fact (already audited by M2), the report reflects the current class on next load — recompute,
   never stale (PRD §8.2 edge case).
 - **Deleted entries**: soft-deleted time entries are excluded from every figure.
-- **Items in the trash**: their time still counts (truthful totals are the point); ledger rows
-  for trashed items are visibly marked and still navigable.
+- **Items in the trash**: consistent with every shipped time surface (meters, rollups, "my
+  time"), time on trashed items is excluded from report figures while the item is trashed and
+  returns to every figure when the item is restored — one rule everywhere, so all surfaces
+  reconcile. *(Amended at plan time to match the shipped M2 aggregation invariant — research
+  D10.)*
 - **No untagged bucket**: every entry is classified planned-or-interruption by construction
   (binary classification, M2), so the PRD's "untagged time" edge case cannot occur; planned +
   interruption always sums to the total.
