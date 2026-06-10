@@ -79,11 +79,18 @@ test('start → tick → reload → stop → manual entry → meter goes over-bu
   await expect(page.getByTestId('time-entry')).toHaveCount(2);
   await expect(page.getByTestId('time-tracking')).toContainText(/over/i);
 
-  // The in-row meter on the List view reflects the same over-budget item (filter by the item key,
-  // which renders as text — the title is an editable input and isn't matched by hasText).
+  // The in-row meter on the List view reflects the same over-budget item. Match the key cell
+  // EXACTLY (hasText substring-matches, so "RY-3" would also catch "RY-32" rows as the dev DB
+  // accumulates items across runs) and name the meter (this row's plan-vs-actual one), since
+  // other rows can carry meters of their own. The 15s timeout absorbs the client /time/rollup
+  // fetch while a cold `next dev` compiles routes for parallel tests.
   await page.goto(`/projects/${projectId}/list`);
-  const row = page.getByTestId('work-item-row').filter({ hasText: key });
-  await expect(row.getByRole('meter')).toBeVisible();
+  const row = page
+    .getByTestId('work-item-row')
+    .filter({ has: page.getByText(key, { exact: true }) });
+  await expect(row.getByRole('meter', { name: /of 1h estimated/ })).toBeVisible({
+    timeout: 15_000,
+  });
 
   // ── a11y: the time UI passes an axe scan ──
   // Scoped to the time-tracking region (the surface M2 owns): the meter, timer, and entries. A

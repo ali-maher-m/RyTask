@@ -206,17 +206,17 @@ test('list inline edit (US4) + Board↔List view carry-over', async ({ page }) =
     .getByRole('textbox', { name: /^Title for / });
   await expect(lastTitle).toHaveValue(title);
 
+  // Pin the row by its stable accessible name ("Title for RY-n") — `.last()` shifts when
+  // parallel tests insert items concurrently, so it must not be reused across the edit/reload.
+  const titleName = (await lastTitle.getAttribute('aria-label')) ?? '';
+  const titleBox = page.getByRole('textbox', { name: titleName, exact: true });
+
   // Inline-edit the title; it saves without a full reload and survives one.
   const edited = `${title} (edited)`;
-  await lastTitle.fill(edited);
-  await lastTitle.blur();
+  await titleBox.fill(edited);
+  await titleBox.blur();
   await page.reload();
-  await expect(
-    page
-      .getByTestId('work-item-row')
-      .last()
-      .getByRole('textbox', { name: /^Title for / }),
-  ).toHaveValue(edited);
+  await expect(titleBox).toHaveValue(edited);
 
   // Carry-over: choose a grouping, switch to the Board, and back — the view is preserved on the URL.
   await page.getByTestId('group-select').selectOption('status');

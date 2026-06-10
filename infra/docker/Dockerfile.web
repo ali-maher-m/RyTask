@@ -23,4 +23,6 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app /app
 EXPOSE 3000
-CMD ["pnpm", "start"]
+# Run the real Next bin directly: `pnpm start` trips pnpm 11's verify-deps check, which tries to
+# purge node_modules and aborts with no TTY; the `.bin/next` shim is a shell script, not JS.
+CMD ["node", "node_modules/next/dist/bin/next", "start"]

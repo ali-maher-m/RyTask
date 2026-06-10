@@ -1,5 +1,5 @@
-// Subpath import per the SDK's `typesVersions` map (same resolution the factory uses for `server/mcp`).
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
+// `.js` suffix required by the SDK's extensionless `exports` map (see mcp-server.factory.ts).
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../app.module';
 import { McpAuth } from '../mcp-auth';

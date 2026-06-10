@@ -1,5 +1,5 @@
-// Subpath import per the SDK's `typesVersions` map (same resolution the factory uses for `server/mcp`).
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp';
+// `.js` suffix required by the SDK's extensionless `exports` map (see mcp-server.factory.ts).
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Controller, Get, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Public } from '../../common/rbac/decorators';

@@ -1,7 +1,8 @@
-// Subpath import per the SDK's `typesVersions` map (which classic Node10 resolution honors,
-// rewriting `server/mcp` → its bundled `.d.ts`). Node's `exports` map serves the matching JS
-// build at runtime. Transports (HTTP/SSE + stdio, US4) import their entrypoints the same way.
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
+// The `.js` suffix is REQUIRED: the SDK's `exports` map is `"./*" → "./dist/cjs/*"` with no
+// extension appended, so bare-node runtime (the Docker image's `node dist/main.js`) cannot
+// resolve an extensionless subpath even though tsc/vitest resolvers accept it. Transports
+// (HTTP/SSE + stdio, US4) import their entrypoints the same way.
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { type McpToolName, mcpTools, toolInput } from '@rytask/contracts';
 import { toMcpError } from './mcp-errors';
 import type { McpSessionContext } from './mcp-session';
