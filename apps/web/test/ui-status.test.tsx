@@ -38,6 +38,7 @@ describe('StatusDot / Avatar', () => {
 
   it('has no accessibility violations', async () => {
     const { container } = render(<Avatar name="Grace Hopper" src="https://img/grace.png" />);
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });

@@ -49,6 +49,7 @@ describe('Badge / Chip', () => {
         Label
       </Chip>,
     );
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });

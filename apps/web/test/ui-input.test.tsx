@@ -44,6 +44,7 @@ describe('Input', () => {
 
   it('has no accessibility violations', async () => {
     const { container } = render(<Input label="Email" hint="We never share it" />);
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });

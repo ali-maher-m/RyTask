@@ -76,6 +76,7 @@ describe('DropdownMenu', () => {
     const user = userEvent.setup();
     const { container } = renderMenu([{ id: 'a', label: 'Edit' }]);
     await user.click(screen.getByRole('button', { name: 'Open' }));
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });

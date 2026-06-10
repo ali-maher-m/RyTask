@@ -76,6 +76,7 @@ describe('Dialog', () => {
         <p>Tune your workspace.</p>
       </Dialog>,
     );
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });

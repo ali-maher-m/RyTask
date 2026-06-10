@@ -33,7 +33,9 @@ const connectionWithToken = (): SlackWorkspaceRow => {
 
 describe('OpenCaptureModalProvider', () => {
   it('decrypts the bot token and opens the capture modal with the trigger id', async () => {
-    const openModal = vi.fn(async () => undefined);
+    const openModal = vi.fn(
+      async (_token: string, _triggerId: string, _view: SlackView): Promise<void> => undefined,
+    );
     const slack = { openModal } as unknown as SlackPort;
     const provider = new OpenCaptureModalProvider(slack, crypto);
     const meta: CaptureModalContext = { responseUrl: 'https://hooks.slack/r/1', channelId: 'C1' };
@@ -41,7 +43,11 @@ describe('OpenCaptureModalProvider', () => {
     await provider.open(connectionWithToken(), 'trigger-123', meta);
 
     expect(openModal).toHaveBeenCalledTimes(1);
-    const [token, triggerId, view] = openModal.mock.calls[0] as [string, string, SlackView];
+    const call = openModal.mock.calls[0];
+    if (!call) {
+      throw new Error('expected openModal to have been called');
+    }
+    const [token, triggerId, view] = call;
     expect(token).toBe(BOT_TOKEN); // decrypted, not the ciphertext
     expect(triggerId).toBe('trigger-123');
     expect(view.callback_id).toBe(CAPTURE_MODAL_CALLBACK_ID);

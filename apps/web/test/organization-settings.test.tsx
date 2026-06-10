@@ -33,7 +33,7 @@ const { api, caps, routerPush, invalidateQueries } = vi.hoisted(() => ({
     deleteCurrentOrg: vi.fn(),
     clearSession: vi.fn(),
   },
-  caps: { can: (_perm: string) => true },
+  caps: { can: (_perm: string): boolean => true },
   routerPush: vi.fn(),
   invalidateQueries: vi.fn(async () => undefined),
 }));
@@ -82,7 +82,9 @@ describe('OrganizationClient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
 
     await waitFor(() => expect(api.updateCurrentOrg).toHaveBeenCalledTimes(1));
-    expect(api.updateCurrentOrg.mock.calls[0][0]).toMatchObject({ timezone: 'Europe/Berlin' });
+    expect(api.updateCurrentOrg).toHaveBeenCalledWith(
+      expect.objectContaining({ timezone: 'Europe/Berlin' }),
+    );
     expect(await screen.findByText('Settings saved.')).toBeTruthy();
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['org', 'current'] });
   });
@@ -101,7 +103,9 @@ describe('OrganizationClient', () => {
     fireEvent.change(select, { target: { value: 'u-2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
     await waitFor(() => expect(api.transferOwnership).toHaveBeenCalledTimes(1));
-    expect(api.transferOwnership.mock.calls[0][0]).toMatchObject({ toUserId: 'u-2' });
+    expect(api.transferOwnership).toHaveBeenCalledWith(
+      expect.objectContaining({ toUserId: 'u-2' }),
+    );
   });
 
   it('gates delete behind typing the org name, then deletes + signs out', async () => {

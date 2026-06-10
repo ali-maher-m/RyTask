@@ -48,6 +48,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     );
     await user.hover(screen.getByRole('button', { name: 'Hover' }));
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });

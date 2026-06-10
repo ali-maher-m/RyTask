@@ -49,6 +49,7 @@ describe('Button', () => {
 
   it('has no accessibility violations', async () => {
     const { container } = render(<Button variant="primary">Accessible</Button>);
-    expect(await axe(container, AXE_OPTS)).toHaveNoViolations();
+    const results = await axe(container, AXE_OPTS);
+    expect(results.violations).toEqual([]);
   });
 });
