@@ -386,11 +386,11 @@ test('collaborate (US10): comment with an @mention posts and reaches the inbox',
   await expect(posted).toContainText('@founder');
 
   // The inbox is reachable and renders its surface (a row or the caught-up empty state).
+  // After a client-side navigation the inbox loads asynchronously, so wait for the surface
+  // to settle rather than reading a synchronous count mid-load (which races the fetch).
   await page.goto('/inbox');
   await expect(page.getByRole('heading', { name: 'Inbox' })).toBeVisible();
-  const hasList = await page.getByTestId('inbox-list').count();
-  const hasEmpty = await page.getByTestId('inbox-empty').count();
-  expect(hasList + hasEmpty).toBeGreaterThan(0);
+  await expect(page.getByTestId('inbox-list').or(page.getByTestId('inbox-empty'))).toBeVisible();
 
   const a11y = await new AxeBuilder({ page }).analyze();
   expect(a11y.violations.filter((v) => v.impact === 'critical')).toEqual([]);
