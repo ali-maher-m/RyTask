@@ -97,6 +97,20 @@ export interface WorkItemAccessService {
    * dispatches, so tenant isolation holds at write time.
    */
   listDueAndOverdue(today: string, soonDays: number): Promise<DueWorkItem[]>;
+  /**
+   * The subject's "completed that week" list (M4 reporting US3, research D6). Non-deleted items
+   * **assigned to** `userId` whose `completed_at` falls in the inclusive `[from, to]` calendar window
+   * (UTC `YYYY-MM-DD`), restricted to `projectIds` (a NON-EMPTY readable-project list; `null` = no
+   * project restriction). A pure work-item lifecycle read with ZERO `time_logs` involvement — the
+   * `listDueAndOverdue` precedent — so it lives behind this port, not in a time-tracking join. The
+   * weekly-summary provider composes it with the tracked-time totals; it stays tenant-scoped.
+   */
+  listCompletedForUser(
+    userId: string,
+    from: string,
+    to: string,
+    projectIds: string[] | null,
+  ): Promise<import('@rytask/contracts').CompletedItemRow[]>;
 }
 
 /** A due-soon/overdue item surfaced by the scheduled scan (FR-NOTIF-001). */

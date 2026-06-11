@@ -8,6 +8,7 @@ import { useSession } from '@/lib/auth/session-context';
 import { useOrg } from '@/lib/org/org-context';
 import { Avatar, Button } from '@rytask/ui';
 import {
+  BarChart3,
   Bot,
   CheckSquare,
   FolderKanban,
@@ -54,6 +55,8 @@ function ShellChrome({ children }: { children: ReactNode }) {
     { href: '/my-work', label: 'My Work', icon: CheckSquare, show: true },
     { href: '/projects', label: 'Projects', icon: FolderKanban, show: true },
     { href: '/inbox', label: 'Inbox', icon: Inbox, show: true },
+    // M4 — the flagship "Where did my time go?" report (visibility-scoped server-side).
+    { href: '/reports', label: 'Reports', icon: BarChart3, show: true },
     { href: '/search', label: 'Search', icon: Search, show: true },
     { href: settingsHref, label: 'Settings', icon: Settings, show: true },
     // M3 — manage Slack/MCP integrations (admins; the page itself stays the read-only fallback).

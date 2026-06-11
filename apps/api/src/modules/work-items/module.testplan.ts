@@ -140,6 +140,12 @@ export const testPlan: ModuleTestPlan = {
       target: 'create-track-view (board flow)',
       file: '../../../../web/e2e/create-track-view.e2e.spec.ts',
     },
+    // M4 reporting US3 — the "completed that week" cross-module read (listCompletedForUser, research D6).
+    {
+      kind: 'integration',
+      target: 'WorkItemAccessService.listCompletedForUser',
+      file: 'services/work-item-access.completed.int.spec.ts',
+    },
   ],
 };
 

@@ -7,8 +7,14 @@ import {
   SEED_USER_ID,
   SEED_WORKSPACE_ID,
   createDb,
+  projectCounters,
+  projectMembers,
+  projects,
   runMigrations,
   seed,
+  statuses,
+  users,
+  workItems,
 } from '@rytask/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
@@ -150,5 +156,123 @@ describe('TimeSummaryProvider (integration)', () => {
     const project = await tenant.run(CTX, () => provider.getSummary({ groupBy: 'project' }));
     expect(byKey(project, SEED_PROJECT_ID)?.loggedSeconds).toBe(15000); // 13200 + 1800
     expect(reconciles(project)).toBe(true);
+  });
+
+  /**
+   * D3 hardening (FR-013 / SC-007): the org-wide (no-`projectId`) summary path is now restricted to
+   * `accessibleProjectIds()`. A non-admin member never sees totals from a project they cannot read; an
+   * org admin still sees every project; and a user's own logs in a project they were removed from drop
+   * out of their org-wide view. The supplied-`projectId` `assertRole(VIEWER)` behaviour is unchanged.
+   */
+  describe('org-wide visibility scoping (D3 hardening)', () => {
+    // A second project nobody in these tests is a member of — its time must never leak org-wide.
+    const PROJ_2 = '0193b3a0-0000-7000-8000-0000000000e1';
+    const PROJ_2_STATUS = '0193b3a0-0000-7000-8000-0000000000e2';
+    const PROJ_2_ITEM = '0193b3a0-0000-7000-8000-0000000000e3';
+    // A plain member of SEED_PROJECT only (not an org admin).
+    const MEMBER_USER = '0193b3a0-0000-7000-8000-0000000000e4';
+    // A user with a log in SEED_PROJECT who is NOT a member (simulating removal-from-project).
+    const REMOVED_USER = '0193b3a0-0000-7000-8000-0000000000e5';
+    const MEMBER_CTX = {
+      organizationId: SEED_ORG_ID,
+      workspaceId: SEED_WORKSPACE_ID,
+      userId: MEMBER_USER,
+    };
+    const ADMIN_CTX = { ...MEMBER_CTX, userId: SEED_USER_ID, isOrgAdmin: true };
+    const REMOVED_CTX = { ...MEMBER_CTX, userId: REMOVED_USER };
+
+    beforeAll(async () => {
+      await handle.db.insert(users).values([
+        { id: MEMBER_USER, organizationId: SEED_ORG_ID, email: 'member@rytask.local', name: 'Mem' },
+        {
+          id: REMOVED_USER,
+          organizationId: SEED_ORG_ID,
+          email: 'removed@rytask.local',
+          name: 'Rem',
+        },
+      ]);
+      await handle.db.insert(projects).values({
+        id: PROJ_2,
+        organizationId: SEED_ORG_ID,
+        workspaceId: SEED_WORKSPACE_ID,
+        name: 'Secret',
+        keyPrefix: 'SEC',
+      });
+      await handle.db
+        .insert(projectCounters)
+        .values({ projectId: PROJ_2, organizationId: SEED_ORG_ID, lastNumber: 1 });
+      await handle.db.insert(statuses).values({
+        id: PROJ_2_STATUS,
+        organizationId: SEED_ORG_ID,
+        projectId: PROJ_2,
+        name: 'To Do',
+        category: 'UNSTARTED',
+        position: 0,
+      });
+      await handle.db.insert(workItems).values({
+        id: PROJ_2_ITEM,
+        organizationId: SEED_ORG_ID,
+        workspaceId: SEED_WORKSPACE_ID,
+        projectId: PROJ_2,
+        number: 1,
+        title: 'In a project nobody here can read',
+        statusId: PROJ_2_STATUS,
+      });
+      // MEMBER_USER is a member of SEED_PROJECT only.
+      await handle.db.insert(projectMembers).values({
+        organizationId: SEED_ORG_ID,
+        projectId: SEED_PROJECT_ID,
+        userId: MEMBER_USER,
+        role: 'MEMBER',
+      });
+      // A distinctive planned entry inside the unreadable PROJ_2…
+      await tenant.run(CTX, () =>
+        timeLogs.create({
+          workspaceId: SEED_WORKSPACE_ID,
+          projectId: PROJ_2,
+          workItemId: PROJ_2_ITEM,
+          userId: SEED_USER_ID,
+          startedAt: new Date(`${DAY_1}T09:00:00.000Z`),
+          endedAt: new Date(`${DAY_1}T09:00:00.000Z`),
+          durationSeconds: 9999,
+          source: 'MANUAL',
+          classification: 'PLANNED',
+        }),
+      );
+      // …and the removed user's own log inside SEED_PROJECT (on a seeded item).
+      await tenant.run(CTX, () =>
+        timeLogs.create({
+          workspaceId: SEED_WORKSPACE_ID,
+          projectId: SEED_PROJECT_ID,
+          workItemId: RY_1,
+          userId: REMOVED_USER,
+          startedAt: new Date(`${DAY_1}T10:00:00.000Z`),
+          endedAt: new Date(`${DAY_1}T10:00:00.000Z`),
+          durationSeconds: 5555,
+          source: 'MANUAL',
+          classification: 'PLANNED',
+        }),
+      );
+    });
+
+    it('a non-admin member’s org-wide totals exclude a project they cannot read', async () => {
+      const rows = await tenant.run(MEMBER_CTX, () => provider.getSummary({ groupBy: 'project' }));
+      expect(byKey(rows, PROJ_2)).toBeUndefined(); // PROJ_2 never appears
+      expect(byKey(rows, SEED_PROJECT_ID)).toBeDefined(); // their own project does
+      // The 9999s of PROJ_2 are nowhere in the visible totals.
+      expect(rows.every((r) => r.loggedSeconds !== 9999)).toBe(true);
+    });
+
+    it('an org admin still sees every project org-wide', async () => {
+      const rows = await tenant.run(ADMIN_CTX, () => provider.getSummary({ groupBy: 'project' }));
+      expect(byKey(rows, PROJ_2)?.loggedSeconds).toBe(9999);
+      expect(byKey(rows, SEED_PROJECT_ID)).toBeDefined();
+    });
+
+    it('a user removed from a project no longer sees their own logs there org-wide', async () => {
+      const rows = await tenant.run(REMOVED_CTX, () => provider.getSummary({ groupBy: 'project' }));
+      // REMOVED_USER is a member of no project → empty org-wide view, even though a log exists.
+      expect(rows).toEqual([]);
+    });
   });
 });

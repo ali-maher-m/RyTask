@@ -22,7 +22,15 @@ export class TimeSummaryProvider {
   async getSummary(params: TimeSummaryQuery): Promise<TimeSummaryRow[]> {
     if (params.projectId) {
       await this.projects.assertRole(params.projectId, 'VIEWER');
+      return this.timeLogs.summarize(params);
     }
-    return this.timeLogs.summarize(params);
+    // Org-wide path: restrict to the caller's readable projects (D3 hardening, FR-013/SC-007). A
+    // caller who can read no project sees nothing — short-circuit so the repo's `inArray` stays
+    // non-empty (the shipped My Work / search / list pattern).
+    const accessibleProjectIds = await this.projects.accessibleProjectIds();
+    if (accessibleProjectIds.length === 0) {
+      return [];
+    }
+    return this.timeLogs.summarize(params, accessibleProjectIds);
   }
 }

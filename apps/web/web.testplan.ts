@@ -139,6 +139,25 @@ export const testPlan: WebTestPlan = {
       target: 'flagship: start→tick→reload→stop→manual entry→meter over-budget + axe (M2)',
       file: 'e2e/time-tracking.e2e.spec.ts',
     },
+    // M4 reporting — the flagship report + ledger + My week + CSV journey + axe on both surfaces
+    // (US1–US4). Extended in place per story (T031/T048/T052).
+    {
+      kind: 'e2e',
+      target: 'reports: split + narrative + reconciliation + ledger + My week + copy + CSV + axe (M4)',
+      file: 'e2e/reports.e2e.spec.ts',
+    },
+    // M4 US1/US3 — the plain-language narrative + digest templates (pluralization, zero-state, rounding).
+    {
+      kind: 'unit',
+      target: 'report-text narrative/digest templates (M4 US1/US3)',
+      file: 'lib/report-text.spec.ts',
+    },
+    // M4 US1 — the report client renders controls + narrative + tables + zero-state from DTO fixtures.
+    {
+      kind: 'component',
+      target: 'reports-client: controls + narrative + tables + empty state (M4 US1)',
+      file: 'app/(app)/reports/reports-client.spec.tsx',
+    },
   ],
 };
 

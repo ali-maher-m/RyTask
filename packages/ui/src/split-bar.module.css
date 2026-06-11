@@ -1,0 +1,28 @@
+/* Two flat segments over an empty track — token-only and flat per Principle VIII. */
+.bar {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--time-track-bg);
+  border-radius: var(--radius-pill);
+}
+
+.row {
+  height: 8px;
+}
+.detail {
+  height: 12px;
+}
+
+/* Planned time — the brand's honey time/momentum hue. */
+.planned {
+  height: 100%;
+  background: var(--time-actual);
+}
+
+/* Interruptions — amber caution (one of the three permitted semantic hues; dark ink on the fill). */
+.interruption {
+  height: 100%;
+  background: var(--warning);
+}

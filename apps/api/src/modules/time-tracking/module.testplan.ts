@@ -27,6 +27,12 @@ export const testPlan: ModuleTestPlan = {
     'DeleteTimeLogProvider',
     // US7 — grouped totals + planned/interruption split (the "my time" read-model)
     'TimeSummaryProvider',
+    // M4 US1 — the flagship "Where did my time go?" overview read-model
+    'ReportOverviewProvider',
+    // M4 US2 — the interruption ledger (the evidence behind the headline number)
+    'InterruptionLedgerProvider',
+    // M4 US3 — the personal weekly summary ("My week")
+    'WeeklySummaryProvider',
   ],
   controllers: [
     {
@@ -50,6 +56,15 @@ export const testPlan: ModuleTestPlan = {
       controller: 'TimeSummaryController',
       routes: ['GET /time/rollup', 'GET /time/summary'],
     },
+    // M4 reporting — three read-only routes over the M2 spine (US1/US2/US3).
+    {
+      controller: 'TimeReportsController',
+      routes: [
+        'GET /time/reports/overview',
+        'GET /time/reports/interruptions',
+        'GET /time/reports/week',
+      ],
+    },
   ],
   policies: [
     // US1 — at most one active timer per user
@@ -61,6 +76,9 @@ export const testPlan: ModuleTestPlan = {
     // US5 — planned vs interruption (priority baseline + override precedence)
     'classification.policy',
   ],
+  // M4 reporting adds ZERO MCP tools: reports-via-API/MCP is FR-RPT-009 (Should, v2). The deferral is
+  // recorded by omission (no `serviceCapabilities` entry) + this comment, byte-for-byte the M2/M3
+  // mechanism, so `check-mcp-parity` stays green at 49/49 (plan.md Complexity Tracking).
   mcpTools: [],
   tenantScopedTables: ['timers', 'time_logs'],
   requiredTests: [
@@ -184,6 +202,29 @@ export const testPlan: ModuleTestPlan = {
       kind: 'integration',
       target: 'idempotency + concurrency (replay = one entry, concurrent start = one timer)',
       file: 'idempotency-concurrency.int.spec.ts',
+    },
+    // M4 US1 — the flagship overview route (contract) + read-model (integration, real Postgres).
+    {
+      kind: 'contract',
+      target: 'TimeReportsController',
+      file: 'controllers/time-reports.controller.contract.spec.ts',
+    },
+    {
+      kind: 'integration',
+      target: 'ReportOverviewProvider',
+      file: 'providers/report-overview.provider.int.spec.ts',
+    },
+    // M4 US2 — the interruption ledger (real Postgres): rows/weeks, reporter-null, reconciliation.
+    {
+      kind: 'integration',
+      target: 'InterruptionLedgerProvider',
+      file: 'providers/interruption-ledger.provider.int.spec.ts',
+    },
+    // M4 US3 — the personal weekly summary (real Postgres): totals/items/completed + summary reconcile.
+    {
+      kind: 'integration',
+      target: 'WeeklySummaryProvider',
+      file: 'providers/weekly-summary.provider.int.spec.ts',
     },
   ],
 };

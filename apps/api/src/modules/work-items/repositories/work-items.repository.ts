@@ -11,7 +11,7 @@ import {
   workItemWatchers,
   workItems,
 } from '@rytask/db';
-import { type SQL, and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { type SQL, and, asc, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB } from '../../../common/database/database.module';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { TenantScopedRepository } from '../../../common/tenancy/tenant-scoped.repository';
@@ -632,6 +632,53 @@ export class WorkItemsRepository extends TenantScopedRepository {
          and wi.due_date <= (${today}::date + ${soonDays})
     `);
     return rows.rows;
+  }
+
+  /**
+   * Tenant-scoped "completed that week" read (M4 reporting US3, research D6): non-deleted items
+   * assigned to `userId` whose `completed_at` falls in the inclusive `[from, to]` UTC calendar window,
+   * optionally restricted to `projectIds`. A pure work-item lifecycle read — no `time_logs`. Newest
+   * completion first.
+   */
+  async listCompletedForUser(
+    userId: string,
+    from: string,
+    to: string,
+    projectIds: string[] | null,
+  ): Promise<
+    Array<{ workItemId: string; projectId: string; key: string; title: string; completedAt: string }>
+  > {
+    const end = new Date(`${to}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1); // exclusive upper bound = the day after `to`
+    const filters: SQL[] = [
+      isNull(workItems.deletedAt),
+      eq(workItems.assigneeId, userId),
+      gte(workItems.completedAt, new Date(`${from}T00:00:00.000Z`)),
+      lt(workItems.completedAt, end),
+    ];
+    if (projectIds) {
+      filters.push(inArray(workItems.projectId, projectIds));
+    }
+    const rows = await this.db
+      .select({
+        workItemId: workItems.id,
+        projectId: workItems.projectId,
+        keyPrefix: projects.keyPrefix,
+        number: workItems.number,
+        title: workItems.title,
+        completedAt: workItems.completedAt,
+      })
+      .from(workItems)
+      .innerJoin(projects, eq(projects.id, workItems.projectId))
+      .where(this.scoped(workItems, ...filters))
+      .orderBy(desc(workItems.completedAt));
+    return rows.map((r) => ({
+      workItemId: r.workItemId,
+      projectId: r.projectId,
+      key: `${r.keyPrefix}-${r.number}`,
+      title: r.title,
+      completedAt: (r.completedAt as Date).toISOString(),
+    }));
   }
 
   /**

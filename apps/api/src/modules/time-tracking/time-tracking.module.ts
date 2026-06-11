@@ -1,16 +1,20 @@
 import { Module } from '@nestjs/common';
 import { TimeLogsController } from './controllers/time-logs.controller';
+import { TimeReportsController } from './controllers/time-reports.controller';
 import { TimeSummaryController } from './controllers/time-summary.controller';
 import { TimersController } from './controllers/timers.controller';
 import { CreateTimeLogProvider } from './providers/create-time-log.provider';
 import { DeleteTimeLogProvider } from './providers/delete-time-log.provider';
 import { GetActiveTimerProvider } from './providers/get-active-timer.provider';
+import { InterruptionLedgerProvider } from './providers/interruption-ledger.provider';
 import { ListTimeLogsProvider } from './providers/list-time-logs.provider';
+import { ReportOverviewProvider } from './providers/report-overview.provider';
 import { StartTimerProvider } from './providers/start-timer.provider';
 import { StopTimerProvider } from './providers/stop-timer.provider';
 import { TimeRollupProvider } from './providers/time-rollup.provider';
 import { TimeSummaryProvider } from './providers/time-summary.provider';
 import { UpdateTimeLogProvider } from './providers/update-time-log.provider';
+import { WeeklySummaryProvider } from './providers/weekly-summary.provider';
 import { TimeLogsRepository } from './repositories/time-logs.repository';
 import { TimersRepository } from './repositories/timers.repository';
 import { TIME_TRACKING_ACCESS } from './time-tracking.contract';
@@ -34,7 +38,7 @@ import { TIME_TRACKING_ACCESS } from './time-tracking.contract';
  * (time-tracking.contract.ts) to the rollup impl, exporting it for future cross-module/agent reads.
  */
 @Module({
-  controllers: [TimersController, TimeLogsController, TimeSummaryController],
+  controllers: [TimersController, TimeLogsController, TimeSummaryController, TimeReportsController],
   providers: [
     TimersRepository,
     TimeLogsRepository,
@@ -47,6 +51,9 @@ import { TIME_TRACKING_ACCESS } from './time-tracking.contract';
     DeleteTimeLogProvider,
     TimeRollupProvider,
     TimeSummaryProvider,
+    ReportOverviewProvider,
+    InterruptionLedgerProvider,
+    WeeklySummaryProvider,
     { provide: TIME_TRACKING_ACCESS, useExisting: TimeRollupProvider },
   ],
   exports: [TIME_TRACKING_ACCESS],
