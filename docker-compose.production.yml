@@ -27,8 +27,6 @@ x-app-env: &app-env
   APP_BASE_URL: ${PUBLIC_WEB_URL:?PUBLIC_WEB_URL is required, e.g. https://app.example.com}
   CORS_ORIGIN: ${PUBLIC_WEB_URL}
   MCP_PUBLIC_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL is required, e.g. https://api.example.com}/api/v1/mcp
-  # First-boot: set true in .env, register the founder account, set back to false, redeploy.
-  ALLOW_PUBLIC_SIGNUP: ${ALLOW_PUBLIC_SIGNUP:-false}
   # Rate limiting (Redis fixed window; code defaults shown).
   THROTTLE_MAX_REQUESTS: ${THROTTLE_MAX_REQUESTS:-300}
   AUTH_THROTTLE_MAX_REQUESTS: ${AUTH_THROTTLE_MAX_REQUESTS:-20}
