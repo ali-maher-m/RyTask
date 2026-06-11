@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useId, useState } from 'react';
+import { ExportCard } from './export-card';
 
 /**
  * Organization settings + ownership admin (US9, T081, FR-WEB-073). Owners/Admins edit the org's
@@ -325,6 +326,9 @@ export function OrganizationClient() {
           </Button>
         </div>
       </form>
+
+      {/* M5 — full workspace data export (AC-12): no lock-in, safe exit/backup. */}
+      <ExportCard />
 
       {canTransfer ? (
         <section

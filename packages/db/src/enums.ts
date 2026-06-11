@@ -68,7 +68,12 @@ export const activityActionEnum = pgEnum('activity_action', [
   'TIME_LOGGED',
   'TIME_EDITED',
   'TIME_DELETED',
+  // M5 — a commit/PR referencing the item's key linked via the GitHub webhook (FR-INT-GH-006).
+  'GITHUB_LINKED',
 ]);
+
+// M5 — what a github_links row points at (FR-INT-GH-006): a commit (push) or a pull request.
+export const githubLinkKindEnum = pgEnum('github_link_kind', ['COMMIT', 'PR']);
 
 // Why a user watches an item (drives notification fan-out + mention context access, D9).
 export const watcherReasonEnum = pgEnum('watcher_reason', [

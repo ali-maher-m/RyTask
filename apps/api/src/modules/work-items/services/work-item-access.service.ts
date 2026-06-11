@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { CompletedItemRow } from '@rytask/contracts';
+import type { CompletedItemRow, GithubLinkedActivityValue } from '@rytask/contracts';
 import { ActivityRepository } from '../repositories/activity.repository';
 import { WorkItemWatchersRepository } from '../repositories/work-item-watchers.repository';
 import { WorkItemsRepository } from '../repositories/work-items.repository';
@@ -39,6 +39,34 @@ export class WorkItemAccessServiceImpl implements WorkItemAccessService {
       // The priority snapshot drives a new time entry's default classification (M2 US5, research D6).
       priority: item.priority,
     };
+  }
+
+  /** Resolve `RY-12` → context (M5, FR-INT-GH-006). Malformed keys resolve to null, not an error. */
+  async getItemContextByKey(key: string): Promise<WorkItemContext | null> {
+    const match = /^([A-Za-z][A-Za-z0-9]*)-(\d{1,9})$/.exec(key.trim());
+    if (!match?.[1] || !match[2]) return null;
+    const found = await this.workItems.findByKey(match[1], Number(match[2]));
+    if (!found) return null;
+    const { item, keyPrefix } = found;
+    return {
+      id: item.id,
+      workspaceId: item.workspaceId,
+      projectId: item.projectId,
+      assigneeId: item.assigneeId,
+      reporterId: item.reporterId,
+      title: item.title,
+      key: `${keyPrefix}-${item.number}`,
+      priority: item.priority,
+    };
+  }
+
+  async recordGitHubLinked(workItemId: string, value: GithubLinkedActivityValue): Promise<void> {
+    await this.activity.append({
+      workItemId,
+      actorId: null,
+      action: 'GITHUB_LINKED',
+      newValue: value as unknown as Record<string, unknown>,
+    });
   }
 
   resolveMentions(handles: string[], projectId: string): Promise<string[]> {

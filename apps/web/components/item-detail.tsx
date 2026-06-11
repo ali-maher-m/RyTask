@@ -151,10 +151,33 @@ function describeTimeActivity(entry: ActivityEntry): string | null {
   }
 }
 
+/**
+ * Plain copy for an M5 `GITHUB_LINKED` entry — "linked commit “Fixes RY-1 …” from acme/web"
+ * (FR-INT-GH-006; the `newValue` carries `{kind, ref, url, title, repoFullName}`).
+ */
+function describeGithubActivity(entry: ActivityEntry): string | null {
+  if (entry.action !== 'GITHUB_LINKED' || !entry.newValue || typeof entry.newValue !== 'object') {
+    return entry.action === 'GITHUB_LINKED' ? 'linked from GitHub' : null;
+  }
+  const v = entry.newValue as {
+    kind?: string;
+    ref?: string;
+    title?: string;
+    repoFullName?: string;
+  };
+  const what =
+    v.kind === 'PR' ? `pull request #${v.ref ?? ''}` : `commit ${(v.ref ?? '').slice(0, 7)}`;
+  const title = v.title ? ` “${v.title}”` : '';
+  const repo = v.repoFullName ? ` from ${v.repoFullName}` : '';
+  return `linked ${what}${title}${repo}`;
+}
+
 /** Human label for an activity entry: a friendly time line, `changed status: …`, or the raw action. */
 function describeActivity(entry: ActivityEntry): string {
   const timeLine = describeTimeActivity(entry);
   if (timeLine) return timeLine;
+  const githubLine = describeGithubActivity(entry);
+  if (githubLine) return githubLine;
   if (entry.field) {
     return `${entry.action} ${entry.field}: ${renderValue(entry.oldValue)} → ${renderValue(entry.newValue)}`;
   }

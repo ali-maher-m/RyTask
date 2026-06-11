@@ -57,8 +57,19 @@ export interface McpConfig {
   publicUrl?: string;
 }
 
+export interface GithubConfig {
+  /**
+   * Key for webhook-secret-at-rest encryption (M5). ONE shared integrations key:
+   * `GITHUB_TOKEN_ENC_KEY` or, when unset, `SLACK_TOKEN_ENC_KEY` — both name the same
+   * 32-byte base64 key material. Absent → creating a GitHub connection is refused with
+   * a friendly 400 (the rest of the app runs fine — inert by default, Principle VII).
+   */
+  tokenEncKey?: string;
+}
+
 export interface IntegrationsConfig {
   slack: SlackConfig;
+  github: GithubConfig;
   mcp: McpConfig;
 }
 
@@ -67,6 +78,7 @@ export const integrationsConfig = registerAs('integrations', (): IntegrationsCon
   const clientSecret = process.env.SLACK_CLIENT_SECRET;
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
   const tokenEncKey = process.env.SLACK_TOKEN_ENC_KEY;
+  const githubTokenEncKey = process.env.GITHUB_TOKEN_ENC_KEY ?? tokenEncKey;
   const configured = Boolean(clientId && clientSecret && signingSecret);
   if (configured) {
     // A configured Slack app must have a valid encryption key (fail fast at boot).
@@ -80,6 +92,9 @@ export const integrationsConfig = registerAs('integrations', (): IntegrationsCon
       oauthCallbackUrl: process.env.SLACK_OAUTH_CALLBACK_URL,
       tokenEncKey,
       configured,
+    },
+    github: {
+      tokenEncKey: githubTokenEncKey,
     },
     mcp: {
       publicUrl: process.env.MCP_PUBLIC_URL,

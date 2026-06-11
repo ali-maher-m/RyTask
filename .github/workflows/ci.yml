@@ -59,6 +59,8 @@ jobs:
         run: pnpm check:mcp-parity
       - name: Architecture-boundary check
         run: pnpm check:boundaries
+      - name: Design-token conformance check
+        run: pnpm check:design-tokens
 
   integration:
     name: Integration (real Postgres via testcontainers)

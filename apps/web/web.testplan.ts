@@ -165,6 +165,19 @@ export const testPlan: WebTestPlan = {
       target: 'csv toCsv: quoting + sections + headers-only empty range (M4 US4)',
       file: 'lib/csv.spec.ts',
     },
+    // M5 — GitHub card: connect (one-time secret + payload URL), list/disconnect, non-admin
+    // read-only reason, axe (AC-11).
+    {
+      kind: 'component',
+      target: 'github-card: connect + one-time secret + disconnect + read-only + axe (M5)',
+      file: 'test/github-card.test.tsx',
+    },
+    // M5 — Export card: JSON archive + both CSV entities via the authed seam, error alert, axe (AC-12).
+    {
+      kind: 'component',
+      target: 'export-card: JSON + CSV downloads + error alert + axe (M5)',
+      file: 'test/export-card.test.tsx',
+    },
   ],
 };
 

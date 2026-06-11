@@ -174,7 +174,9 @@ export type ActivityAction =
   | 'TIME_STOPPED'
   | 'TIME_LOGGED'
   | 'TIME_EDITED'
-  | 'TIME_DELETED';
+  | 'TIME_DELETED'
+  // M5 — a commit/PR referencing the item's key (FR-INT-GH-006).
+  | 'GITHUB_LINKED';
 
 /** One immutable per-item activity entry (OpenAPI `ActivityEntry`, FR-WI-009). */
 export interface ActivityEntry {

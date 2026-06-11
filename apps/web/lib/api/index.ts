@@ -19,4 +19,6 @@ export * from './comments';
 export * from './notifications';
 export * from './search';
 export * from './slack';
+export * from './github';
+export * from './export';
 export * from './mcp';

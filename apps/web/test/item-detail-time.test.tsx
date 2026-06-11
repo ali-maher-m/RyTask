@@ -57,6 +57,22 @@ const { authedFetch, timeMock } = vi.hoisted(() => {
       newValue: null,
       createdAt: '2026-06-09T12:00:00.000Z',
     },
+    // M5 — a GitHub magic-word link (FR-INT-GH-006) renders plain, never the raw enum.
+    {
+      id: 'a-6',
+      actorId: null,
+      action: 'GITHUB_LINKED',
+      field: null,
+      oldValue: null,
+      newValue: {
+        kind: 'COMMIT',
+        ref: 'abc1234def',
+        url: 'https://github.com/acme/web/commit/abc1234def',
+        title: 'Fixes RY-1 stop the loop',
+        repoFullName: 'acme/web',
+      },
+      createdAt: '2026-06-09T13:00:00.000Z',
+    },
   ];
   const fn = vi.fn(async (path: string) => {
     if (path.endsWith('/activity')) {
@@ -165,7 +181,7 @@ describe('ItemDetail — time woven into the product (US6)', () => {
   it('maps TIME_* activity actions to friendly, plain lines', async () => {
     render(<ItemDetail item={ITEM as never} canEdit={false} />);
     const feed = await screen.findByTestId('activity-feed');
-    await waitFor(() => expect(within(feed).getAllByTestId('activity-entry').length).toBe(5));
+    await waitFor(() => expect(within(feed).getAllByTestId('activity-entry').length).toBe(6));
 
     const text = feed.textContent ?? '';
     expect(text).toContain('started a timer');
@@ -173,9 +189,12 @@ describe('ItemDetail — time woven into the product (US6)', () => {
     expect(text).toContain('logged 2h 15m');
     expect(text).toContain('edited a time entry');
     expect(text).toContain('deleted a time entry');
+    // M5 — a GitHub link reads plain: short sha + commit title + repo (FR-INT-GH-006).
+    expect(text).toContain('linked commit abc1234 “Fixes RY-1 stop the loop” from acme/web');
     // The raw enum strings must NOT leak into the feed.
     expect(text).not.toContain('TIME_STARTED');
     expect(text).not.toContain('TIME_LOGGED');
+    expect(text).not.toContain('GITHUB_LINKED');
   });
 
   it("shows each entry's own source distinct from the item's capture-source badge", async () => {

@@ -21,14 +21,16 @@ export class AesGcmCrypto implements Crypto {
   private readonly key: Buffer | null;
 
   constructor(@Inject(integrationsConfig.KEY) config: IntegrationsConfigType) {
-    const keyB64 = config.slack.tokenEncKey;
+    // ONE shared integrations key (M5): Slack's name wins when both are set; the GitHub
+    // alias keeps GitHub linking usable without any Slack configuration.
+    const keyB64 = config.slack.tokenEncKey ?? config.github?.tokenEncKey;
     this.key = keyB64 ? Buffer.from(keyB64, 'base64') : null;
   }
 
   private requireKey(): Buffer {
     if (!this.key || this.key.length !== KEY_BYTES) {
       throw new Error(
-        'Crypto is not configured: set SLACK_TOKEN_ENC_KEY to a base64-encoded 32-byte key.',
+        'Crypto is not configured: set SLACK_TOKEN_ENC_KEY (or GITHUB_TOKEN_ENC_KEY) to a base64-encoded 32-byte key.',
       );
     }
     return this.key;
