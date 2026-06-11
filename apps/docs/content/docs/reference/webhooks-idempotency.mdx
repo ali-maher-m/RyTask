@@ -1,0 +1,57 @@
+---
+title: Webhooks and idempotency
+description: Retry-safety guarantees — the Idempotency-Key header, Slack webhook signature verification, and the status of outbound webhooks.
+---
+
+Flaky networks retry. RyTask is built so a retry never creates a duplicate: mutating API
+calls support an idempotency key, and inbound Slack deliveries are deduplicated by
+deterministic job ids.
+
+## The `Idempotency-Key` header
+
+Mutating routes that create something accept an **optional** `Idempotency-Key` header:
+creating a work item, posting a comment, starting and stopping a timer, and logging a
+manual time entry. Without the header, the call runs normally (idempotency is opt-in per
+request).
+
+With a key, the mechanics are:
+
+- **Atomic claim.** The key is claimed in Redis with an atomic set-if-absent and a
+  **24-hour TTL**. The first request to claim it (the winner) executes the operation.
+- **Response replay.** The winner's response is cached for 24 hours. A retry with the same
+  key gets the **cached response back** — the operation does not run a second time.
+- **Concurrent duplicate ⇒ 409.** If a second request arrives with the same key while the
+  first is still running, it gets **409 Conflict** (not a duplicate execution).
+- **Failures are not cached.** If the operation throws, the claim is dropped, so a retry
+  with the same key **re-runs** the operation.
+- **Keys are org-scoped.** The Redis key includes the organization id and the operation
+  scope, so keys cannot collide across tenants or across different operations.
+
+One caveat the code is explicit about: unlike the rate limiter, the idempotency store does
+**not** silently skip itself when Redis is down. A request **without** the header is
+unaffected by a Redis outage; a request that **carries** a key will fail rather than run
+without its deduplication guarantee.
+
+## Inbound webhooks (Slack)
+
+Every inbound Slack webhook (slash command, modal interactivity) is authenticated before any
+handler work runs:
+
+- Slack signs each delivery with **HMAC-SHA256** over `v0:&#123;timestamp&#125;:&#123;raw body&#125;`
+  using the app's signing secret. RyTask recomputes the signature over the **exact raw
+  request bytes** and compares in constant time.
+- A missing, malformed, or mismatched signature — or a timestamp older than Slack's
+  5-minute replay window, or an unconfigured Slack — yields **401** and nothing is enqueued.
+- Accepted captures are enqueued with a **deterministic job id** derived from the Slack team,
+  the capture kind, and the delivery's unique trigger id. The queue refuses a duplicate job
+  id, so a Slack retry (or a double-click) **never creates a second item** — there is no
+  separate dedupe table; the id is the idempotency.
+
+## Outbound webhooks
+
+<StatusBadge status="coming-soon" />
+
+RyTask does not yet deliver events to external URLs. Domain events exist **internally only**
+(they drive notifications and search indexing in-process). Outbound webhooks ship with the
+automations work — see the [automations roadmap](/docs/guides/roadmap/automations) and
+[outbound webhooks](/docs/guides/integrations/outbound-webhooks).

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "tsx watch src/main.ts",
+    "dev": "tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --enable-source-maps --watch dist/main.js)",
     "start": "node dist/main.js",
     "worker": "WORKER=1 node dist/main.js",
     "mcp:stdio": "node dist/main.mcp.js",

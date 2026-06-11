@@ -30,6 +30,9 @@ export type { FigureProps } from './figure';
 export { Meter } from './meter';
 export type { MeterProps } from './meter';
 
+export { SplitBar } from './split-bar';
+export type { SplitBarProps } from './split-bar';
+
 export {
   EmptyState,
   ErrorState,

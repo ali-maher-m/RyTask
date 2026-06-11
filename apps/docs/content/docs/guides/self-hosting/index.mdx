@@ -1,0 +1,49 @@
+---
+title: Self-hosting & administration
+description: Run RyTask on your own server with Docker Compose — what one command gives you, and where to go from there.
+---
+
+RyTask is built to be self-hosted. One command brings up the whole stack — database, cache,
+API, background worker, and web app — already migrated and seeded with a working demo
+workspace:
+
+```bash
+docker compose up -d --build
+```
+
+After that, the web app is at `http://localhost:3000` and the API at `http://localhost:3001`.
+A one-shot `migrate` service runs the database migrations and an idempotent seed before the
+API and worker start, so there is no separate "initialize the database" step.
+
+## What the stack contains
+
+| Service | What it is | Port(s) |
+| --- | --- | --- |
+| `web` | The Next.js web app | 3000 |
+| `api` | The NestJS HTTP API | 3001 |
+| `worker` | Background jobs — same image as `api`, started with `WORKER=1` | — |
+| `migrate` | One-shot: runs migrations, then the seed, then exits | — |
+| `postgres` | PostgreSQL 16 — all your data lives here | 5432 |
+| `redis` | Redis 7 — queues, rate limits, idempotency cache | 6379 |
+| `minio` | S3-compatible object storage, reserved for attachments <StatusBadge status="coming-soon" /> | 9000, 9001 |
+| `mailhog` | Development mail catcher (SMTP and a web inbox) | 1025, 8025 |
+
+## The guides in this section
+
+- **[Requirements](/docs/guides/self-hosting/requirements)** — what you need before you start,
+  for Docker and for running from source.
+- **[Production setup](/docs/guides/self-hosting/production)** — the full walkthrough: secrets
+  the API refuses to start without, the override file, health checks, and where data lives.
+- **[Reverse proxy & TLS](/docs/guides/self-hosting/reverse-proxy)** — putting HTTPS in front
+  of the web app and the API, with Caddy and nginx examples.
+- **[Backups & restore](/docs/guides/self-hosting/backups-and-restore)** — one command to back
+  up, one to restore, and what actually needs backing up.
+- **[Upgrades & migrations](/docs/guides/self-hosting/upgrades-and-migrations)** — how upgrades
+  re-run migrations automatically, and the honest rollback story.
+- **[Scaling](/docs/guides/self-hosting/scaling)** — API vs. worker, and how to run more of
+  each.
+- **[Storage & email](/docs/guides/self-hosting/storage-and-email)** — what MinIO and Mailhog
+  are doing in the stack today, stated plainly.
+
+For every environment variable in one table, see the
+[environment variables reference](/docs/reference/environment-variables).

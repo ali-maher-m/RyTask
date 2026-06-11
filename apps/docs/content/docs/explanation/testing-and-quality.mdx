@@ -1,0 +1,75 @@
+---
+title: Testing and quality gates
+description: CI refuses to merge without tests — missing tests fail the build, not just failing ones.
+---
+
+## The stance
+
+Most projects test what someone remembered to test. RyTask inverts that: every module
+declares, in code, which tests it is required to have, and CI fails when a required test is
+**missing** — not only when an existing test fails. Forgetting to write a test produces the
+same red build as breaking one. The codebase calls this closed testing: the set of required
+tests is defined up front, and the gate is the build, not the review.
+
+## How the required-tests gate works
+
+Each backend module ships a `module.testplan.ts` (and the web app a `web.testplan.ts`)
+declaring its providers, controllers, domain policies, and the exact test files each one
+requires. `scripts/check-required-tests.ts` discovers every test plan in the repo and fails
+the build if any declared file does not exist. The policy behind those declarations:
+
+- every **provider** has at least one integration test,
+- every **controller route** has a contract test,
+- every **domain policy** has unit tests,
+- every **tenant-scoped table** has a tenancy-isolation test,
+- every **queue processor** has an integration test — enqueue, process, assert, and assert
+  again on replay, because jobs must be idempotent,
+- every **MCP tool** is contract-tested and counted by the parity gate.
+
+A new feature is not "done plus tests later"; without its declared tests, it does not merge.
+
+## Real PostgreSQL, not mocks
+
+Integration tests run against a real PostgreSQL instance (via testcontainers in Docker), not
+a mocked database. This is a deliberate, slightly more expensive choice: the bugs that matter
+most in a multi-tenant system — a missing tenant filter, a wrong join, an index that does not
+match the query — live in real SQL. A mock returns whatever the test author assumed and would
+pass straight through exactly the bug you most need to catch. The
+[tenancy-isolation suite](/docs/explanation/multi-tenancy) in particular only means something
+because it runs against the real thing.
+
+## Coverage gates
+
+Coverage thresholds are enforced in CI, tiered by how much a layer matters:
+
+- **80%** lines across the server as a whole,
+- **90%** lines in `domain/` and `providers/` — the layers where business logic lives,
+- **90%** branches on domain policies specifically, because a policy's untested branch is an
+  untested business rule.
+
+Coverage is a floor, not the point — the required-tests gate is what guarantees the *right*
+tests exist; coverage guards against those tests being hollow.
+
+## The other gates
+
+Two more checks run beside the test suite, because correctness is not only about behavior:
+
+- **The design-token gate** (`scripts/check-design-tokens.ts`) fails CI if product UI
+  declares a visual value as anything other than a semantic design token — no raw hex
+  colors, no off-palette named colors, no decorative gradients or blur. The brand stays
+  consistent because inconsistency does not compile, and theming (light and dark) keeps
+  working because every surface resolves from the same token names.
+- **The boundary gate** (`pnpm check:boundaries`) runs the dependency-cruiser rules described
+  in the [architecture overview](/docs/explanation/architecture): no reaching into another
+  module's internals, no raw database access outside repositories, no circular dependencies.
+
+Together with the [MCP parity gate](/docs/explanation/mcp-parity), these form a single
+pattern: every promise the architecture makes is checked by a script that can fail the build.
+
+## Why this much machinery
+
+RyTask is a multi-tenant system that handles other people's time data and is built to be
+self-hosted by strangers. In that setting, "we are careful" is not an answer — careful teams
+still merge the Friday change that skipped a test. The gates exist so that the cost of
+skipping quality is paid immediately and visibly, in CI, by the person making the change —
+rather than later, in production, by someone else.

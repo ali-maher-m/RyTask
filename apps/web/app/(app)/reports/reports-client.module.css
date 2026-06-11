@@ -1,0 +1,243 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--fs-h1);
+  margin: 0;
+}
+
+.subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--fg-muted);
+}
+
+/* Report | My week toggle. */
+.tabs {
+  display: inline-flex;
+  gap: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+}
+
+.tab {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.tabActive {
+  background: var(--surface-active);
+  color: var(--fg);
+  font-weight: var(--w-medium);
+}
+
+/* ── controls ── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.customDates {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* Push Export CSV to the right edge of the controls bar (top-right of the report card). */
+.exportSlot {
+  margin-left: auto;
+  align-self: flex-end;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.controlLabel {
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  font-weight: var(--w-medium);
+}
+
+.select {
+  height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* ── narrative ── */
+.narrative {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--fg);
+}
+
+/* ── headline split ── */
+.headline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.figureGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.figureLabel {
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  font-weight: var(--w-medium);
+}
+
+.figureValue {
+  font-size: var(--fs-h2);
+}
+
+.figurePct {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+
+.legend {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-xs);
+}
+
+.swatchPlanned {
+  background: var(--time-actual);
+}
+
+.swatchInterruption {
+  background: var(--warning);
+}
+
+/* ── tables ── */
+.sectionTitle {
+  font-size: var(--fs-h3);
+  margin: 0 0 var(--space-2);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th {
+  padding: var(--space-2);
+  text-align: left;
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  font-weight: var(--w-medium);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.thNum {
+  text-align: right;
+}
+
+.row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.td {
+  padding: var(--space-2);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.num {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.itemKey {
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+
+.itemKey:hover {
+  color: var(--accent-fg);
+}
+
+.muted {
+  color: var(--fg-muted);
+}
+
+.footTotal {
+  border-top: 1px solid var(--border-strong);
+  font-weight: var(--w-medium);
+}
+
+.subSection {
+  margin-top: var(--space-3);
+}
+
+.subTitle {
+  font-size: var(--fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0 0 var(--space-2);
+}

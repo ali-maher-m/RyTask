@@ -1,0 +1,83 @@
+---
+title: Contributing
+description: Spec-driven development, the local toolchain, the CI gates, and what the AGPL asks of you.
+---
+
+## How features are built here
+
+RyTask is developed spec-first, using Spec Kit (the `.specify/` directory in the repo). Every
+feature goes through the same cycle: **specify** (what and why, with acceptance criteria),
+**clarify** (targeted questions to close the gaps), **plan** (the technical design), **tasks**
+(a dependency-ordered work list), and **implement**. The full trail is public: the folders
+under `specs/` — `001-core-work-loop` through `006-m4-reporting` — contain the spec, plan,
+research decisions, contracts, and task list for every milestone shipped so far.
+
+If you want to contribute more than a small fix, start by reading the spec folder closest to
+the area you are touching. It will tell you not just what the code does, but which
+alternatives were considered and why they lost. Code review here assumes the spec is the
+agreed baseline; surprising the reviewer with unspecified behavior is the slow path.
+
+## Getting started
+
+You will need Node 22+, pnpm, and Docker (for integration tests and the local stack).
+
+```bash
+pnpm install
+pnpm build
+pnpm test               # unit + contract tests
+pnpm test:integration   # needs Docker — spins up real PostgreSQL
+pnpm lint               # Biome
+```
+
+Formatting and linting are Biome, configured centrally: single quotes, 2-space indentation,
+100-column lines. `pnpm lint:fix` settles most disputes; there is no formatting debate to
+have.
+
+## The gates your change must pass
+
+CI runs four checks beyond the test suites, and each can fail the build on its own:
+
+```bash
+pnpm check:required-tests   # every declared required test file exists
+pnpm check:mcp-parity       # every service capability has an MCP tool
+pnpm check:design-tokens    # product UI uses semantic tokens only
+pnpm check:boundaries       # module boundaries, repository-only DB access, no cycles
+```
+
+These are explained in [testing and quality gates](/docs/explanation/testing-and-quality) and
+[MCP parity](/docs/explanation/mcp-parity). Run them locally before pushing; they are fast,
+and a red gate is never negotiable in review.
+
+## Adding a module
+
+If your contribution introduces a new backend module under `apps/api/src/modules/`, the
+checklist is short but strict:
+
+1. **Expose a contract.** The module's public surface is a `*.contract.ts` interface plus any
+   events it publishes — nothing else is importable from outside, and the boundary gate
+   enforces it.
+2. **Declare a test plan.** Add a `module.testplan.ts` listing the module's providers,
+   controllers, policies, and their required test files. The required-tests gate fails until
+   every declared file exists.
+3. **Scope your data access.** Every repository extends `TenantScopedRepository`; every
+   tenant-scoped table carries `organizationId` and gets a tenancy-isolation test. Raw
+   database imports outside `repositories/` fail the boundary gate.
+4. **Cover new capabilities with MCP tools.** Any new service use case must appear in the MCP
+   registry with a matching tool, or `check:mcp-parity` fails. Deliberate deferrals are
+   documented in the parity script itself, never left implicit.
+
+## The license
+
+RyTask is licensed under **AGPL-3.0-only**. In practice that means two things: you can run,
+modify, and self-host it freely, for any purpose, forever. If you offer a modified version to
+others as a network service, you must make your modifications available under the same
+license — the one obligation that keeps improvements flowing back to everyone who runs it.
+
+## Where to read next
+
+- [Architecture overview](/docs/explanation/architecture) — the modular monolith and its
+  enforced boundaries.
+- [Multi-tenancy and data isolation](/docs/explanation/multi-tenancy) — the machinery your
+  module inherits.
+- [Why RyTask](/docs/explanation/why-rytask) — the product bar your change will be measured
+  against, including the non-technical-teammate test.

@@ -1,0 +1,89 @@
+---
+title: Architecture overview
+description: A modular monolith with hard, machine-enforced boundaries — one codebase, one image, many clients.
+---
+
+## A modular monolith, on purpose
+
+RyTask's backend is a single NestJS application split into modules with hard boundaries —
+identity, orgs, projects, work-items, comments, views, search, notifications, slack, and
+time-tracking. It deploys as one process and one database, which keeps self-hosting simple
+(the whole point of the product), while the boundaries keep each module extractable into its
+own service later without a rewrite. You get microservice discipline without microservice
+operations.
+
+## What a module is here
+
+A module exposes exactly two public surfaces:
+
+- a **contract** — a `*.contract.ts` file declaring the service interface other modules may
+  call, and
+- its **published events** — domain events under `events/` that other modules may subscribe to.
+
+Everything else — providers, repositories, domain policies, internal services — is private.
+A module never imports another module's repositories and never queries another module's tables
+directly. Cross-module reads go through the owning module's contract or a read-model it
+publishes.
+
+## Boundaries are enforced, not promised
+
+The rules above are not a convention to remember in code review. They are checked by
+dependency-cruiser in CI (`pnpm check:boundaries`, configured in
+`packages/config/dependency-cruiser.cjs`), with three rules:
+
+- **`no-cross-module-internals`** — a module may only reach another module through its
+  `*.contract.ts` or its `events/`; importing another module's services, providers,
+  repositories, or domain code fails the build.
+- **`no-raw-db-outside-repositories`** — direct imports of the database package are only
+  allowed inside `repositories/` and the tenancy machinery, so every query flows through a
+  tenant-scoped repository (see [multi-tenancy](/docs/explanation/multi-tenancy)).
+- **`no-circular`** — circular dependencies make modules non-extractable, so they are an
+  error anywhere.
+
+A boundary violation is a red build, the same as a failing test.
+
+## One codebase, one image, two roles
+
+The API server and the background worker are the same codebase and the same Docker image. The
+entrypoint in `apps/api/src/main.ts` checks one environment variable: with `WORKER=1` it boots
+the BullMQ background processors, otherwise it boots the HTTP server. Domain logic lives once;
+request handling and background processing scale independently by running more of either role.
+
+Async work — notifications, Slack delivery, scheduled scans — goes through BullMQ on Redis.
+Jobs are idempotent and safe to retry, and every queue processor has an integration test that
+enqueues, processes, and asserts, including on replay.
+
+## API-first, no back doors
+
+The REST API and the domain events are the contract. The web app, the Slack bot, and the MCP
+server are all clients of the same services — none of them gets a private side channel into
+the database or a special-cased code path. An MCP tool dispatches to the same service its REST
+sibling calls, under the same permissions and the same tenant context. This is what makes
+[full MCP parity](/docs/explanation/mcp-parity) sustainable: there is only one surface to keep
+in parity with.
+
+## Ports and adapters at the edges
+
+External I/O sits behind interfaces in `apps/api/src/common`: `Clock`, `IdGenerator`,
+`PasswordHasher`, `Mailer`, `Crypto`, and the Slack and GitHub ports, among others. Domain
+logic depends on the port, never the vendor library, so policies and providers are pure and
+testable without infrastructure — and swapping an adapter (a different mailer, a fake clock in
+tests) touches one file.
+
+## The monorepo at a glance
+
+| Path | What lives there |
+|---|---|
+| `apps/api` | The NestJS backend — API and worker, selected by `WORKER=1`. |
+| `apps/web` | The Next.js web app. |
+| `apps/docs` | This documentation site. |
+| `packages/db` | The Drizzle schema (`src/tables.ts` is the single source of truth), migrations, and seed. |
+| `packages/contracts` | Shared DTOs, the MCP tool registry, and API schemas — one contract, no drift. |
+| `packages/ui` | Shared React components and the design tokens. |
+| `packages/config` | Shared tsconfig, Biome, Vitest, and boundary-rule presets. |
+| `packages/sdk` | The generated TypeScript client. |
+| `infra/docker` | Dockerfiles and the Compose stack. |
+| `scripts` | The CI gates — required tests, MCP parity, design tokens. |
+
+For how these pieces are kept honest in CI, see
+[testing and quality gates](/docs/explanation/testing-and-quality).

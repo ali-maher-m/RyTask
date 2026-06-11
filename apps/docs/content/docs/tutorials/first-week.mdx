@@ -1,0 +1,95 @@
+---
+title: Your first week with RyTask
+description: The everyday rhythm — capture from Slack, track time against estimates, keep your inbox clean, find anything, and connect an AI agent.
+---
+
+You have RyTask running and your first task tracked (if not, start with the
+[quickstart](/docs/tutorials/quickstart)). This tutorial walks through the habits that make
+RyTask pay off in week one: capturing work the moment it appears, tracking time honestly, and
+keeping on top of what needs you.
+
+## Capture from Slack
+
+Most interruptions arrive in Slack, so that is where capture should live. Once an owner or admin
+has connected your Slack workspace (Settings → Integrations), anyone can create a task without
+leaving the conversation:
+
+1. In any Slack channel, type `/task` followed by the task title — for example
+   `/task Fix the login redirect #bug !high`. The same shortcuts work as in the app's quick-add:
+   `@name`, `#label`, `!priority`, `^date`.
+2. Or type `/task` with nothing after it to open a small form where you fill in the details.
+3. Slack confirms the new task with its ID, and it lands in your team's default capture project.
+
+Set up the connection, the default capture project, and the mapping between Slack accounts and
+RyTask accounts in the [Slack guide](/docs/guides/slack).
+
+## Track time against an estimate
+
+The habit worth building: before you start a task, give it an estimate; while you work it, run
+the timer.
+
+1. Open the task and set the **Estimate** field to the hours you expect.
+2. Click **Start timer** when you begin. You can only have one timer running at a time — starting
+   work on something else means deciding what to do with the current timer, which is the point.
+3. Stop the timer when you switch or finish. The entry is saved against the task.
+4. Forgot the timer? Add a manual entry on the task — a duration, or a start and end time.
+
+The plan-vs-actual meter lives inside the task row, so the answer to "how is this going?" is
+always visible: a fill for logged time, a tick for the plan. When logged time passes the
+estimate, the meter turns red and shows how far over you are. No estimate means no judgement —
+the meter just shows what you have logged.
+
+More in the [time tracking guide](/docs/guides/users/time-tracking) and on capture shortcuts in
+[fast capture](/docs/guides/users/fast-capture).
+
+## Keep your inbox clean
+
+Click **Inbox** in the sidebar. Everything that needs your attention arrives here: you were
+assigned a task, mentioned in a comment, someone commented on your task, a status changed, or
+something is due soon or overdue.
+
+A clean-inbox routine that takes two minutes:
+
+1. Work through the **Unread** tab top to bottom.
+2. Done with one? Mark it read.
+3. Not now, but soon? Snooze it — it disappears and resurfaces when the snooze ends.
+4. Never need it again? Archive it.
+
+The unread badge on the sidebar tells you at a glance whether anything is waiting.
+
+## Find anything
+
+Two ways, and both are fast:
+
+1. Press **Cmd+K** (Mac) or **Ctrl+K** (Windows/Linux) anywhere in the app to open the command
+   palette. Type a few letters of a task, project, or page and jump straight to it.
+2. Use the **Search** page from the sidebar when you want to browse results rather than jump.
+
+## Connect an AI agent
+
+Anything you can do in the RyTask UI, an AI agent can do through RyTask's MCP server — create
+and update tasks, log time, comment, search. To connect one:
+
+1. Go to **Settings → Agent access**. It shows the MCP server address with a copy button.
+2. Mint a personal access token there. The secret is shown once — copy it somewhere safe. You
+   can scope tokens down and revoke them at any time.
+3. Point your agent (Claude, or any MCP-capable client) at the address with the token.
+
+The agent acts as you, with your permissions — nothing more. Step-by-step client setup is in
+[Connect an AI agent](/docs/guides/mcp/connect).
+
+## See where your time went
+
+Reporting — the "My week" summary and the planned-vs-interruption time report — is in progress
+and lands in the next release; see [Reporting](/docs/guides/users/reporting) for what is coming.
+
+## A rhythm to aim for
+
+By the end of week one, a good day looks like this:
+
+1. Morning: open the Inbox, clear it, glance at your tasks.
+2. All day: capture interruptions the moment they land — `/task` in Slack, quick-add or Cmd+K in
+   the app. Ten seconds, then back to work.
+3. While working: timer on, timer off. Estimates on anything bigger than half an hour.
+4. The meters tell the honest story of plan versus reality — and that story is what makes next
+   week's plan better.

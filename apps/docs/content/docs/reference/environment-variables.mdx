@@ -1,0 +1,91 @@
+---
+title: Environment variables
+description: Every configuration knob RyTask reads, with its default, whether you must set it, and what it does — verified against the code.
+---
+
+All configuration comes from the environment (no secrets in code). Safe self-host defaults are
+built in, so `docker compose up` works with an empty environment; production overrides go in
+`.env` (only `.env.example` is committed). Integer variables that fail to parse silently fall
+back to their default.
+
+## Core
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `PORT` | `3001` | No | TCP port the API listens on (`0.0.0.0`). |
+| `NODE_ENV` | — | No | `production` turns on HSTS/nosniff security headers and the `JWT_SECRET` boot check; `test` disables Redis reconnect retries (used by the test suites). |
+| `DATABASE_URL` | `postgres://rytask:rytask@localhost:5432/rytask` | No | PostgreSQL connection string. Used by the API, the worker, and `drizzle-kit` migrations. The pool is lazy — no connection until the first query. |
+| `REDIS_URL` | `redis://localhost:6379` | No | Redis connection string (rate limiting, idempotency, BullMQ queues). The client is lazy-connect, and a down Redis never crashes the process. |
+| `APP_VERSION` | `0.0.0` | No | Version string reported by `/healthz`. |
+| `APP_BASE_URL` | `http://localhost:3000` | No | Base URL used to build verification, password-reset, and invite links in emails. |
+
+## Auth and security
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `JWT_SECRET` | `dev-insecure-jwt-secret-change-me` | **Yes, in production** | HS256 signing secret for access JWTs, and the HMAC key for hashing refresh/PAT/invite/reset tokens. In production the boot **fails fast** if it is missing, equal to the dev default, or shorter than 32 characters (unless an RS256 key pair is provided). |
+| `JWT_ISSUER` | `rytask` | No | The `iss` claim on issued JWTs. |
+| `JWT_PRIVATE_KEY` | — | No | PEM private key. Setting **both** PEM keys switches signing from HS256 to RS256 and exempts `JWT_SECRET` from the production check. |
+| `JWT_PUBLIC_KEY` | — | No | PEM public key (see above). |
+| `ACCESS_TOKEN_TTL_SECONDS` | `900` | No | Access-token lifetime. **Hard-capped at 900** (15 minutes) — a larger value is clamped down. |
+| `REFRESH_TOKEN_TTL_SECONDS` | `2592000` | No | Refresh-token lifetime (30 days). |
+| `ALLOW_PUBLIC_SIGNUP` | `false` | No | Org-level default for self-registration; invite-only unless `true` or `1`. |
+| `ARGON2_MEMORY_COST` | `19456` | No | argon2id memory cost (KiB) for password hashing. |
+| `ARGON2_TIME_COST` | `2` | No | argon2id iterations. |
+| `ARGON2_PARALLELISM` | `1` | No | argon2id parallelism. |
+| `CORS_ORIGIN` | — | No | Comma-separated list of allowed browser origins. When unset, the API reflects the request origin (the self-hosted single-tenant default); set it to narrow CORS in production. |
+
+## Rate limiting
+
+All enforcement details are in [Rate limits](/docs/reference/rate-limits).
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `THROTTLE_WINDOW_SECONDS` | `60` | No | Window of the general per-principal/IP request bucket. |
+| `THROTTLE_MAX_REQUESTS` | `300` | No | Requests allowed per general window. |
+| `AUTH_THROTTLE_WINDOW_SECONDS` | `60` | No | Window of the stricter bucket for `/auth/*` routes. |
+| `AUTH_THROTTLE_MAX_REQUESTS` | `20` | No | Requests allowed per auth window. |
+| `LOGIN_MAX_FAILURES` | `5` | No | Failed sign-ins per (email, IP) before lockout. |
+| `LOGIN_LOCKOUT_SECONDS` | `900` | No | Lockout window after the failure threshold (15 minutes). |
+
+## Slack
+
+Slack is **inert by default**: leave all of these unset and the app runs with a no-op Slack
+adapter. Slack counts as configured only when `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, and
+`SLACK_SIGNING_SECRET` are all present — and in that case `SLACK_TOKEN_ENC_KEY` becomes
+mandatory (the boot fails fast without it).
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `SLACK_CLIENT_ID` | — | Only to enable Slack | Slack app client id (from the app's Basic Information page). |
+| `SLACK_CLIENT_SECRET` | — | Only to enable Slack | Slack app client secret. |
+| `SLACK_SIGNING_SECRET` | — | Only to enable Slack | Verifies the HMAC signature on every inbound Slack webhook (see [Webhooks and idempotency](/docs/reference/webhooks-idempotency)). |
+| `SLACK_OAUTH_CALLBACK_URL` | — | No | Where Slack returns the OAuth consent; must match the app's redirect URL. |
+| `SLACK_TOKEN_ENC_KEY` | — | **Yes, when Slack is configured** | Base64-encoded **32-byte** AES-256-GCM key that encrypts per-install bot tokens at rest. Generate with `openssl rand -base64 32`. Boot fails if Slack is configured and this is missing or not exactly 32 bytes. |
+
+## MCP
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `MCP_PUBLIC_URL` | — | No | Public base URL the MCP HTTP/SSE transport is reachable at; surfaced on the Agent access page so a human can connect an MCP client. Leave unset for stdio-only/local use. |
+| `RYTASK_PAT` | — | For the stdio transport | Personal access token used by the stdio MCP entrypoint to authenticate as a principal. |
+
+## Worker
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `WORKER` | — | No | Set `WORKER=1` to start the process as the background worker (BullMQ consumers) instead of the HTTP API. Same codebase, same Docker image — only the entrypoint behavior changes. |
+
+## Web
+
+| Variable | Default | Required | What it does |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `''` (relative, same-origin) | No | API base URL used by the **browser**. This is a **build-time** value: it is baked into the client bundle when `next build` runs (the Docker build accepts it as a build arg), so changing it at runtime has no effect. The compose stack builds with `http://localhost:3001`. |
+| `API_URL` | `http://localhost:3001` | No | API base URL used by **server-side** rendering in the web app (container-to-container in compose: `http://api:3001`). |
+
+## Listed in `.env.example` but not read by the code yet
+
+These appear in `.env.example` for the planned compose services (MinIO, Mailhog) but no code
+path reads them today: `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`,
+`SMTP_HOST`, `SMTP_PORT`, and `NEXT_PUBLIC_MCP_URL` (the Agent access page gets the MCP URL
+from the API, which reads `MCP_PUBLIC_URL`). Setting them currently has no effect.

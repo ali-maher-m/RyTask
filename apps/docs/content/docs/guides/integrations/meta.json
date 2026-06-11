@@ -1,0 +1,4 @@
+{
+  "title": "Other integrations",
+  "pages": ["index", "github", "email-notifications", "outbound-webhooks", "slack-two-way-sync"]
+}

@@ -1,0 +1,82 @@
+---
+title: Connecting a client
+description: Point any MCP client at RyTask over HTTP with a bearer token, or run the local stdio transport — with copy-paste setup for Claude Code and Claude Desktop.
+---
+
+RyTask's MCP server speaks two transports. Both expose the same 49 tools and both
+authenticate with a [personal access token](/docs/guides/mcp/agent-access) (PAT).
+
+The app shows you everything on this page, pre-filled for your server: open
+**Settings → Agent access** to see the HTTP endpoint, the stdio command, and short connect
+steps, next to the panel where you mint the token itself.
+
+## HTTP (streamable HTTP / SSE)
+
+The remote transport lives on the API server at:
+
+```
+{API origin}/api/v1/mcp
+```
+
+Clients use `POST` (and `GET` for the SSE stream) with the token as a bearer credential:
+
+```
+Authorization: Bearer <your token>
+```
+
+The transport is **stateless**: there is no server-side session — every request is
+authenticated by its token, each request carries everything it needs. An invalid or revoked
+token gets an immediate JSON-RPC error (code `-32001`).
+
+The public URL clients should use is whatever the `MCP_PUBLIC_URL` environment variable is
+set to on the server — that exact value is what the Agent access page displays. If it is
+unset, the page shows no HTTP endpoint (the integration is simply not advertised).
+
+### Claude Code
+
+```bash
+claude mcp add --transport http rytask https://rytask.example.com/api/v1/mcp \
+  --header "Authorization: Bearer <your token>"
+```
+
+Replace the URL with the one shown on your Agent access page.
+
+## stdio (local)
+
+For a client running on the same machine as RyTask, there is a local stdio transport. The
+command — exactly as the Agent access page shows it — is:
+
+```bash
+RYTASK_PAT=<your token> pnpm --filter @rytask/api mcp:stdio
+```
+
+Two practical notes:
+
+- The script runs the compiled entrypoint (`node dist/main.mcp.js`), so the `@rytask/api`
+  package must be **built first** (`pnpm --filter @rytask/api build`).
+- It boots the full RyTask application context (it is a third entrypoint of the same
+  backend, alongside the API and the worker), so it needs the same environment the API
+  runs with — database, Redis, and so on.
+
+### Claude Desktop and other stdio clients
+
+Add an `mcpServers` block to the client's configuration:
+
+```json
+{
+  "mcpServers": {
+    "rytask": {
+      "command": "pnpm",
+      "args": ["--filter", "@rytask/api", "mcp:stdio"],
+      "env": { "RYTASK_PAT": "<your token>" }
+    }
+  }
+}
+```
+
+Run the client from (or set its working directory to) the RyTask repository so `pnpm` can
+resolve the workspace.
+
+Once connected, the agent can list and call any of the 49 tools its token permits — see the
+[MCP tools reference](/docs/reference/mcp-tools) for the catalog and the
+[security model](/docs/guides/mcp/security) for what "permits" means.

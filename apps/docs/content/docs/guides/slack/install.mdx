@@ -1,0 +1,107 @@
+---
+title: Install and connect
+description: Create the Slack app, point it at your RyTask server, set five environment variables, and connect from Settings → Integrations.
+---
+
+Connecting Slack takes three parts: a Slack app that points at your RyTask server, a few
+environment variables on the server, and one click in RyTask's settings. None of it touches
+your data — until Slack is configured, the integration is simply off, and RyTask runs fine
+without it.
+
+Throughout this page, `https://rytask.example.com` stands for the public address of your
+RyTask **API** server (not the web app). Replace it with your own.
+
+## 1. Create the Slack app
+
+In [Slack's app dashboard](https://api.slack.com/apps), create a new app for your workspace,
+then configure three URLs:
+
+**Slash command.** Under *Slash Commands*, create `/task` with the request URL:
+
+```
+https://rytask.example.com/api/v1/integrations/slack/commands
+```
+
+**Interactivity.** Under *Interactivity & Shortcuts*, turn interactivity on and set the
+request URL (this is what delivers the guided capture form's submissions):
+
+```
+https://rytask.example.com/api/v1/integrations/slack/interactivity
+```
+
+**OAuth redirect.** Under *OAuth & Permissions*, add the redirect URL:
+
+```
+https://rytask.example.com/integrations/slack/oauth/callback
+```
+
+Note the difference: the slash-command and interactivity URLs live under `/api/v1`, but the
+OAuth callback is served at the **root** of the API server, without `/api/v1`. Slack sends a
+person's browser there during the approval flow, so RyTask deliberately keeps it at a plain
+address. If you put `/api/v1` in the redirect URL, the approval flow will fail.
+
+During installation RyTask asks Slack for five bot permissions: `commands` (the slash
+command), `chat:write` (posting confirmations), `users:read` and `users:read.email`
+(matching Slack people to RyTask people by email), and `team:read` (showing which workspace
+is connected). You will see these on Slack's approval screen.
+
+From the app's *Basic Information* page, note the **Client ID**, **Client Secret**, and
+**Signing Secret** — you need them next.
+
+## 2. Set the server environment
+
+Add these variables to the RyTask API server's environment (see the
+[environment variables reference](/docs/reference/environment-variables) for the full list):
+
+| Variable | What it is |
+| --- | --- |
+| `SLACK_CLIENT_ID` | The Slack app's Client ID. |
+| `SLACK_CLIENT_SECRET` | The Slack app's Client Secret. |
+| `SLACK_SIGNING_SECRET` | The Slack app's Signing Secret — used to verify that webhooks really come from Slack. |
+| `SLACK_OAUTH_CALLBACK_URL` | The same redirect URL you gave Slack, e.g. `https://rytask.example.com/integrations/slack/oauth/callback`. |
+| `SLACK_TOKEN_ENC_KEY` | A base64-encoded 32-byte key used to encrypt the Slack bot token at rest (AES-256-GCM). |
+
+Generate the encryption key with:
+
+```bash
+openssl rand -base64 32
+```
+
+This key is not optional. The moment Slack is configured (client ID, client secret, and
+signing secret all present), RyTask **refuses to start** unless `SLACK_TOKEN_ENC_KEY` is a
+valid base64-encoded 32-byte value — refusing to boot beats storing a bot token under a bad
+key. If the key is missing or the wrong size you'll see a startup error like:
+
+```
+Refusing to start: SLACK_TOKEN_ENC_KEY is required when Slack is configured.
+Generate one with `openssl rand -base64 32`.
+```
+
+Restart the API (and worker) after setting the variables.
+
+## 3. Connect from RyTask
+
+In RyTask, an admin opens **Settings → Integrations** and clicks **Connect Slack**. RyTask
+sends the browser to Slack's approval screen; approving returns you to the Integrations page
+showing **Connected** and the workspace name.
+
+A few things worth knowing about this flow:
+
+- Connecting is **admin-only** — it requires the Owner or Admin role. Other members can see
+  the connection status but not change it.
+- The approval round-trip is protected by a signed, short-lived state value (it expires
+  after ten minutes) that ties the approval to your organization and to the admin who
+  started it, so a stale or forged callback is rejected.
+- On success the bot token is stored **encrypted** with the key from step 2, and RyTask
+  immediately tries to link every Slack person to a RyTask account **by matching email
+  addresses**. Anyone without a match simply stays unlinked for now — see
+  [user mapping](/docs/guides/slack/user-mapping).
+
+## 4. Pick the default project
+
+Still on **Settings → Integrations**, choose the **default project** for Slack captures.
+Every `/task` capture lands in this project. Until one is picked, captures are politely
+declined with a message asking an admin to set it.
+
+That's it — anyone in the Slack workspace can now type `/task` and
+[capture a task](/docs/guides/slack/capture).

@@ -1,0 +1,75 @@
+---
+title: Organizations and members
+description: How your team's organization is created, how invites work, what the five roles mean, and how to manage members safely.
+---
+
+Everything in RyTask lives inside one organization — your team. Your account, your projects,
+your time entries, and your settings all belong to it, and nothing is ever visible to another
+organization on the same server.
+
+## First-run setup
+
+The very first time someone opens a fresh RyTask install, the app walks them through a short
+setup at `/setup`. That one step creates the organization, makes that person the owner,
+creates the first workspace, and seeds a starter project so the team has somewhere to put
+work right away. Setup only runs once; after that, everyone else joins by invitation (or by
+signing up, if the organization allows it).
+
+## Inviting people
+
+Owners and admins invite teammates from **Settings → Members**. There are two ways:
+
+- **Email an invitation** — you enter the person's email address and pick the role they will
+  have. RyTask records the invitation against that address.
+- **Create a shareable link** — RyTask gives you a link you can copy and send however you
+  like (Slack, chat, a text message). Anyone who opens the link can accept the invite.
+
+One honest caveat: RyTask does not send email yet. Recording an email invitation works, but
+no message goes out automatically — so in practice, **the shareable link is the path that
+works end to end today**. Copy it and hand it to your teammate directly.
+
+Every invite carries a pre-assigned role, so the person lands with the right level of access
+from their first sign-in. A brand-new invitee sets their name and password when they accept;
+someone who already has an account just joins.
+
+## Roles at a glance
+
+| Role | In one sentence |
+|------|-----------------|
+| Owner | Full control of the organization, including settings, billing-level decisions, and transferring ownership. |
+| Admin | Manages members, projects, and settings — nearly everything except owner-only actions. |
+| Member | The everyday role: creates and edits work, logs time, comments. |
+| Guest | Limited access for outside collaborators. |
+| Viewer | Read-only: can see work they have access to, but cannot change it. |
+
+See [Permissions and roles](/docs/guides/users/permissions-and-roles) for the plain-words
+breakdown of what each role can do, and the projects page for the separate per-project roles.
+
+## Organization settings
+
+Owners and admins can adjust the organization under **Settings → Organization**:
+
+- timezone and locale
+- week start (Sunday or Monday)
+- working days and working hours
+- a logo
+- the signup policy (whether people can join without an invite)
+
+These settings shape things across the app — for example, the week start and timezone affect
+how dates and weekly figures are presented.
+
+## Removing or deactivating a member
+
+When an owner or admin removes or deactivates a member, RyTask immediately signs them out
+everywhere: their sessions end and their personal access tokens stop working. Their past
+work — items they created, comments, time entries — stays in place so the team's history is
+intact.
+
+## Ownership protections
+
+Two safety rules keep an organization from being orphaned:
+
+- **Last-owner protection.** You cannot remove or demote the only owner. There must always be
+  at least one.
+- **Ownership transfer.** Only the current owner can hand ownership to another member. After
+  the transfer, the previous owner keeps working in the organization with their new role.

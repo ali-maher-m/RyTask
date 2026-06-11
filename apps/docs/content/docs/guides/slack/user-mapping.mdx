@@ -1,0 +1,44 @@
+---
+title: User mapping
+description: How Slack people are linked to RyTask people — automatically by email at connect time, by hand afterwards — and what the link changes.
+---
+
+When someone captures a task from Slack, RyTask wants to record *who* did it. That requires
+knowing which Slack account belongs to which RyTask account — the **user mapping**.
+
+## Automatic linking
+
+When an admin connects Slack, RyTask immediately walks the Slack workspace's member list
+and links each person to a RyTask account **by matching email addresses**. Same email on
+both sides means an automatic link, no work needed.
+
+People who don't match — a different email in Slack, or no RyTask account yet — simply stay
+unlinked. Nothing breaks: they can still capture tasks, the items just aren't attributed to
+them.
+
+## Managing links by hand
+
+Admins manage the mapping under **Settings → Integrations → Slack users**. The page lists
+every Slack person alongside the RyTask account they're linked to. Each row shows whether
+the link was made automatically or by hand, and people who still need linking are
+highlighted so they're easy to spot.
+
+From there an admin can:
+
+- **Link** a Slack person to a RyTask member by picking them from the member list — useful
+  when someone uses different emails in Slack and RyTask.
+- **Unlink** someone, which returns them to the unmapped state.
+
+Like connecting and disconnecting, this is admin-only (the Owner or Admin role).
+
+## What a link changes
+
+- **Attribution.** A linked person's captures record them as the item's reporter, so "who
+  raised this?" has an answer in reports and activity history.
+- **The reminder goes away.** Unlinked captors see a gentle "your Slack account isn't
+  linked yet" note in their capture confirmations; once linked, that disappears.
+
+What a link does *not* change: capture itself. Whether linked or not, `/task` always works
+— RyTask never blocks a capture because it doesn't recognise the captor. An item captured
+by an unlinked person is created normally, with no reporter, and an admin can link the
+person later (existing items keep their original attribution).

@@ -1,0 +1,57 @@
+---
+title: Fast capture
+description: The one-line quick-add grammar that turns a sentence into a fully filled-in task — from the web, Slack, or an AI agent.
+---
+
+The fastest way to create a task is to type one line. RyTask reads a tiny grammar out of
+that line and fills the fields in for you. The same grammar works everywhere capture
+happens:
+
+- the **quick-add** box in the web app,
+- the **`/task`** slash command in Slack,
+- the **`quick_add_issue`** tool when an AI agent creates work over MCP.
+
+## The grammar
+
+A marker only counts at the **start of a word**, so `C#` in a title or `foo@bar.com` are
+left alone.
+
+| Token | Sets | Example |
+|-------|------|---------|
+| `@handle` | Assignee | `@sam` |
+| `#label` | Label | `#bug` |
+| `!priority` | Priority (urgent, high, medium, low, none — any case) | `!high` |
+| `^date` | Due date — ISO or natural language, up to four words | `^friday`, `^2026-07-01`, `^next Friday`, `^in 3 days` |
+
+There is no estimate token today — set the estimate on the item after capture.
+
+## Worked examples
+
+| You type | You get |
+|----------|---------|
+| `Fix login @sam #bug !high ^friday` | "Fix login", assigned to Sam, labeled bug, high priority, due Friday |
+| `Renew SSL cert ^in 3 days !urgent` | "Renew SSL cert", urgent, due three days from now |
+| `Ship the C# client #release` | "Ship the C# client", labeled release — the `C#` stays in the title |
+| `Email foo@bar.com about invoice` | Title kept whole — `@` mid-word is not a marker |
+| `Post \#general update` | "Post #general update" — `\#` escapes a literal `#` |
+
+To put a literal marker at the start of a word, escape it with a backslash: `\@`, `\#`,
+`\!`, `\^`.
+
+## When a token doesn't resolve
+
+Capture **never fails** because of a token. If `@sami` matches nobody, `!hgh` isn't a
+priority, or `^somday` isn't a date, the task is still created instantly — and the
+unresolved tokens are shown back to you so you know which fields to fix on the item. Speed
+first, tidy after.
+
+One nice touch: an unknown `#label` isn't an error at all — labels are created on the fly.
+
+## Where each capture lands
+
+Every item remembers its capture source — Web, Slack, Agent, or API — and shows it as a
+badge on the item. The interruption ledger in [Reporting](/docs/guides/users/reporting) uses
+this to show you where your unplanned work actually comes from.
+
+For the formal token-by-token reference, see
+[Capture syntax](/docs/reference/capture-syntax).

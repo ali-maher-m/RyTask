@@ -1,0 +1,76 @@
+---
+title: Work items
+description: The full tour of a task — fields, statuses, sub-tasks, activity history, the trash, and what happens when two people edit at once.
+---
+
+A work item is a task: the thing you create, assign, discuss, track time on, and finish.
+This page walks through everything an item can hold today.
+
+## The fields
+
+| Field | What it holds |
+|-------|---------------|
+| Title | The one-line summary. Required. |
+| Description | Long-form detail, written in markdown. |
+| Status | One of the project's statuses (see below). |
+| Priority | Urgent, High, Medium, Low, or None. |
+| Assignee | **One** person responsible. <StatusBadge status="coming-soon" /> [Multiple assignees and watchers](/docs/guides/roadmap/richer-work-items) are on the roadmap. |
+| Reporter | Who raised it. Set automatically; for items captured from Slack it's the mapped Slack user. |
+| Labels | Any number of workspace-wide labels, for filtering across projects. |
+| Estimate | A number, treated as hours by the time meter. |
+| Dates | Start date, end date, and due date. Overdue items are flagged. |
+| Source | Where the item came from: Web, Slack, Agent (MCP), or API. Set by the system, never editable. |
+
+## Statuses and categories
+
+Statuses are **per project** — rename, recolor, reorder, add, and remove them to match how
+your team works. Every status maps to one of five fixed categories, which is how RyTask
+knows what a status *means* no matter what you call it:
+
+| Category | Typical statuses |
+|----------|------------------|
+| Backlog | Backlog, Icebox |
+| Unstarted | To do, Ready |
+| Started | In progress, In review |
+| Completed | Done, Shipped |
+| Cancelled | Won't do, Duplicate |
+
+When a status is removed, its items aren't lost — they're reassigned to a status you choose.
+
+## Sub-tasks
+
+Any item can have sub-tasks: smaller items nested under a parent. Sub-tasks are full work
+items with their own assignee, status, and time tracking. RyTask guards the hierarchy for
+you — you can't make an item its own ancestor, and nesting depth is capped, so the tree
+stays a tree.
+
+## Activity history
+
+Every change is recorded per field: who changed what, from which value to which, and when.
+Status changes, assignments, label changes, comments, sub-tasks, and time events (timer
+started/stopped, time logged/edited/deleted) all appear in one chronological feed on the
+item, so "what happened here?" always has an answer.
+
+## When two people edit at once
+
+If you and a teammate both open an item and both hit save, RyTask refuses to silently throw
+one person's change away. The second save is rejected with a polite conflict, and that
+person refreshes to see the latest version before re-applying their edit. You'll rarely
+notice this — but when you do, it means your teammate's work was protected, not lost.
+
+## Trash and restore
+
+Deleting an item moves it to the project's trash (**Projects → your project → Trash**),
+where it can be restored with everything intact — fields, comments, history, and time
+entries. While an item sits in the trash, its logged time is excluded from every total and
+report. Restore it and the time counts again.
+
+## What's coming
+
+These are planned but not in the app yet:
+
+- <StatusBadge status="coming-soon" /> [Attachments, issue templates and types, recurring items, convert/split/merge, and bulk edit](/docs/guides/roadmap/richer-work-items)
+- <StatusBadge status="coming-soon" /> [Dependencies and relations between items](/docs/guides/roadmap/dependencies-and-relations)
+- <StatusBadge status="coming-soon" /> [Custom fields](/docs/guides/roadmap/custom-fields)
+- <StatusBadge status="coming-soon" /> [Milestones and roadmaps](/docs/guides/roadmap/milestones-and-roadmap)
+- <StatusBadge status="coming-soon" /> [Automations](/docs/guides/roadmap/automations)

@@ -1,0 +1,62 @@
+---
+title: Upgrades & migrations
+description: How upgrading re-runs database migrations automatically, why migrations are forward-only, and the honest rollback story.
+---
+
+## Upgrading
+
+Back up first — it takes one command and turns a bad upgrade from a crisis into an
+inconvenience (see [Backups & restore](/docs/guides/self-hosting/backups-and-restore)):
+
+```bash
+make backup
+```
+
+Then an upgrade is a pull and a rebuild:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Compose rebuilds the images from the new source and restarts what changed. Your
+`docker-compose.override.yml` (secrets, public URLs) is untouched by `git pull`, so it keeps
+applying.
+
+## Migrations run themselves
+
+You never run migrations by hand. The one-shot `migrate` service runs on every
+`docker compose up`, and both `api` and `worker` declare a dependency on it completing
+successfully — so the new application code never starts against an old schema. If a
+migration fails, `migrate` exits non-zero, `api` and `worker` do not start, and your data is
+left as it was.
+
+Two properties make this safe to re-run on every boot:
+
+- **Migrations are transactional and tracked.** The migrator applies each pending migration
+  in a transaction and records it, so already-applied migrations are skipped. Running
+  `migrate` ten times is the same as running it once.
+- **The seed is idempotent.** It only inserts rows that do not already exist. It will never
+  overwrite your renamed organization, changed passwords, or any other data.
+
+## Forward-only, by design
+
+The migration files are committed to the repository (in `packages/db/migrations/`) and are
+**forward-only** — there are no "down" migrations. That is honest rather than limiting: a
+reverse migration that deletes a column cannot bring your data back anyway.
+
+So the rollback story is plain:
+
+1. Restore the database backup you took before upgrading.
+2. Check out the previous version (`git checkout <previous-tag-or-commit>`).
+3. `docker compose up -d --build`.
+
+That returns both schema and code to the matching earlier state.
+
+## Never push schema changes directly
+
+If you develop on RyTask you may know `drizzle-kit push`, which diffs the schema straight
+onto a database. **Never run it against a production database.** It bypasses the committed,
+transactional migration files that the `migrate` service depends on, and it can drop data
+without the safety net of a recorded migration. Production schema changes happen only
+through committed migration files, applied by the `migrate` service.

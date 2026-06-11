@@ -1,0 +1,37 @@
+---
+title: Welcome
+description: What RyTask is, and how these docs are organized.
+---
+
+RyTask is an open-source project tracker you run on your own servers. It is built for small,
+interrupt-driven teams, and three things set it apart:
+
+- **Native time tracking with honest reporting.** A one-click timer lives in every task row, every
+  entry is classified as planned work or an interruption, and the numbers always add up.
+- **First-class Slack capture.** `/task Fix the login bug @sam ~2h #bug` becomes a tracked task in
+  under five seconds, without leaving the conversation.
+- **A full-control MCP server.** Anything a person can do in the app, an AI agent can do over MCP —
+  all 49 tools, enforced by an automated parity gate.
+
+RyTask is licensed under AGPL-3.0 and self-hosts with one command: `docker compose up -d`.
+
+## How these docs are organized
+
+The docs follow the [Diátaxis](https://diataxis.fr) model — four sections, four jobs:
+
+| Section | What it's for |
+| --- | --- |
+| [Tutorials](/docs/tutorials) | Learning by doing. Start with the 15-minute quickstart. |
+| [How-to guides](/docs/guides) | Getting a specific job done — hosting, administering, and using each feature. |
+| [Reference](/docs/reference) | Looking things up — the REST API, MCP tools, environment variables, permissions. |
+| [Explanation](/docs/explanation) | Understanding the design — architecture, tenancy, the time model, and why. |
+
+## Feature status, honestly
+
+Not everything described here is shipped. Pages and matrix rows carry one of three badges:
+
+- <StatusBadge status="available" /> — in the current code, verified against it.
+- <StatusBadge status="in-progress" /> — being built right now; lands in the next release.
+- <StatusBadge status="coming-soon" /> — on the roadmap; the page describes the plan, nothing more.
+
+The complete picture is on the [feature status matrix](/docs/reference/feature-status).

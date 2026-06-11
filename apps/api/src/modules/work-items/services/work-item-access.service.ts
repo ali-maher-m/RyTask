@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { CompletedItemRow } from '@rytask/contracts';
 import { ActivityRepository } from '../repositories/activity.repository';
 import { WorkItemWatchersRepository } from '../repositories/work-item-watchers.repository';
 import { WorkItemsRepository } from '../repositories/work-items.repository';
@@ -137,6 +138,20 @@ export class WorkItemAccessServiceImpl implements WorkItemAccessService {
       action: 'TIME_DELETED',
       oldValue: before,
     });
+  }
+
+  /**
+   * "Completed that week" — non-deleted items assigned to the subject with `completed_at` in the
+   * window ∩ readable projects (M4 reporting US3, research D6). Pure work-item lifecycle read; the
+   * repo row already matches `CompletedItemRow`, so it passes straight through (tenant-scoped).
+   */
+  listCompletedForUser(
+    userId: string,
+    from: string,
+    to: string,
+    projectIds: string[] | null,
+  ): Promise<CompletedItemRow[]> {
+    return this.workItems.listCompletedForUser(userId, from, to, projectIds);
   }
 
   /** SYSTEM read-model for the scheduled due scan — classify each candidate + build its key. */

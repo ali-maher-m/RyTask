@@ -1,0 +1,68 @@
+---
+title: MCP parity
+description: Agents are first-class clients — every capability has a tool, and CI fails when one is missing.
+---
+
+## Agents are users, not integrations
+
+Most trackers treat AI agents the way they once treated mobile apps: a partial API, added
+later, covering whatever someone got around to. RyTask takes the opposite stance. An AI agent
+is a designed-for user — one of the product's personas — and the built-in MCP server is its
+UI. The bar is simple to state: anything a person can do in the web app, an agent can do
+through MCP. Read and write, capture and triage, not a read-only window.
+
+## Parity is a CI gate, not a goal
+
+A parity promise decays unless something enforces it, so RyTask enforces it mechanically.
+`scripts/check-mcp-parity.ts` holds the list of service capabilities — every use case the
+backend exposes — and checks it against the MCP tool registry in `packages/contracts`. The
+check fails the build in two directions:
+
+- a capability exists with no MCP tool covering it, or
+- an MCP tool references a capability the backend does not actually have.
+
+Today the registry stands at 49 tools covering 49 capabilities. When a new feature lands, its
+capabilities go on the list, and the build stays red until the matching tools exist. The
+deliberate exceptions are documented in place: credential flows (register, login, password
+reset) are excluded by design because an agent authenticates with a token and never performs
+them, and time-tracking control over MCP is an explicitly deferred v2 item rather than a
+silent gap.
+
+## Same services, same rules
+
+Parity in tool *count* would be easy to fake with a parallel implementation that slowly
+drifts. RyTask's parity is structural. The tool wiring in
+`apps/api/src/mcp/tools/tool-wiring.ts` says it directly: every MCP tool is wired to the
+existing service the REST controller calls. The MCP edge owns no domain logic — a tool runs
+the same code path as its REST sibling, so behavior cannot diverge between a person clicking
+and an agent calling.
+
+The same is true of the rules around that code path:
+
+- **Authorization** — an agent authenticates with a token carrying scopes, and its effective
+  permission is the intersection of the token's scope and the owning user's role,
+  default-deny. A read-only token cannot mutate anything no matter which tool it calls, and a
+  token can never do more than the person it belongs to.
+- **Tenancy** — every tool call runs inside the same tenant context as a web request, so all
+  of the [isolation guarantees](/docs/explanation/multi-tenancy) apply unchanged.
+- **Destructive operations** — tools that delete or remove things are flagged as destructive
+  in the registry, so agent frameworks can require confirmation before invoking them.
+
+There is no "agent mode" with different semantics. An agent is just another authenticated
+client of the one API.
+
+## The docs follow the same philosophy
+
+The [MCP tool reference](/docs/reference/mcp-tools) in this documentation is generated
+directly from the tool registry, and a drift check fails the docs build if the registry and
+the generated pages ever disagree — a tool added without regenerating, or a stale page for a
+removed tool. It is the parity idea applied to documentation: where a promise matters, a
+script verifies it, because promises kept by hand eventually are not.
+
+## Why this matters
+
+Teams increasingly delegate real work to agents: triage this inbox, log the time I forgot,
+file what came out of that meeting. That only works if the agent never hits a wall where a
+capability exists on screen but not in its toolset — every such wall pushes the human back
+into being the agent's hands. Full parity, enforced where it cannot quietly erode, is what
+makes "ask the agent to do it" a dependable answer instead of a demo.

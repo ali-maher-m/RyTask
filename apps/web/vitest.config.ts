@@ -23,7 +23,13 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     setupFiles: ['./test/setup.ts'],
-    include: ['test/**/*.test.{ts,tsx}', 'components/**/*.spec.tsx'],
+    include: [
+      'test/**/*.test.{ts,tsx}',
+      'components/**/*.spec.tsx',
+      // M4 reporting colocates its pure-lib + client specs beside the code (web-surfaces §6).
+      'lib/**/*.spec.{ts,tsx}',
+      'app/**/*.spec.tsx',
+    ],
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },
 });

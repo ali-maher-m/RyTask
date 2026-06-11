@@ -1,0 +1,36 @@
+{
+  "name": "@rytask/docs",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/generate-mcp-pages.mjs && node scripts/check-mcp-docs-drift.mjs && next build",
+    "dev": "node scripts/generate-mcp-pages.mjs && next dev --port 3002",
+    "start": "next start --port 3002",
+    "generate:mcp": "node scripts/generate-mcp-pages.mjs",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "check:mcp-docs-drift": "node scripts/check-mcp-docs-drift.mjs",
+    "typecheck": "fumadocs-mdx && tsc --noEmit"
+  },
+  "dependencies": {
+    "@rytask/contracts": "workspace:*",
+    "fumadocs-core": "16.10.0",
+    "fumadocs-mdx": "15.0.12",
+    "fumadocs-openapi": "11.0.0",
+    "fumadocs-ui": "16.10.0",
+    "next": "16.2.9",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "22.10.5",
+    "@types/react": "19.0.2",
+    "@types/react-dom": "19.0.2",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.3.0",
+    "typescript": "5.7.3"
+  }
+}

@@ -1,0 +1,61 @@
+---
+title: Agent access & tokens
+description: Mint a personal access token, scope it down to what the agent needs, and revoke it the moment you change your mind.
+---
+
+Everything an agent can do in RyTask flows from one credential: a **personal access token**
+(PAT) you mint yourself. This page covers creating one, choosing its scopes, and revoking
+it.
+
+## Minting a token
+
+The token panel lives in two places: on **Settings → Agent access** (next to the MCP
+endpoints, which is usually where you want it) and on the tokens page under Settings.
+Every user manages their own tokens — minting is not admin-gated, because a token can never
+do more than the person who minted it.
+
+Creating one takes a name, a type (`PAT` or `MCP` — a label for your own bookkeeping), and
+optional scopes. When you create it, the **secret is shown exactly once**. Copy it then;
+RyTask stores only a hash and cannot show it again. It never appears in a URL or a log.
+
+The token list shows each token's scopes and when it was **last used**, which is handy for
+spotting an agent that has gone quiet — or one that hasn't.
+
+## Choosing scopes
+
+Scopes narrow a token below your own role. The rule is simple and strict:
+
+> Effective permission = token scopes ∩ your role, default-deny.
+
+A permission must pass **both** gates. Scoping a token to `work:write` grants nothing if
+your role is read-only; conversely, an Owner's token scoped to `work:read` cannot write,
+no matter who holds it. Leaving scopes blank (or using `*`) means "my full role".
+
+Scopes are the same permission names the rest of RyTask uses — the common ones for agents:
+
+| Scope | Allows |
+| --- | --- |
+| `work:read` | Read work items, projects, statuses, views, comments, labels, search. |
+| `work:write` | Create and change them. |
+| `org:read` | Read organization settings. |
+| `members:read` | List members and roles. |
+| `workspace:read` | List and read workspaces. |
+
+The full catalog (including the admin-side `members:*`, `org:settings:write`, and
+`tokens:*` permissions) is in the [permissions reference](/docs/reference/permissions).
+
+A good default for an agent that should observe but not touch: `work:read, org:read,
+workspace:read`.
+
+## Revoking
+
+Revoking a token takes effect **immediately**: the MCP transport authenticates every
+request against the token, so the very next call an agent makes with a revoked token fails
+with a JSON-RPC `-32001` error. There is no cached session to wait out.
+
+## One token per agent
+
+Mint a separate token for each agent or automation rather than sharing one. It costs
+nothing, and it buys you three things: you can scope each token to exactly what that agent
+needs, the last-used timestamps tell you which agent is actually active, and revoking one
+agent's access never disturbs another's.

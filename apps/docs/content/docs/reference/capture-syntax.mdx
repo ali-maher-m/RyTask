@@ -1,0 +1,72 @@
+---
+title: Capture syntax
+description: The formal quick-add grammar — markers, escapes, date phrases, conflict rules, and what happens to tokens that cannot be resolved.
+---
+
+Quick add turns one line of text into a structured work item. The **same parser** powers the
+web quick-add bar, the Slack `/task` command, and the MCP `quick_add_issue` tool, so the
+grammar below holds everywhere.
+
+## Markers
+
+A marker only counts at the **start of a whitespace-delimited word**. `foo@bar.com` and `C#`
+are left untouched, because their markers are not at the start of a word.
+
+| Marker | Meaning | Value |
+|---|---|---|
+| `@` | Assignee | A user handle, e.g. `@sara`. Multiple `@` tokens accumulate. |
+| `#` | Label | A label name, e.g. `#bug`. Multiple `#` tokens accumulate. |
+| `!` | Priority | One of `URGENT`, `HIGH`, `MEDIUM`, `LOW`, `NONE` — case-insensitive. |
+| `^` | Due date | ISO `YYYY-MM-DD` or a natural-language phrase (`^tomorrow`, `^next friday`, `^in 3 days`). |
+
+Everything that is not a recognized token becomes the **title**, in order. A bare marker with
+nothing after it (a lone `@` or `#`) is plain title text.
+
+## Escapes
+
+A backslash before a marker at the start of a word makes it literal text: `\@`, `\#`, `\!`,
+`\^`. The backslash is dropped and the rest of the word goes into the title — `\#standup`
+puts the word `#standup` in the title instead of creating a label.
+
+## Date phrases
+
+- A `^` date phrase may span **up to 4 words in total** (the `^` word plus up to 3 following
+  words), so `^next friday` and `^in 3 days` resolve as one date.
+- The parser tries the longest run first and only accepts a phrase when the date parser
+  matches it **as a whole** — so `^friday ship it` consumes only `^friday`, and `ship it`
+  stays in the title.
+- A date phrase never swallows another marker: in `^fri #bug` the phrase stops at `#bug`.
+- Relative dates resolve **forward** from the current date (`^friday` is the next Friday).
+
+## Conflict rules
+
+- Multiple `!` tokens: the **latest wins**.
+- Multiple `^` tokens: the **latest wins**.
+- Multiple `@` and `#` tokens: all of them **accumulate**.
+
+## Unresolved tokens never fail a capture
+
+A token that looks like a marker but cannot be resolved — an unknown user handle, a priority
+that is not one of the five values, a date phrase nothing can parse — is returned as an
+*unresolved token* and surfaced to you (in the UI, the Slack reply, and the MCP result), but
+the item is **still created**. Capture never fails because of a bad token.
+
+## There is no estimate token
+
+The grammar has exactly four markers. There is **no `~estimate` token** — estimates are set
+on the item itself, not in the capture line.
+
+## Worked examples
+
+| Input | Title | Assignees | Labels | Priority | Due | Unresolved |
+|---|---|---|---|---|---|---|
+| `Fix login bug @sara #auth !high ^friday` | `Fix login bug` | `sara` | `auth` | `HIGH` | next Friday | — |
+| `Email foo@bar.com about the C# build` | `Email foo@bar.com about the C# build` | — | — | — | — | — |
+| `\#standup notes for \@team` | `#standup notes for @team` | — | — | — | — | — |
+| `Ship it !low !urgent` | `Ship it` | — | — | `URGENT` (latest wins) | — | — |
+| `Pay invoices ^2026-07-01` | `Pay invoices` | — | — | — | `2026-07-01` | — |
+| `^in 3 days review the contract @amir @lena` | `review the contract` | `amir`, `lena` | — | — | 3 days from now | — |
+| `^friday ship it` | `ship it` | — | — | — | next Friday | — |
+| `Call vendor !asap` | `Call vendor` | — | — | — | — | `!asap` (priority) |
+| `Plan offsite ^someday #planning` | `Plan offsite` | — | `planning` | — | — | `^someday` (date) |
+| `Ping @nobody-here about it` | `Ping about it` | — | — | — | — | `@nobody-here` (unknown user, item still created) |

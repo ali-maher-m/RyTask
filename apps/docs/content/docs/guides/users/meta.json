@@ -1,0 +1,17 @@
+{
+  "title": "Using RyTask",
+  "pages": [
+    "index",
+    "organizations-and-members",
+    "workspaces",
+    "projects",
+    "work-items",
+    "views-and-boards",
+    "fast-capture",
+    "time-tracking",
+    "reporting",
+    "inbox-and-notifications",
+    "search",
+    "permissions-and-roles"
+  ]
+}

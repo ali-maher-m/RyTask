@@ -1,0 +1,160 @@
+---
+title: Quickstart
+description: Run RyTask with Docker Compose, sign in, create a project, capture a task, and log time — in about 15 minutes.
+---
+
+This tutorial takes you from nothing to a running RyTask with your first tracked task. You will
+start the full stack with Docker Compose, sign in, create a project, capture a task, and log time
+against an estimate.
+
+## What you need
+
+- Docker with Docker Compose (Docker Desktop or OrbStack both work)
+- git
+- About 15 minutes
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/ali-maher-m/RyTask.git
+cd RyTask
+```
+
+## 2. Set a JWT secret (required)
+
+The API image runs in production mode, and it refuses to start without a strong `JWT_SECRET`
+(at least 32 characters — the insecure development default is rejected on purpose, so a forgotten
+secret fails fast instead of running with a key anyone could forge tokens with). The committed
+`docker-compose.yml` does not set one, so you provide it with an override file.
+
+First, generate a secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Then create a file named `docker-compose.override.yml` next to `docker-compose.yml`. Docker
+Compose merges it in automatically — no extra flags needed. Paste your generated secret in both
+places:
+
+```yaml
+# docker-compose.override.yml
+services:
+  api:
+    environment:
+      JWT_SECRET: paste-your-generated-secret-here
+  worker:
+    environment:
+      JWT_SECRET: paste-your-generated-secret-here
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+```
+
+The `web` block matters too: the browser part of the app needs the API's address baked in at
+build time. Without it, the web app builds with an empty API URL and sign-in will fail in the
+browser. `http://localhost:3001` is correct for running on your own machine; if you are setting
+RyTask up on a server, see [Self-hosting](/docs/guides/self-hosting).
+
+## 3. Start the stack
+
+```bash
+docker compose up -d --build
+```
+
+If you have `make` installed, `make up` runs the same command. The first build takes a few
+minutes. Compose brings up everything in order:
+
+| Service  | What it does                                   | Port        |
+| -------- | ---------------------------------------------- | ----------- |
+| postgres | The database (PostgreSQL 16)                   | 5432        |
+| redis    | Queues, cache, realtime (Redis 7)              | 6379        |
+| minio    | File storage                                   | 9000 / 9001 |
+| mailhog  | Catches outgoing email in dev (web UI on 8025) | 1025 / 8025 |
+| migrate  | Runs once: migrates the database, then seeds it | —          |
+| api      | The RyTask API                                 | 3001        |
+| worker   | Background jobs (same image as the API)        | —           |
+| web      | The RyTask app you use in the browser          | 3000        |
+
+Check that the API is up and ready:
+
+```bash
+curl http://localhost:3001/healthz
+curl http://localhost:3001/readyz
+```
+
+`healthz` says the process is alive; `readyz` also checks the database and Redis. Both should
+return 200. If the API keeps restarting, run `docker compose logs api` — the most common cause is
+a missing or short `JWT_SECRET`.
+
+## 4. Sign in
+
+The database is seeded with a demo organization so you can explore immediately. Open
+[http://localhost:3000](http://localhost:3000) and sign in with:
+
+- Email: `founder@rytask.local`
+- Password: `rytask-dev-password`
+
+You land in the "RyTask Demo" organization as its owner, with a default workspace and a demo
+project (key `RY`) that already has three tasks, some logged time, and a running timer — so you
+can see what a lived-in workspace looks like.
+
+A note on accounts: RyTask is invite-only by default. The seeded demo organization already
+exists, so the first-run setup wizard reports "already set up", and the register page will tell
+new visitors the workspace is invite-only. To make this instance your own: sign in as the
+founder, rename the organization under Settings → Organization, and invite your teammates from
+Settings → Members. (Settings → Organization also has a switch to allow public signup, if you
+want anyone with the link to be able to register.)
+
+## 5. Create your first project
+
+1. Click **Projects** in the sidebar.
+2. Click **New project**.
+3. Give it a name and a short key prefix (like `OPS`) — task IDs such as `OPS-1` are minted
+   from it.
+4. Create the project. It comes with a sensible set of statuses (Backlog, To Do, In Progress,
+   Review, Done, Cancelled), and you get a list view and a board view.
+
+## 6. Capture your first task
+
+1. Open your project's list view.
+2. Type into the quick-add box at the top — it captures a task from one line. You can mix in
+   shortcuts as you type:
+   - `@name` assigns someone
+   - `#label` adds a label
+   - `!high` sets priority (urgent, high, medium, low, none)
+   - `^friday` sets a due date (plain language works: `^tomorrow`, `^next friday`)
+3. Press enter. The task appears in the list with its own ID.
+
+For example: `Fix the login redirect @founder #bug !high ^friday`
+
+There is no quick-add shortcut for estimates — you set the estimate on the task itself, which is
+the next step. The full grammar is in the
+[capture syntax reference](/docs/reference/capture-syntax).
+
+## 7. Set an estimate and log time
+
+1. Click the task to open its detail view.
+2. In the **Estimate** field, enter the hours you expect it to take — say `2`.
+3. Click **Start timer**. Work for a bit (or just wait a minute), then click **Stop timer**.
+   The entry appears in the task's time entries list.
+4. Prefer logging after the fact? Use the **Add entry** form on the same page: either a duration
+   (hours and minutes) or a start and end time.
+
+As soon as time is logged, the plan-vs-actual meter shows logged time against the estimate — a
+fill for what you have logged, with a tick marking the plan. Go past the estimate and the meter
+turns red and tells you how far over you are. You will also see this meter right in the task
+row in list views, so plan-vs-actual is visible without opening anything.
+
+The seeded demo project shows all the states at once: `RY-1` is under its estimate, `RY-2` is
+over (red), and `RY-3` has a timer running.
+
+## Where next
+
+- [Your first week with RyTask](/docs/tutorials/first-week) — the everyday rhythm: Slack
+  capture, time tracking, your inbox, and connecting an AI agent.
+- [Fast capture](/docs/guides/users/fast-capture) — get tasks in, in seconds.
+- [Time tracking](/docs/guides/users/time-tracking) — timers, manual entries, and the meter.
+- [Self-hosting](/docs/guides/self-hosting) — run RyTask on a real server.
+- [Environment variables](/docs/reference/environment-variables) — every setting explained.

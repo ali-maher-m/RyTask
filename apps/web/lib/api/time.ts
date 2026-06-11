@@ -4,8 +4,12 @@ import type {
   ActiveTimer,
   ActiveTimerResponse,
   CreateTimeLogInput,
+  InterruptionLedger,
+  InterruptionLedgerResponse,
   ItemRollup,
   ItemRollupResponse,
+  ReportOverview,
+  ReportOverviewResponse,
   TimeLog,
   TimeLogEnvelope,
   TimeLogListResponse,
@@ -13,8 +17,20 @@ import type {
   TimeSummaryResponse,
   TimeSummaryRow,
   UpdateTimeLogInput,
+  WeeklySummary,
+  WeeklySummaryResponse,
 } from '@rytask/contracts';
 import { authedRequest } from './http';
+
+/** The active range + scope of a report request (US1/US2). Presets resolve to explicit `from`/`to`. */
+export interface ReportRange {
+  from: string; // YYYY-MM-DD (inclusive)
+  to: string; // YYYY-MM-DD (inclusive)
+}
+export interface ReportScope {
+  projectId?: string; // a single readable project, or all readable projects when omitted
+  userId?: string; // a single person, or everyone when omitted
+}
 
 /**
  * Time-tracking resource module (M2, the flagship — web-surfaces.md §6). Typed wrappers over the
@@ -109,5 +125,50 @@ export async function getTimeSummary(query: TimeSummaryQuery): Promise<TimeSumma
   if (query.projectId) params.set('projectId', query.projectId);
   if (query.userId) params.set('userId', query.userId);
   const body = await authedRequest<TimeSummaryResponse>(`/time/summary?${params.toString()}`);
+  return body.data;
+}
+
+// ──────────────────────────────────────────────────────────────────── M4 reporting
+
+/** Append the active range + scope to a query string (the three report routes share these params). */
+function rangeParams(range: ReportRange, scope: ReportScope): URLSearchParams {
+  const params = new URLSearchParams({ from: range.from, to: range.to });
+  if (scope.projectId) params.set('projectId', scope.projectId);
+  if (scope.userId) params.set('userId', scope.userId);
+  return params;
+}
+
+/** GET /time/reports/overview — the flagship "Where did my time go?" read-model (US1). */
+export async function fetchReportOverview(
+  range: ReportRange,
+  scope: ReportScope = {},
+): Promise<ReportOverview> {
+  const body = await authedRequest<ReportOverviewResponse>(
+    `/time/reports/overview?${rangeParams(range, scope).toString()}`,
+  );
+  return body.data;
+}
+
+/** GET /time/reports/interruptions — the interruption ledger: the evidence behind the headline (US2). */
+export async function fetchInterruptionLedger(
+  range: ReportRange,
+  scope: ReportScope = {},
+): Promise<InterruptionLedger> {
+  const body = await authedRequest<InterruptionLedgerResponse>(
+    `/time/reports/interruptions?${rangeParams(range, scope).toString()}`,
+  );
+  return body.data;
+}
+
+/** GET /time/reports/week — one user's Mon–Sun week ("My week", US3). `weekStart` must be a Monday. */
+export async function fetchWeeklySummary(
+  weekStart: string,
+  userId?: string,
+): Promise<WeeklySummary> {
+  const params = new URLSearchParams({ weekStart });
+  if (userId) params.set('userId', userId);
+  const body = await authedRequest<WeeklySummaryResponse>(
+    `/time/reports/week?${params.toString()}`,
+  );
   return body.data;
 }

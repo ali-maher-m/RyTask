@@ -1,0 +1,5 @@
+{
+  "title": "How-to guides",
+  "root": true,
+  "pages": ["index", "self-hosting", "users", "slack", "mcp", "integrations", "roadmap"]
+}

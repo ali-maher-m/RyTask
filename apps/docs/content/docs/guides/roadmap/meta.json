@@ -1,0 +1,23 @@
+{
+  "title": "Roadmap (coming soon)",
+  "pages": [
+    "index",
+    "automations",
+    "custom-fields",
+    "cycles-and-sprints",
+    "milestones-and-roadmap",
+    "dependencies-and-relations",
+    "timeline-and-calendar",
+    "richer-work-items",
+    "reporting-and-dashboards",
+    "import-and-export",
+    "realtime-and-mobile",
+    "collaboration-extras",
+    "advanced-permissions",
+    "enterprise-and-identity",
+    "search-extras",
+    "ai-features",
+    "time-tracking-extras",
+    "notification-preferences"
+  ]
+}

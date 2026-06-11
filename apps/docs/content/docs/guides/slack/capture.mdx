@@ -1,0 +1,75 @@
+---
+title: Capturing tasks
+description: Type /task and a sentence to capture instantly, or /task on its own for a guided form — either way RyTask confirms with a link in seconds.
+---
+
+Once Slack is [connected](/docs/guides/slack/install), capturing a task is one message.
+
+## The one-liner
+
+```
+/task Fix the login redirect @sam #bug !high ^friday
+```
+
+Slack immediately shows you a quiet "On it — capturing…" note (only you can see it), and a
+moment later RyTask replies with a confirmation: the new item's key as a link, plus its
+title. The item is created in the default project an admin chose during setup.
+
+The text after `/task` is read by the **same quick-add shorthand the web app uses** — one
+grammar everywhere, so nothing new to learn:
+
+| Token | Meaning | Example |
+| --- | --- | --- |
+| `@handle` | Assignee | `@sam` |
+| `#label` | Label | `#bug` |
+| `!priority` | Priority — `urgent`, `high`, `medium`, `low`, or `none` | `!high` |
+| `^date` | Due date — a date or natural phrase | `^friday`, `^2026-07-01`, `^in 3 days` |
+
+Everything else becomes the title. A token only counts at the start of a word, so `C#` and
+`sam@example.com` are left alone, and you can write `\#` or `\@` to mean a literal
+character. There is no estimate token — estimates are set in the app. The full grammar
+lives in the [fast capture guide](/docs/guides/users/fast-capture).
+
+Capture **never blocks on missing details**. `/task Just a title` is a perfectly good
+capture: it gets the first workflow status and no priority, and you can fill the rest in
+later. If part of your shorthand couldn't be applied — say `@sam` matched nobody — the item
+is still created and the confirmation tells you exactly which tokens couldn't be resolved,
+so nothing is silently dropped.
+
+## The guided form
+
+Type `/task` with **no text** and RyTask opens a small form right inside Slack instead:
+
+- **Title** (the only required field)
+- **Description** (optional)
+- **Priority** (optional)
+- **Due date** (optional)
+
+The task goes to the connected default project; the form doesn't ask you to pick a project
+or assignee today. Submitting with just a title still creates the item with sensible
+defaults.
+
+## Who the task belongs to
+
+If your Slack account is [linked to your RyTask account](/docs/guides/slack/user-mapping),
+the captured item records you as the person who raised it. If it isn't linked yet, the item
+is still created — it just has no reporter, and the confirmation gently reminds you to ask
+an admin to link your account.
+
+You don't need to be a member of the default project, or even have a RyTask account, to
+capture. Behind the scenes the capture runs under the context of the admin who installed
+the integration, so a teammate's quick `/task` is never bounced for permissions. What does
+get recorded is honest provenance: every item captured this way is stamped with the
+**Slack** source and shows a "Slack" badge in the app — on the item, in lists, and in its
+activity history.
+
+## What happens behind the scenes
+
+The slash command only does the bare minimum synchronously — Slack requires a response
+within three seconds, and RyTask answers well inside that window. The actual creation runs
+on RyTask's background worker a moment later, which is why the confirmation arrives as a
+follow-up message rather than instantly.
+
+This hand-off is **replay-safe**: each capture gets a deterministic job identity, so if
+Slack retries a delivery (which it sometimes does), you still get exactly one task, not
+two.

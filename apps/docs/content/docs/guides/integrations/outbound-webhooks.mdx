@@ -1,0 +1,23 @@
+---
+title: Outbound webhooks
+description: Planned signed event webhooks so external systems can react to what happens in RyTask.
+---
+
+<ComingSoon tier="MVP scope" />
+
+RyTask plans **outbound webhooks**: subscribe a URL to domain events — item created or
+updated, comment added, time logged, and so on — and receive signed payloads when they
+happen (FR-API-006). That gives you automation glue without polling: trigger a deploy
+note, update a spreadsheet, or feed your own tooling.
+
+The groundwork is real: RyTask is event-driven internally, and domain events already
+exist in the codebase today. What does not exist yet is the outbound delivery layer —
+subscriptions, signing, retries, and a delivery log. The plan calls for HMAC-signed
+payloads, retries with backoff, idempotent deliveries with a delivery ID, and an admin
+view to inspect and replay deliveries (FR-API-007, FR-API-008).
+
+What's planned:
+
+- **Event subscriptions** — item, comment, and time events pushed to your URLs (MVP scope).
+- **HMAC signatures and retries** — verify authenticity; failed deliveries retry with backoff (planned with the delivery layer).
+- **Delivery log with replay** — see what was sent and resend it (planned with the delivery layer).
