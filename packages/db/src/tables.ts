@@ -16,6 +16,7 @@ import { uuidv7 } from 'uuidv7';
 import {
   activityActionEnum,
   captureSourceEnum,
+  githubLinkKindEnum,
   notificationTypeEnum,
   oneTimeTokenPurposeEnum,
   priorityEnum,
@@ -733,6 +734,82 @@ export const timeLogs = pgTable(
   ],
 );
 
+// ──────────────────────────────────────────────────────── github context (M5)
+
+/**
+ * GitHub repository connection (M5, FR-INT-GH-006/007). One row links one repository to one
+ * RyTask workspace for lightweight magic-word linking — no GitHub App/OAuth in v1 (BRD §5.2).
+ * RyTask mints the webhook secret (stored AES-256-GCM-encrypted, the Slack bot-token precedent)
+ * and the admin pastes it into the repo's webhook settings. The webhook resolves the URL's
+ * connection id → this row → org/workspace server-side (never payload-supplied — Principle II).
+ * Disconnect is a soft revoke (`revoked_at`); existing links/activity are preserved read-only.
+ */
+export const githubConnections = pgTable(
+  'github_connections',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    /** `owner/repo` — payloads whose `repository.full_name` differs are skipped (defense-in-depth). */
+    repoFullName: text('repo_full_name').notNull(),
+    webhookSecretCiphertext: text('webhook_secret_ciphertext').notNull(),
+    webhookSecretIv: text('webhook_secret_iv').notNull(),
+    webhookSecretTag: text('webhook_secret_tag').notNull(),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    connectedAt: timestamp('connected_at', { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index('github_conn_org_idx').on(t.organizationId),
+    uniqueIndex('github_conn_org_repo_unique').on(t.organizationId, t.repoFullName),
+  ],
+);
+
+/**
+ * A commit/PR ↔ work-item cross-link (M5, FR-INT-GH-006). The unique index IS the idempotency
+ * for webhook redelivery (FR-INT-GH-007): `insert … on conflict do nothing` — a replay of the
+ * same delivery links nothing twice and appends no duplicate activity.
+ */
+export const githubLinks = pgTable(
+  'github_links',
+  {
+    id: primaryId(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    workItemId: uuid('work_item_id')
+      .notNull()
+      .references(() => workItems.id, { onDelete: 'cascade' }),
+    connectionId: uuid('connection_id')
+      .notNull()
+      .references(() => githubConnections.id, { onDelete: 'cascade' }),
+    kind: githubLinkKindEnum('kind').notNull(),
+    /** Commit sha (kind COMMIT) or PR number as text (kind PR) — unique per item+kind. */
+    externalRef: text('external_ref').notNull(),
+    url: text('url').notNull(),
+    /** First line of the commit message / the PR title (for the activity feed). */
+    title: text('title'),
+    authorLogin: text('author_login'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('github_links_item_ref_unique').on(
+      t.organizationId,
+      t.workItemId,
+      t.kind,
+      t.externalRef,
+    ),
+    index('github_links_org_item_idx').on(t.organizationId, t.workItemId),
+  ],
+);
+
 // ─────────────────────────────────────────────────────────── schema + types
 
 export const schema = {
@@ -760,6 +837,8 @@ export const schema = {
   slackUsers,
   timers,
   timeLogs,
+  githubConnections,
+  githubLinks,
 };
 export type Schema = typeof schema;
 
@@ -820,3 +899,9 @@ export type TimeLog = typeof timeLogs.$inferSelect;
 export type NewTimeLog = typeof timeLogs.$inferInsert;
 export type TimeEntrySource = (typeof timeEntrySourceEnum.enumValues)[number];
 export type TimeEntryClass = (typeof timeEntryClassEnum.enumValues)[number];
+
+export type GithubConnection = typeof githubConnections.$inferSelect;
+export type NewGithubConnection = typeof githubConnections.$inferInsert;
+export type GithubLink = typeof githubLinks.$inferSelect;
+export type NewGithubLink = typeof githubLinks.$inferInsert;
+export type GithubLinkKind = (typeof githubLinkKindEnum.enumValues)[number];

@@ -111,6 +111,21 @@ export interface WorkItemAccessService {
     to: string,
     projectIds: string[] | null,
   ): Promise<import('@rytask/contracts').CompletedItemRow[]>;
+  /**
+   * Resolve a human key (`RY-12`) to the item's context, or null (M5, FR-INT-GH-006). The GitHub
+   * module resolves magic-word references through THIS port — never by querying work-items tables
+   * (Principle III). Tenant-scoped; non-deleted items only (a trashed item silently doesn't link).
+   */
+  getItemContextByKey(key: string): Promise<WorkItemContext | null>;
+  /**
+   * Append a `GITHUB_LINKED` activity row (M5, FR-INT-GH-006 — the `recordCommented` pattern;
+   * `activity` stays owned by work-items). `value` lands in `newValue` so the item feed can render
+   * the commit/PR link. The actor is null — the GitHub author travels inside `value`.
+   */
+  recordGitHubLinked(
+    workItemId: string,
+    value: import('@rytask/contracts').GithubLinkedActivityValue,
+  ): Promise<void>;
 }
 
 /** A due-soon/overdue item surfaced by the scheduled scan (FR-NOTIF-001). */

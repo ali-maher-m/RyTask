@@ -11,9 +11,11 @@ services:
       # for local/e2e so a serial run isn't throttled; production keeps the secure defaults.
       THROTTLE_MAX_REQUESTS: "100000"
       AUTH_THROTTLE_MAX_REQUESTS: "100000"
+      GITHUB_TOKEN_ENC_KEY: "5KOj4DgQ3uDRmbrDaonO9vjK0RdKZYhsCyNAjYZK03Q="
   worker:
     environment:
       JWT_SECRET: "fdf2566c05e41066db99c3a6d831ae753c441a9a123e9191896a02aed1b7cb53"
+      GITHUB_TOKEN_ENC_KEY: "5KOj4DgQ3uDRmbrDaonO9vjK0RdKZYhsCyNAjYZK03Q="
   # `pnpm start` (the image CMD) triggers pnpm 11's verify-deps check, which tries to
   # purge node_modules and aborts with no TTY. Run Next directly instead.
   web:

@@ -235,6 +235,33 @@ export class WorkItemsRepository extends TenantScopedRepository {
   }
 
   /**
+   * Resolve a human key — `<prefix>-<number>`, e.g. `RY-12` — to its non-deleted item
+   * (tenant-scoped), or null (M5, FR-INT-GH-006). Prefix comparison is case-insensitive:
+   * commit messages routinely lowercase keys.
+   */
+  async findByKey(keyPrefix: string, number: number): Promise<CreatedWorkItem | null> {
+    const orgId = this.tenant.getOrgId();
+    const rows = await this.db
+      .select({ item: workItems, keyPrefix: projects.keyPrefix })
+      .from(workItems)
+      .innerJoin(
+        projects,
+        and(eq(projects.id, workItems.projectId), eq(projects.organizationId, orgId)),
+      )
+      .where(
+        this.scoped(
+          workItems,
+          eq(workItems.number, number),
+          isNull(workItems.deletedAt),
+          sql`upper(${projects.keyPrefix}) = ${keyPrefix.toUpperCase()}`,
+        ),
+      )
+      .limit(1);
+    const row = rows[0];
+    return row ? { item: row.item, keyPrefix: row.keyPrefix } : null;
+  }
+
+  /**
    * Load `parentId`'s ancestor chain (tenant-scoped) via a recursive CTE — root-first,
    * EXCLUDING the parent itself (research D4, FR-HIER-001). Used to validate a (re)parenting
    * against the hierarchy policy before writing: if the would-be child appears in this chain,

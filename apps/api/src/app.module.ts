@@ -16,6 +16,8 @@ import { TenancyModule } from './common/tenancy/tenancy.module';
 import { TenantContextMiddleware } from './common/tenancy/tenant-context.middleware';
 import { McpModule } from './mcp/mcp.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { ExportModule } from './modules/export/export.module';
+import { GithubModule } from './modules/github/github.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -52,6 +54,9 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     McpModule,
     // M2 — time tracking (the flagship): live timer, manual entries, plan-vs-actual meter.
     TimeTrackingModule,
+    // M5 — lightweight GitHub magic-word linking + full workspace export ("code + safe exit").
+    GithubModule,
+    ExportModule,
   ],
   providers: [
     // Guard chain (order matters): authenticate → resolve tenant → authorize → throttle.

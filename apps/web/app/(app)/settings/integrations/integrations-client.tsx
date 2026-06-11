@@ -16,6 +16,7 @@ import { Badge, Button, Dialog, Select, Tooltip } from '@rytask/ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useId, useState } from 'react';
+import { GithubCard } from './github-card';
 
 /**
  * Slack integration manager (US1, FR-WEB-101/103). Owners/admins connect a Slack workspace via
@@ -267,6 +268,9 @@ export function IntegrationsClient() {
           </Tooltip>
         ) : null}
       </section>
+
+      {/* M5 — GitHub lightweight magic-word linking (AC-11). */}
+      <GithubCard />
 
       <Dialog
         open={confirmDisconnect}

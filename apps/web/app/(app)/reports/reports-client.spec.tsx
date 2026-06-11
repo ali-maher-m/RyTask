@@ -134,7 +134,7 @@ describe('ReportsClient', () => {
     await screen.findByTestId('report-ledger');
     // Color contrast needs computed styles jsdom does not provide; structure/labels/roles are checked.
     const results = await axe(container, { rules: { 'color-contrast': { enabled: false } } });
-    expect(results).toHaveNoViolations();
+    expect(results.violations).toEqual([]);
   });
 
   it('shows "(removed user)" when a ledger row has no reporter', async () => {
