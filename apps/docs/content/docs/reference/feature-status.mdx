@@ -1,0 +1,255 @@
+---
+title: Feature status
+description: Every capability on the RyTask roadmap with its tier and an honest, code-verified status badge.
+---
+
+Every capability gets one of three badges: <StatusBadge status="available" /> means it is in
+the code today, <StatusBadge status="in-progress" /> means it is being built right now, and
+<StatusBadge status="coming-soon" /> means it is planned but not started. This page is
+maintained against the code, not the marketing copy — the tier column shows where each
+capability sits on the roadmap (MVP, v2, v3).
+
+## The nine differentiators
+
+| ID | Differentiator | In one sentence |
+|---|---|---|
+| D1 | Non-technical-friendly UX | The whole product must pass the "Albert/Marissa test" — usable by a non-technical teammate without training. |
+| D2 | First-class Slack capture | Turning a Slack message into a tracked task takes seconds, not a context switch. |
+| D3 | MCP with 100% workspace control | Anything a human can do in the UI, an AI agent can do through the MCP server. |
+| D4 | GitHub integration | Branch, PR, and commit linking with auto-close and status sync, free from day one. |
+| D5 | Real planning primitives | Start, end, and due dates plus estimates, building toward a true dependency-aware timeline. |
+| D6 | Native time tracking + honest reporting | A one-click timer, planned-vs-interruption tagging, and reports that show where the week actually went. |
+| D7 | Priorities, custom workflows, multiple views | Custom statuses with categories and Board/List views with non-technical-friendly defaults. |
+| D8 | One-command self-host | `docker compose up` and you are live, with safe transactional migrations. |
+| D9 | Engineering depth | Automations, custom fields, cycles, milestones, sub-tasks, and dependencies — without metering. |
+
+## A. Work items
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Issue/task entity | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Rich-text (markdown) description | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Sub-tasks | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Dependencies (blocks/blocked-by) | MVP | <StatusBadge status="coming-soon" /> | [Dependencies and relations](/docs/guides/roadmap/dependencies-and-relations) |
+| Relations (relates-to, duplicate) | v2 | <StatusBadge status="coming-soon" /> | [Dependencies and relations](/docs/guides/roadmap/dependencies-and-relations) |
+| Priorities | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Labels / tags | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Assignee + multi-assignee (single owner today; multi-assignee is coming soon) | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Watchers / subscribers | MVP | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+| Issue templates | v2 | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+| Issue types (bug/feature/chore) | v2 | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+| Bulk edit | MVP | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+| Convert / split / merge | v2 | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+| Recurring tasks | v2 | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+| Per-item activity log / history | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Per-item attachments | MVP | <StatusBadge status="coming-soon" /> | [Richer work items](/docs/guides/roadmap/richer-work-items) |
+
+## B. Views
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| List view | MVP | <StatusBadge status="available" /> | [Views and boards](/docs/guides/users/views-and-boards) |
+| Board / Kanban | MVP | <StatusBadge status="available" /> | [Views and boards](/docs/guides/users/views-and-boards) |
+| Timeline / Gantt view | MVP (basic) → v2 (full) | <StatusBadge status="coming-soon" /> | [Timeline and calendar](/docs/guides/roadmap/timeline-and-calendar) |
+| Calendar view | MVP | <StatusBadge status="coming-soon" /> | [Timeline and calendar](/docs/guides/roadmap/timeline-and-calendar) |
+| Spreadsheet / table | v2 | <StatusBadge status="coming-soon" /> | [Timeline and calendar](/docs/guides/roadmap/timeline-and-calendar) |
+| Saved / custom views | MVP | <StatusBadge status="available" /> | [Views and boards](/docs/guides/users/views-and-boards) |
+| Grouping / sorting | MVP | <StatusBadge status="available" /> | [Views and boards](/docs/guides/users/views-and-boards) |
+| Swimlanes | v2 | <StatusBadge status="coming-soon" /> | [Timeline and calendar](/docs/guides/roadmap/timeline-and-calendar) |
+| My Work / inbox view | MVP | <StatusBadge status="available" /> | [Views and boards](/docs/guides/users/views-and-boards) |
+| Per-view query engine (one filter engine powers all views) | MVP | <StatusBadge status="available" /> | [Views and boards](/docs/guides/users/views-and-boards) |
+
+## C. Dates and estimates
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Due date | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Start + end date | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Estimates (points/time) | MVP | <StatusBadge status="available" /> | [Time tracking](/docs/guides/users/time-tracking) |
+| Dependency-aware scheduling | v3 | <StatusBadge status="coming-soon" /> | [Dependencies and relations](/docs/guides/roadmap/dependencies-and-relations) |
+| Milestone dates | MVP | <StatusBadge status="coming-soon" /> | [Milestones and roadmap](/docs/guides/roadmap/milestones-and-roadmap) |
+| Working-days / calendar awareness | v3 | <StatusBadge status="coming-soon" /> | [Timeline and calendar](/docs/guides/roadmap/timeline-and-calendar) |
+
+## D. Time tracking
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| One-click timer per task | MVP | <StatusBadge status="available" /> | [Time tracking](/docs/guides/users/time-tracking) |
+| Manual time entry | MVP | <StatusBadge status="available" /> | [Time tracking](/docs/guides/users/time-tracking) |
+| Time per user / per task / per project | MVP | <StatusBadge status="available" /> | [Time tracking](/docs/guides/users/time-tracking) |
+| Planned-vs-urgent tagging | MVP — signature | <StatusBadge status="available" /> | [Time tracking](/docs/guides/users/time-tracking) |
+| Billable vs non-billable | v2 | <StatusBadge status="coming-soon" /> | [Time tracking extras](/docs/guides/roadmap/time-tracking-extras) |
+| Estimate-vs-actual variance (the in-row meter) | MVP | <StatusBadge status="available" /> | [Time tracking](/docs/guides/users/time-tracking) |
+| Idle detection / reminders | v2 | <StatusBadge status="coming-soon" /> | [Time tracking extras](/docs/guides/roadmap/time-tracking-extras) |
+| Timesheets / approval | v3 | <StatusBadge status="coming-soon" /> | [Time tracking extras](/docs/guides/roadmap/time-tracking-extras) |
+
+## E. Reporting and dashboards
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Time report: planned vs interruption (overview, interruption ledger, My week, CSV export) | MVP — signature | <StatusBadge status="in-progress" /> | [Reporting](/docs/guides/users/reporting) |
+| Burndown / burnup | MVP | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Velocity | MVP | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Cycle time / lead time | v2 | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Cumulative flow diagram | v2 | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Custom dashboards / widgets | v2 | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Workload / capacity | v2 | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Saved/scheduled reports + export | v2 | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+| Cross-project portfolio rollup | v3 | <StatusBadge status="coming-soon" /> | [Reporting and dashboards](/docs/guides/roadmap/reporting-and-dashboards) |
+
+## F. Automations and rules
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Trigger → condition → action rules | MVP (basic) → v2 (full) | <StatusBadge status="coming-soon" /> | [Automations](/docs/guides/roadmap/automations) |
+| Unlimited automation runs (runs will be unmetered when automations land) | MVP — advantage | <StatusBadge status="coming-soon" /> | [Automations](/docs/guides/roadmap/automations) |
+| Status-change automations | MVP | <StatusBadge status="coming-soon" /> | [Automations](/docs/guides/roadmap/automations) |
+| Scheduled automations | v2 | <StatusBadge status="coming-soon" /> | [Automations](/docs/guides/roadmap/automations) |
+| Cross-entity automations | v3 | <StatusBadge status="coming-soon" /> | [Automations](/docs/guides/roadmap/automations) |
+| Webhook actions | MVP | <StatusBadge status="coming-soon" /> | [Outbound webhooks](/docs/guides/integrations/outbound-webhooks) |
+| Templated workflows / recipes | v2 | <StatusBadge status="coming-soon" /> | [Automations](/docs/guides/roadmap/automations) |
+
+## G. Custom fields and workflows
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Custom fields (text/number/select/date/user) | MVP (core types) → v2 (all) | <StatusBadge status="coming-soon" /> | [Custom fields](/docs/guides/roadmap/custom-fields) |
+| Custom workflow statuses | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Status categories (todo/started/done/cancelled) | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Workflow transition rules | v3 | <StatusBadge status="coming-soon" /> | [Custom fields](/docs/guides/roadmap/custom-fields) |
+| Field-level required/validation | v2 | <StatusBadge status="coming-soon" /> | [Custom fields](/docs/guides/roadmap/custom-fields) |
+| Formula / rollup fields | v3 | <StatusBadge status="coming-soon" /> | [Custom fields](/docs/guides/roadmap/custom-fields) |
+
+## H. Cycles, milestones, roadmap
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Cycles / sprints / iterations | MVP | <StatusBadge status="coming-soon" /> | [Cycles and sprints](/docs/guides/roadmap/cycles-and-sprints) |
+| Auto-rollover of unfinished work | MVP | <StatusBadge status="coming-soon" /> | [Cycles and sprints](/docs/guides/roadmap/cycles-and-sprints) |
+| Milestones | MVP | <StatusBadge status="coming-soon" /> | [Milestones and roadmap](/docs/guides/roadmap/milestones-and-roadmap) |
+| Roadmap view | v2 | <StatusBadge status="coming-soon" /> | [Milestones and roadmap](/docs/guides/roadmap/milestones-and-roadmap) |
+| Initiatives / goals / OKRs | v2 | <StatusBadge status="coming-soon" /> | [Milestones and roadmap](/docs/guides/roadmap/milestones-and-roadmap) |
+| Project updates / status posts | v2 | <StatusBadge status="coming-soon" /> | [Milestones and roadmap](/docs/guides/roadmap/milestones-and-roadmap) |
+
+## I. Collaboration
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Comments per item | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| @mentions | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Per-task discussion | MVP | <StatusBadge status="available" /> | [Work items](/docs/guides/users/work-items) |
+| Reactions / emoji | v2 | <StatusBadge status="coming-soon" /> | [Collaboration extras](/docs/guides/roadmap/collaboration-extras) |
+| Rich docs / wiki | v2 | <StatusBadge status="coming-soon" /> | [Collaboration extras](/docs/guides/roadmap/collaboration-extras) |
+| Automatic check-ins | v2 | <StatusBadge status="coming-soon" /> | [Collaboration extras](/docs/guides/roadmap/collaboration-extras) |
+| Shared drafts / collaborative editing | v3 | <StatusBadge status="coming-soon" /> | [Collaboration extras](/docs/guides/roadmap/collaboration-extras) |
+| Guest / external sharing | v2 | <StatusBadge status="coming-soon" /> | [Collaboration extras](/docs/guides/roadmap/collaboration-extras) |
+
+## J. Permissions / RBAC
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Roles (admin/member/guest) | MVP | <StatusBadge status="available" /> | [Permissions and roles](/docs/reference/permissions) |
+| Workspace / org multi-tenancy | MVP | <StatusBadge status="available" /> | [Organizations and members](/docs/guides/users/organizations-and-members) |
+| Project-level permissions | MVP | <StatusBadge status="available" /> | [Permissions and roles](/docs/reference/permissions) |
+| Free light collaborator seats (VIEWER/GUEST roles cost nothing on a self-hosted AGPL instance) | MVP | <StatusBadge status="available" /> | [Organizations and members](/docs/guides/users/organizations-and-members) |
+| Custom roles / granular permissions | v2 | <StatusBadge status="coming-soon" /> | [Advanced permissions](/docs/guides/roadmap/advanced-permissions) |
+| Field/record-level security | v3 | <StatusBadge status="coming-soon" /> | [Advanced permissions](/docs/guides/roadmap/advanced-permissions) |
+| Audit log | v2 | <StatusBadge status="coming-soon" /> | [Advanced permissions](/docs/guides/roadmap/advanced-permissions) |
+
+## K1. Slack
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Slash-command capture (`/task` + capture modal) | MVP — signature | <StatusBadge status="available" /> | [Slack](/docs/guides/slack) |
+| @mention capture (@bot in a thread — not implemented; only the slash command and modal are) | MVP | <StatusBadge status="coming-soon" /> | [Slack two-way sync](/docs/guides/integrations/slack-two-way-sync) |
+| Two-way sync | MVP | <StatusBadge status="coming-soon" /> | [Slack two-way sync](/docs/guides/integrations/slack-two-way-sync) |
+| Smart, low-noise Slack notifications | MVP | <StatusBadge status="coming-soon" /> | [Slack two-way sync](/docs/guides/integrations/slack-two-way-sync) |
+| Channel routing / intake | v2 | <StatusBadge status="coming-soon" /> | [Slack two-way sync](/docs/guides/integrations/slack-two-way-sync) |
+
+## K2. GitHub
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Branch / PR / commit linking | MVP | <StatusBadge status="coming-soon" /> | [GitHub](/docs/guides/integrations/github) |
+| Magic-word auto-close on merge | MVP | <StatusBadge status="coming-soon" /> | [GitHub](/docs/guides/integrations/github) |
+| Status sync from PR state | MVP | <StatusBadge status="coming-soon" /> | [GitHub](/docs/guides/integrations/github) |
+| Auto-create branch from issue | v2 | <StatusBadge status="coming-soon" /> | [GitHub](/docs/guides/integrations/github) |
+| GitLab / Bitbucket parity | v2 | <StatusBadge status="coming-soon" /> | [GitHub](/docs/guides/integrations/github) |
+
+## K3. Email / API / webhooks / MCP
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Email-to-task | v2 | <StatusBadge status="coming-soon" /> | [Email notifications](/docs/guides/integrations/email-notifications) |
+| Email notifications | MVP | <StatusBadge status="coming-soon" /> | [Email notifications](/docs/guides/integrations/email-notifications) |
+| REST API with full UI parity | MVP — API-first | <StatusBadge status="available" /> | [REST API](/docs/reference/rest-api) |
+| Webhooks (outbound events) | MVP | <StatusBadge status="coming-soon" /> | [Outbound webhooks](/docs/guides/integrations/outbound-webhooks) |
+| MCP with 100% workspace control | MVP — signature | <StatusBadge status="available" /> | [MCP](/docs/guides/mcp) |
+| OAuth apps / integration platform | v3 | <StatusBadge status="coming-soon" /> | [Enterprise and identity](/docs/guides/roadmap/enterprise-and-identity) |
+| Zapier / n8n connectors | v2 | <StatusBadge status="coming-soon" /> | [Outbound webhooks](/docs/guides/integrations/outbound-webhooks) |
+
+## L. Notifications
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| In-app inbox | MVP | <StatusBadge status="available" /> | [Inbox and notifications](/docs/guides/users/inbox-and-notifications) |
+| Email notifications | MVP | <StatusBadge status="coming-soon" /> | [Email notifications](/docs/guides/integrations/email-notifications) |
+| Deduplicated, priority-aware notifications | MVP | <StatusBadge status="available" /> | [Inbox and notifications](/docs/guides/users/inbox-and-notifications) |
+| Per-project / per-event preferences | MVP | <StatusBadge status="coming-soon" /> | [Notification preferences](/docs/guides/roadmap/notification-preferences) |
+| Snooze / mute (snooze ships today for inbox items; global mute rules do not exist yet) | v2 | <StatusBadge status="available" /> | [Inbox and notifications](/docs/guides/users/inbox-and-notifications) |
+| Mobile push | v2 | <StatusBadge status="coming-soon" /> | [Realtime and mobile](/docs/guides/roadmap/realtime-and-mobile) |
+| Digest scheduling | v2 | <StatusBadge status="coming-soon" /> | [Notification preferences](/docs/guides/roadmap/notification-preferences) |
+
+## M. Search
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Global full-text search | MVP | <StatusBadge status="available" /> | [Search](/docs/guides/users/search) |
+| Command palette | MVP | <StatusBadge status="available" /> | [Search](/docs/guides/users/search) |
+| Saved filters as search (saved views double as reusable queries) | MVP | <StatusBadge status="available" /> | [Search](/docs/guides/users/search) |
+| Query language (JQL-style) | v3 | <StatusBadge status="coming-soon" /> | [Search extras](/docs/guides/roadmap/search-extras) |
+| Semantic / AI search | v2 | <StatusBadge status="coming-soon" /> | [Search extras](/docs/guides/roadmap/search-extras) |
+
+## N. Import / export
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| CSV import/export (report CSV export ships with the in-progress reporting module; work-item CSV tooling does not exist yet) | MVP | <StatusBadge status="coming-soon" /> | [Import and export](/docs/guides/roadmap/import-and-export) |
+| Importers from competitors | v2 | <StatusBadge status="coming-soon" /> | [Import and export](/docs/guides/roadmap/import-and-export) |
+| Full data export (open format) | MVP | <StatusBadge status="coming-soon" /> | [Import and export](/docs/guides/roadmap/import-and-export) |
+| API-based bulk export (the REST API can already page through everything; dedicated export tooling is not built) | MVP | <StatusBadge status="coming-soon" /> | [Import and export](/docs/guides/roadmap/import-and-export) |
+| Scheduled backups (self-host) | v2 | <StatusBadge status="coming-soon" /> | [Import and export](/docs/guides/roadmap/import-and-export) |
+
+## O. Realtime and mobile
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| Live updates (WebSocket) | MVP | <StatusBadge status="coming-soon" /> | [Realtime and mobile](/docs/guides/roadmap/realtime-and-mobile) |
+| Presence / who's-viewing | v3 | <StatusBadge status="coming-soon" /> | [Realtime and mobile](/docs/guides/roadmap/realtime-and-mobile) |
+| Optimistic UI / offline | v2 | <StatusBadge status="coming-soon" /> | [Realtime and mobile](/docs/guides/roadmap/realtime-and-mobile) |
+| Responsive web / PWA (the web app is responsive today; PWA install/offline is not done) | MVP | <StatusBadge status="coming-soon" /> | [Realtime and mobile](/docs/guides/roadmap/realtime-and-mobile) |
+| Native mobile apps | v2 | <StatusBadge status="coming-soon" /> | [Realtime and mobile](/docs/guides/roadmap/realtime-and-mobile) |
+
+## P. AI
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| MCP control plane (the agent operates the workspace) | MVP | <StatusBadge status="available" /> | [MCP](/docs/guides/mcp) |
+| AI summarize / draft issue | v2 | <StatusBadge status="coming-soon" /> | [AI features](/docs/guides/roadmap/ai-features) |
+| AI triage / dedup | v3 | <StatusBadge status="coming-soon" /> | [AI features](/docs/guides/roadmap/ai-features) |
+| AI standup / status rollup | v3 | <StatusBadge status="coming-soon" /> | [AI features](/docs/guides/roadmap/ai-features) |
+| Natural-language → query/automation | v3 | <StatusBadge status="coming-soon" /> | [AI features](/docs/guides/roadmap/ai-features) |
+
+## Q. Admin / self-host
+
+| Capability | Tier | Status | Docs |
+|---|---|---|---|
+| One-command Docker compose install | MVP — signature | <StatusBadge status="available" /> | [Self-hosting](/docs/guides/self-hosting) |
+| Safe, transactional migrations | MVP | <StatusBadge status="available" /> | [Self-hosting](/docs/guides/self-hosting) |
+| Multi-tenant orgs/workspaces | MVP | <StatusBadge status="available" /> | [Self-hosting](/docs/guides/self-hosting) |
+| Backup / restore tooling | v2 | <StatusBadge status="coming-soon" /> | [Import and export](/docs/guides/roadmap/import-and-export) |
+| Observability (logs/metrics/traces) | v2 | <StatusBadge status="coming-soon" /> | [Enterprise and identity](/docs/guides/roadmap/enterprise-and-identity) |
+| SSO / SAML / SCIM | v2 | <StatusBadge status="coming-soon" /> | [Enterprise and identity](/docs/guides/roadmap/enterprise-and-identity) |
+| Helm / Kubernetes chart | v3 | <StatusBadge status="coming-soon" /> | [Enterprise and identity](/docs/guides/roadmap/enterprise-and-identity) |
+| Horizontal scalability | v2 | <StatusBadge status="coming-soon" /> | [Enterprise and identity](/docs/guides/roadmap/enterprise-and-identity) |
+| Perf budgets + load tests in CI | v2 | <StatusBadge status="coming-soon" /> | [Enterprise and identity](/docs/guides/roadmap/enterprise-and-identity) |

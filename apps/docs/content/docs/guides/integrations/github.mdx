@@ -1,0 +1,25 @@
+---
+title: GitHub
+description: Planned GitHub App integration — branch, PR, and commit linking with auto-close and status sync, free from day one.
+---
+
+<ComingSoon tier="MVP scope" />
+
+RyTask plans a first-class GitHub integration, free from day one — one of the project's
+core differentiators (D4). It will be delivered as a **GitHub App** installed per
+repository or organization, scoped to the repositories you select (FR-INT-GH-001).
+Nothing on this page exists in the product yet.
+
+The goal is the Linear/Shortcut-grade experience that open-source trackers usually gate
+behind commercial editions: connect code to work items, and let your normal Git workflow
+move the tracker for you. Referencing an item key in a branch, PR, or commit links them
+both ways, and a magic word like `Fixes RY-123` in a merged PR closes the item
+automatically (FR-INT-GH-002, FR-INT-GH-005).
+
+What's planned:
+
+- **Branch / PR / commit linking** — bidirectional references between work items and GitHub (MVP scope).
+- **Magic-word auto-close on merge** — `Fixes RY-123` transitions the item to the mapped status (MVP scope).
+- **Status sync from PR state** — the item moves when a PR opens, goes to review, or merges (MVP scope, FR-INT-GH-004).
+- **Auto-create branch from an item** — one click creates a conventionally named branch (v2, FR-INT-GH-003).
+- **GitLab / Bitbucket parity** — the integration is provider-abstracted so other forges can follow (v2, FR-INT-GH-011).

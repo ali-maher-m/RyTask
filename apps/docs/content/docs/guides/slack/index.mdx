@@ -1,0 +1,41 @@
+---
+title: Slack integration
+description: Capture a task in seconds without leaving Slack — type /task, get a confirmation with a link, and the work lands in RyTask attributed to the right person.
+---
+
+Most interruptions arrive in Slack. The Slack integration lets anyone on your team turn one
+into a tracked task right where it happened: type `/task` followed by a sentence, and a few
+seconds later RyTask confirms the new item with its key and a link. Nobody has to switch
+windows, and nothing gets lost between "can you look at this?" and the work actually being
+tracked.
+
+Three things make it trustworthy:
+
+- **It's fast and never blocks.** A one-line `/task` message is enough — title only is fine.
+  Missing fields get sensible defaults, and the same quick-add shorthand the web app uses
+  (`@assignee #label !priority ^date`) works in Slack too.
+- **It's attributed.** When a Slack account is linked to a RyTask account, the task records
+  who captured it. Linking happens automatically by email when an admin connects Slack, and
+  can be adjusted by hand.
+- **It's auditable.** Every item captured from Slack carries a visible "Slack" badge in the
+  app, on the item itself and in its activity history, so you always know where work came
+  from.
+
+## What you need
+
+- A RyTask **organization admin** (Owner or Admin role) to connect the workspace — the
+  connect, disconnect, and user-mapping controls are admin-only.
+- A **Slack app** for your workspace with the `/task` slash command, an interactivity URL,
+  and an OAuth redirect URL pointing at your RyTask server (the [install guide](/docs/guides/slack/install)
+  walks through this).
+- A few **environment variables** on the RyTask server, including an encryption key for the
+  Slack bot token, which is stored encrypted at rest.
+
+## In this section
+
+| Page | What it covers |
+| --- | --- |
+| [Install and connect](/docs/guides/slack/install) | Creating the Slack app, setting the server environment, and connecting from Settings → Integrations. |
+| [Capturing tasks](/docs/guides/slack/capture) | The `/task` command, the shorthand it understands, the guided form, and how confirmation works. |
+| [User mapping](/docs/guides/slack/user-mapping) | How Slack people are linked to RyTask people, and what that changes. |
+| [Troubleshooting](/docs/guides/slack/troubleshooting) | The real failure modes and what each one means. |

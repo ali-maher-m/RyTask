@@ -1,0 +1,56 @@
+---
+title: Storage & email
+description: What MinIO and Mailhog are doing in the stack today, stated plainly — and how invites work while email delivery is not wired up yet.
+---
+
+Two services in the compose stack are there for what comes next, not for what runs today.
+This page says so plainly, so you can plan around it.
+
+## Object storage (MinIO)
+
+<ComingSoon tier="v2" />
+
+The stack includes MinIO, an S3-compatible object store, ready for **per-item attachments**
+<StatusBadge status="coming-soon" />. Today, nothing in the application reads from or writes
+to it — the `miniodata` volume stays empty, and the `S3_*` variables in `.env.example` are
+reserved for the same future feature.
+
+What that means for you:
+
+- There is nothing in MinIO to back up. PostgreSQL remains the single source of truth
+  (see [Backups & restore](/docs/guides/self-hosting/backups-and-restore)).
+- If you want a leaner stack, you can remove the `minio` service from your override file
+  without losing anything. Keeping it costs little and means attachments work the moment
+  the feature lands.
+
+## Email
+
+Here is the honest state: **RyTask does not deliver email yet.**
+
+Outgoing mail — email verification, password resets, and emailed invitations — goes through
+a mailer port inside the API. The current adapter **logs the message instead of sending
+it**: you will see lines like `[mailer:noop] would send "..." to ...` in the API logs where
+an email would have gone. A real SMTP adapter is planned
+<StatusBadge status="coming-soon" />.
+
+Day to day, this matters less than it sounds, because the flow that most needs email has a
+built-in alternative:
+
+- **Inviting teammates works today via shareable links.** In **Settings → Members**, choose
+  "Create a shareable link" instead of an email invitation. RyTask shows you the invite
+  link with the role pre-assigned — copy it and send it over whatever channel you already
+  share with your teammate. Email-addressed invitations are also created and listed as
+  pending, but the notification email itself is not delivered, so the link route is the one
+  to use.
+
+## Mailhog
+
+The `mailhog` service is a development mail catcher: it accepts SMTP on port 1025 and shows
+everything it receives in a web inbox on port 8025. It is in the stack for development, and
+ready for the day the SMTP adapter lands <StatusBadge status="coming-soon" /> — at which
+point pointing the API's SMTP settings at Mailhog lets you preview every outgoing email
+without delivering anything for real. Until then it sits idle, and like MinIO it is safe to
+remove from a production deployment.
+
+For where email notifications are headed, see
+[email notifications](/docs/guides/integrations/email-notifications).

@@ -1,0 +1,921 @@
+openapi: 3.1.0
+info:
+  title: RyTask API — Time tracking, Slack & MCP
+  version: 1.0.0-m3
+  description: |
+    The REST surface added by the time-tracking (M2) and fast-capture (M3) milestones,
+    plus health probes. Authored in `apps/docs/openapi/` and verified against the live
+    controllers in `apps/api/src/modules/time-tracking`, `apps/api/src/modules/slack`
+    and `apps/api/src/mcp/transport`.
+
+    All routes are prefixed with `/api/v1` except the health probes and the Slack
+    OAuth callback, which live at the server root. Mutating time-tracking routes accept
+    an optional `Idempotency-Key` header — retrying with the same key returns the same
+    result and never double-counts.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: timers
+    description: One-click timers — one active timer per person, switching is automatic.
+  - name: time-logs
+    description: Manual time entries and edits, with planned-vs-interruption classification.
+  - name: time-aggregates
+    description: Read-only rollups and summaries that feed the plan-vs-actual meter.
+  - name: time-reports
+    description: 'The reporting read-models (status: in progress — ships in the next release).'
+  - name: slack
+    description: Slack connection, capture webhooks, and user mapping.
+  - name: mcp
+    description: The MCP server transport and connection info.
+  - name: health
+    description: Liveness and readiness probes (no auth, served at the root).
+paths:
+  /work-items/{workItemId}/timer/start:
+    post:
+      tags: [timers]
+      operationId: startTimer
+      summary: Start a timer on a work item
+      description: |
+        Starts the caller's timer on this item. If another timer is already running for
+        the caller, it is stopped first (its elapsed time becomes a time log) — there is
+        never more than one active timer per person. Requires `work:write`.
+      parameters:
+        - $ref: '#/components/parameters/workItemId'
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: The now-active timer.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ActiveTimer'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+  /timers/{id}/stop:
+    post:
+      tags: [timers]
+      operationId: stopTimer
+      summary: Stop a running timer
+      description: |
+        Stops the caller's active timer and writes a time log with `source: TIMER`.
+        Only the timer's owner can stop it. Requires `work:write`.
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '201':
+          description: The finalized time log.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TimeLog'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+  /timers/active:
+    get:
+      tags: [timers]
+      operationId: getActiveTimer
+      summary: Get the caller's active timer
+      description: Returns the running timer, or `null` when nothing is running. Requires `work:read`.
+      responses:
+        '200':
+          description: The active timer or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/ActiveTimer'
+                      - type: 'null'
+  /work-items/{workItemId}/time-logs:
+    post:
+      tags: [time-logs]
+      operationId: createTimeLog
+      summary: Log time manually
+      description: |
+        Creates a manual time entry. Give either `durationSeconds` or both `startedAt`
+        and `endedAt` (never both forms). Classification defaults from the item's
+        priority — `URGENT` items log as `INTERRUPTION`, everything else as `PLANNED` —
+        and can be overridden per entry. Requires `work:write`.
+      parameters:
+        - $ref: '#/components/parameters/workItemId'
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTimeLogInput'
+      responses:
+        '201':
+          description: The created time log.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TimeLog'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+    get:
+      tags: [time-logs]
+      operationId: listTimeLogs
+      summary: List time logs on a work item
+      description: Newest first, keyset-paginated. Soft-deleted entries are excluded. Requires `work:read`.
+      parameters:
+        - $ref: '#/components/parameters/workItemId'
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: A page of time logs.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimeLog'
+                  pageInfo:
+                    $ref: '#/components/schemas/PageInfo'
+        '404': { $ref: '#/components/responses/NotFound' }
+  /time-logs/{id}:
+    patch:
+      tags: [time-logs]
+      operationId: updateTimeLog
+      summary: Edit a time log
+      description: |
+        Owners can edit their own entries; org admins can edit anyone's. Setting
+        `classification` marks the entry as overridden. Every edit is recorded in the
+        item's activity feed. Requires `work:write`.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTimeLogInput'
+      responses:
+        '200':
+          description: The updated time log.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TimeLog'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [time-logs]
+      operationId: deleteTimeLog
+      summary: Delete a time log
+      description: Soft delete — the entry disappears from every total. Owner or org admin only. Requires `work:write`.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Deleted.
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /time/rollup:
+    get:
+      tags: [time-aggregates]
+      operationId: getTimeRollup
+      summary: Per-item logged totals for a project
+      description: Feeds the plan-vs-actual meter in Board and List rows. Requires `work:read`.
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Logged seconds per work item.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        workItemId: { type: string, format: uuid }
+                        loggedSeconds: { type: integer, minimum: 0 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /time/summary:
+    get:
+      tags: [time-aggregates]
+      operationId: getTimeSummary
+      summary: Grouped time totals
+      description: |
+        Aggregates logged time by item, user, project, or period, with the
+        planned-vs-interruption split. Every row reconciles:
+        `plannedSeconds + interruptionSeconds = loggedSeconds`. Visibility never
+        exceeds the caller's readable projects. Requires `work:read`.
+      parameters:
+        - name: groupBy
+          in: query
+          required: true
+          schema: { type: string, enum: [item, user, project, period] }
+        - name: period
+          in: query
+          schema: { type: string, enum: [day, week] }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: projectId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Summary rows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TimeSummaryRow'
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /time/reports/overview:
+    get:
+      tags: [time-reports]
+      operationId: getReportOverview
+      summary: 'Report: where did the time go? (in progress)'
+      description: |
+        **Status: in progress — ships in the next release.**
+        The flagship report: totals, weekly planned-vs-interruption breakdown, and the
+        top items by logged time for an inclusive date range (366 days max). Requires
+        `work:read`; with `projectId` the caller must be able to view that project.
+      parameters:
+        - $ref: '#/components/parameters/reportFrom'
+        - $ref: '#/components/parameters/reportTo'
+        - name: projectId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The report overview.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ReportOverview'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /time/reports/interruptions:
+    get:
+      tags: [time-reports]
+      operationId: getInterruptionLedger
+      summary: 'Report: interruption ledger (in progress)'
+      description: |
+        **Status: in progress — ships in the next release.**
+        Every interruption-classified item that consumed time in the range, with capture
+        source, who raised it, entry count, and hours — sorted biggest first. The ledger
+        total always equals the overview's interruption figure for the same range.
+      parameters:
+        - $ref: '#/components/parameters/reportFrom'
+        - $ref: '#/components/parameters/reportTo'
+        - name: projectId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The interruption ledger.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InterruptionLedger'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /time/reports/week:
+    get:
+      tags: [time-reports]
+      operationId: getWeeklySummary
+      summary: 'Report: my week (in progress)'
+      description: |
+        **Status: in progress — ships in the next release.**
+        One person's Monday-to-Sunday week: total tracked, the split, tracked-beside-estimate
+        per item, and what was completed. `weekStart` must be a Monday (UTC) or the API
+        answers 400.
+      parameters:
+        - name: weekStart
+          in: query
+          required: true
+          schema: { type: string, format: date }
+          description: An ISO Monday (UTC).
+        - name: userId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The weekly summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/WeeklySummary'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /integrations/slack/install:
+    get:
+      tags: [slack]
+      operationId: beginSlackInstall
+      summary: Begin the Slack install
+      description: |
+        Returns the Slack consent URL. The `state` inside it is a signed, short-lived
+        nonce bound to the org, workspace, and admin — the callback rejects anything
+        else. Requires `org:settings:write`.
+      responses:
+        '200':
+          description: The consent URL to navigate to.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /integrations/slack:
+    get:
+      tags: [slack]
+      operationId: getSlackConnection
+      summary: Get the Slack connection status
+      description: Visible to any member (`org:read`). Never contains a token or secret.
+      responses:
+        '200':
+          description: Connection status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlackConnection'
+    patch:
+      tags: [slack]
+      operationId: updateSlackConnection
+      summary: Update the Slack connection
+      description: Sets or clears the default project that `/task` captures route to. Requires `org:settings:write`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                defaultProjectId:
+                  oneOf:
+                    - { type: string, format: uuid }
+                    - { type: 'null' }
+      responses:
+        '200':
+          description: The updated connection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlackConnection'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [slack]
+      operationId: disconnectSlack
+      summary: Disconnect Slack
+      description: Revokes the bot token and stops capture immediately. Queued jobs for the team become no-ops. Requires `org:settings:write`.
+      responses:
+        '204':
+          description: Disconnected.
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /integrations/slack/users:
+    get:
+      tags: [slack]
+      operationId: listSlackUsers
+      summary: List Slack user mappings
+      description: Slack identities and the RyTask users they map to (capture attribution). Requires `org:settings:write`.
+      responses:
+        '200':
+          description: All mappings for the connected team.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SlackUserMapping'
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /integrations/slack/users/{slackUserId}/map:
+    post:
+      tags: [slack]
+      operationId: mapSlackUser
+      summary: Map a Slack user to a RyTask user
+      description: Requires `org:settings:write`.
+      parameters:
+        - name: slackUserId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The updated mapping.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlackUserMapping'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [slack]
+      operationId: unmapSlackUser
+      summary: Remove a Slack user mapping
+      description: Future captures from this Slack user are attributed to nobody until re-mapped. Requires `org:settings:write`.
+      parameters:
+        - name: slackUserId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Unmapped.
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /integrations/slack/commands:
+    post:
+      tags: [slack]
+      operationId: slackCommands
+      summary: Slack slash-command webhook
+      description: |
+        Called by Slack, not by you. Verified by HMAC signature over the raw body —
+        forged requests get 401. `/task` with text enqueues a capture and answers with
+        an ephemeral acknowledgement inside Slack's 3-second window; `/task` with no
+        text opens the guided capture modal.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              description: Slack's standard slash-command payload.
+      responses:
+        '200':
+          description: Ephemeral acknowledgement (or empty when a modal opens).
+        '401':
+          description: Invalid Slack signature.
+  /integrations/slack/interactivity:
+    post:
+      tags: [slack]
+      operationId: slackInteractivity
+      summary: Slack interactivity webhook
+      description: |
+        Called by Slack when the capture modal is submitted. Signature-verified like the
+        command webhook. Unknown payload types are acknowledged and ignored.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              description: Slack's interactivity payload (`payload` JSON field).
+      responses:
+        '200':
+          description: Acknowledged.
+        '401':
+          description: Invalid Slack signature.
+  /mcp:
+    post:
+      tags: [mcp]
+      operationId: mcpHttp
+      summary: MCP streamable-HTTP endpoint
+      description: |
+        The MCP server over streamable HTTP. Authenticate with a personal access token
+        in the `Authorization: Bearer` header; the body is a JSON-RPC 2.0 message. Each
+        request is authenticated and tenant-scoped independently — there is no server-side
+        session. Invalid or revoked tokens get a JSON-RPC error with code -32001.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: A JSON-RPC 2.0 request.
+      responses:
+        '200':
+          description: JSON-RPC response (or an event stream).
+        '401':
+          description: Invalid or revoked access token.
+    get:
+      tags: [mcp]
+      operationId: mcpSse
+      summary: MCP SSE handshake
+      description: Opens a server-sent-events stream for MCP clients that prefer SSE. Same bearer authentication as POST.
+      responses:
+        '200':
+          description: An SSE stream.
+        '401':
+          description: Invalid or revoked access token.
+  /integrations/mcp/config:
+    get:
+      tags: [mcp]
+      operationId: getMcpConfig
+      summary: Get MCP connection info
+      description: |
+        Public connection details for the Agent access page — the HTTP endpoint URL (when
+        `MCP_PUBLIC_URL` is configured) and a copy-pasteable stdio hint. Never contains a
+        token. Requires `org:read`.
+      responses:
+        '200':
+          description: Connection info.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  httpUrl:
+                    oneOf:
+                      - { type: string }
+                      - { type: 'null' }
+                  stdioHint: { type: string }
+  /healthz:
+    get:
+      tags: [health]
+      operationId: healthz
+      summary: Liveness probe
+      description: 'Served at the server root (not under `/api/v1`). No dependencies, no auth.'
+      security: []
+      servers:
+        - url: /
+      responses:
+        '200':
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  uptimeSeconds: { type: integer }
+                  version: { type: string }
+  /readyz:
+    get:
+      tags: [health]
+      operationId: readyz
+      summary: Readiness probe
+      description: 'Served at the server root. Checks PostgreSQL and Redis reachability.'
+      security: []
+      servers:
+        - url: /
+      responses:
+        '200':
+          description: Readiness with per-dependency checks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok, degraded] }
+                  checks:
+                    type: object
+                    properties:
+                      database: { type: string, enum: [up, down] }
+                      redis: { type: string, enum: [up, down] }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: A session access token or a personal access token.
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    workItemId:
+      name: workItemId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    idempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Retrying with the same key replays the original result instead of repeating the work.
+    reportFrom:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, format: date }
+      description: First day of the range (inclusive, UTC).
+    reportTo:
+      name: to
+      in: query
+      required: true
+      schema: { type: string, format: date }
+      description: Last day of the range (inclusive, UTC). At most 366 days after `from`.
+  responses:
+    BadRequest:
+      description: The request body or query failed validation.
+    Forbidden:
+      description: The caller's role or token scopes do not allow this.
+    NotFound:
+      description: Not found — or it belongs to another organization (indistinguishable on purpose).
+    IdempotencyConflict:
+      description: A request with this Idempotency-Key is already in progress.
+  schemas:
+    PageInfo:
+      type: object
+      properties:
+        nextCursor:
+          oneOf:
+            - { type: string }
+            - { type: 'null' }
+        hasNextPage: { type: boolean }
+    ActiveTimer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workItemId: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+        note:
+          oneOf:
+            - { type: string }
+            - { type: 'null' }
+    TimeLog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workItemId: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        userId:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: 'null' }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        durationSeconds: { type: integer, minimum: 1 }
+        note:
+          oneOf:
+            - { type: string }
+            - { type: 'null' }
+        billable: { type: boolean }
+        source: { type: string, enum: [TIMER, MANUAL, SLACK, MCP, API] }
+        classification: { type: string, enum: [PLANNED, INTERRUPTION] }
+        classificationOverridden: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateTimeLogInput:
+      type: object
+      additionalProperties: false
+      properties:
+        durationSeconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+          description: Give this OR startedAt+endedAt, never both.
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        date:
+          type: string
+          format: date
+          description: Which day the work happened (defaults to today).
+        note: { type: string, maxLength: 2000 }
+        billable: { type: boolean }
+        classification: { type: string, enum: [PLANNED, INTERRUPTION] }
+    UpdateTimeLogInput:
+      type: object
+      additionalProperties: false
+      properties:
+        durationSeconds: { type: integer, minimum: 1, maximum: 86400 }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        note:
+          oneOf:
+            - { type: string, maxLength: 2000 }
+            - { type: 'null' }
+        billable: { type: boolean }
+        classification:
+          type: string
+          enum: [PLANNED, INTERRUPTION]
+          description: Setting this marks the entry as manually overridden.
+    TimeSummaryRow:
+      type: object
+      properties:
+        key:
+          type: string
+          description: The group key — an item id, user id, project id, or period start.
+        loggedSeconds: { type: integer }
+        plannedSeconds: { type: integer }
+        interruptionSeconds: { type: integer }
+    ReportOverview:
+      type: object
+      properties:
+        range:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        totals:
+          $ref: '#/components/schemas/SplitTotals'
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              weekStart: { type: string, format: date }
+              loggedSeconds: { type: integer }
+              plannedSeconds: { type: integer }
+              interruptionSeconds: { type: integer }
+        topItems:
+          type: array
+          items:
+            type: object
+            properties:
+              workItemId: { type: string, format: uuid }
+              projectId: { type: string, format: uuid }
+              key: { type: string }
+              title: { type: string }
+              loggedSeconds: { type: integer }
+    InterruptionLedger:
+      type: object
+      properties:
+        range:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        totalSeconds: { type: integer }
+        itemCount: { type: integer }
+        entryCount: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              workItemId: { type: string, format: uuid }
+              projectId: { type: string, format: uuid }
+              key: { type: string }
+              title: { type: string }
+              captureSource: { type: string, enum: [WEB, SLACK, MCP, API] }
+              reporter:
+                oneOf:
+                  - type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                  - type: 'null'
+              entryCount: { type: integer }
+              seconds: { type: integer }
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              weekStart: { type: string, format: date }
+              seconds: { type: integer }
+              itemCount: { type: integer }
+    WeeklySummary:
+      type: object
+      properties:
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        userId: { type: string, format: uuid }
+        totals:
+          $ref: '#/components/schemas/SplitTotals'
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              workItemId: { type: string, format: uuid }
+              projectId: { type: string, format: uuid }
+              key: { type: string }
+              title: { type: string }
+              loggedSeconds: { type: integer }
+              estimateValue:
+                oneOf:
+                  - { type: string }
+                  - { type: 'null' }
+              completed: { type: boolean }
+        completedItems:
+          type: array
+          items:
+            type: object
+            properties:
+              workItemId: { type: string, format: uuid }
+              projectId: { type: string, format: uuid }
+              key: { type: string }
+              title: { type: string }
+              completedAt: { type: string, format: date-time }
+    SplitTotals:
+      type: object
+      description: 'Always reconciles: plannedSeconds + interruptionSeconds = loggedSeconds.'
+      properties:
+        loggedSeconds: { type: integer }
+        plannedSeconds: { type: integer }
+        interruptionSeconds: { type: integer }
+    SlackConnection:
+      type: object
+      properties:
+        status: { type: string, enum: [not_connected, connected] }
+        team:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: string }
+                name: { type: string }
+            - type: 'null'
+        connectedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: 'null' }
+        defaultProjectId:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: 'null' }
+    SlackUserMapping:
+      type: object
+      properties:
+        slackUserId: { type: string }
+        slackUserName:
+          oneOf:
+            - { type: string }
+            - { type: 'null' }
+        slackUserEmail:
+          oneOf:
+            - { type: string }
+            - { type: 'null' }
+        mappedUserId:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: 'null' }
+        mappedManually: { type: boolean }

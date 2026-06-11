@@ -1,0 +1,40 @@
+---
+title: MCP & AI agents
+description: RyTask ships a first-party MCP server with full parity — anything a person can do in the UI, an AI agent can do through a tool, under the same permissions.
+---
+
+RyTask includes a first-party [Model Context Protocol](https://modelcontextprotocol.io)
+server, so AI agents — Claude Code, Claude Desktop, or any MCP-capable client — can work in
+your RyTask the way a teammate does: capture and update tasks, manage projects and
+statuses, search, comment, read notifications, and administer membership and tokens.
+
+## The parity promise
+
+The MCP server is not a curated subset. RyTask's rule is **100% parity**: every service
+capability the application exposes has a corresponding MCP tool. Today that is **49 tools**,
+and the number is enforced, not aspirational — a CI check (`scripts/check-mcp-parity.ts`)
+fails the build if a capability ever ships without its tool. When RyTask grows a feature,
+agents get it too, by construction.
+
+Just as important, the tools are not a parallel implementation. Each tool calls the **same
+service code** its REST and UI counterparts call, under the same tenancy and the same
+role-based permission checks. There is no separate "agent path" that could drift or leak.
+
+The full catalog — names, inputs, and outputs for all 49 tools — is in the
+[MCP tools reference](/docs/reference/mcp-tools).
+
+## How access works, in one paragraph
+
+An agent authenticates with a **personal access token** that you mint in the app and can
+scope down (for example, read-only). The token decides everything: which organization the
+agent operates in, and what it may do — its effective permission is the token's scopes
+intersected with your role, default-deny. Work captured by an agent is stamped with its
+source and shows an "Agent" badge in the UI, so provenance stays visible.
+
+## In this section
+
+| Page | What it covers |
+| --- | --- |
+| [Connecting a client](/docs/guides/mcp/connect) | The HTTP and stdio transports, with copy-paste setup for Claude Code and Claude Desktop. |
+| [Agent access & tokens](/docs/guides/mcp/agent-access) | Minting, scoping, and revoking personal access tokens. |
+| [Security model](/docs/guides/mcp/security) | What the token controls, how tenancy and permissions are enforced, and which tools deserve a second look before running. |

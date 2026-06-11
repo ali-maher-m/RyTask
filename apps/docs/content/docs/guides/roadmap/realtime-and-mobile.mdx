@@ -1,0 +1,26 @@
+---
+title: Realtime and mobile
+description: Planned live updates over WebSockets, a PWA, and eventually native mobile apps.
+---
+
+<ComingSoon tier="MVP scope" />
+
+RyTask plans **live updates**: changes appear in your views without a refresh. Honest
+status: a seam for this already exists in the code — an authenticated, tenant-scoped
+WebSocket gateway that rejects connections without credentials and scopes every channel
+to your organization — but **no events are broadcast through it yet**. Today the app
+refreshes on navigation. The realtime milestone adds the publishers and fan-out to that
+existing seam.
+
+On mobile, the plan starts with a responsive web app and PWA rather than a native app,
+with native apps following later — the area where open-source trackers are usually
+weakest.
+
+What's planned:
+
+- **Live updates over WebSockets** — changes appear instantly (MVP scope; the gateway seam exists, fan-out does not).
+- **Responsive web / PWA** — works well in a phone browser (MVP scope).
+- **Optimistic UI / offline** — instant local changes that sync (v2).
+- **Native mobile apps** — iOS and Android (v2).
+- **Mobile push notifications** — phone alerts (v2).
+- **Presence** — see who is viewing what (v3).

@@ -1,0 +1,54 @@
+---
+title: Rate limits
+description: Request budgets, the stricter auth bucket, the failed-login lockout, and how the limiter behaves when Redis is down.
+---
+
+RyTask enforces three independent protections: a general request bucket, a stricter bucket
+for authentication routes, and a failed-login lockout. All three are Redis-backed
+fixed-window counters, and every knob is configurable — see
+[Environment variables](/docs/reference/environment-variables).
+
+## General bucket
+
+**300 requests per 60 seconds.** Counted per authenticated principal (the user id); for
+anonymous requests, per client IP. Exceeding the bucket returns **429 Too Many Requests**.
+
+## Auth bucket
+
+Routes whose path contains `/auth/` get a stricter bucket: **20 requests per 60 seconds**,
+keyed the same way (principal when authenticated, IP otherwise). This is a separate counter
+from the general bucket.
+
+## How the window works
+
+Both buckets are **Redis fixed windows**: the first request in a window starts the counter
+with the window's TTL, and every request increments it. When the counter passes the limit,
+requests are rejected until the window expires. There is no sliding window or token refill.
+
+## Fails open without Redis — deliberately
+
+If Redis is unreachable, the rate limiter **allows the request** instead of blocking it.
+This is a deliberate self-host resilience choice: a down rate limiter must never take the
+application down with it. The same applies to the login lockout below.
+
+## Failed-login lockout
+
+Separate from the request buckets, the login flow tracks failed sign-ins per
+**(email, IP) pair**:
+
+- **5 failures** trigger a lockout for that pair.
+- The lockout lasts **15 minutes** from the first failure (the counter expires with the
+  window).
+- A successful sign-in resets the counter.
+- Locked-out attempts receive **429**, not 401.
+
+Keying on (email, IP) — not email alone — stops one attacker from locking a victim out
+globally, and the threshold is identical for known and unknown emails, so a lockout reveals
+nothing about whether an account exists.
+
+## Where the limiter sits
+
+The global guard chain runs in this order on every request:
+**authenticate → resolve tenant → authorize (RBAC) → throttle.** The throttle guard is last,
+so the request buckets count requests from identified principals (which is what makes
+per-principal limits possible).

@@ -1,0 +1,141 @@
+---
+title: Production setup
+description: The full walkthrough — the secret the API refuses to start without, the override file, the first boot, health checks, and where your data lives.
+---
+
+This page takes you from a fresh server to a running production stack. It assumes you have
+Docker with the Compose plugin installed (see [Requirements](/docs/guides/self-hosting/requirements)).
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/rytask/rytask.git
+cd rytask
+```
+
+## 2. Create a `docker-compose.override.yml`
+
+This is the one step you cannot skip. The API image runs with `NODE_ENV=production`, and in
+production the API **refuses to boot** unless `JWT_SECRET` is set to a strong value — missing,
+left at the dev default, or shorter than 32 characters all crash startup on purpose, with a
+clear error in the logs. (The alternative is an RS256 key pair: setting both `JWT_PRIVATE_KEY`
+and `JWT_PUBLIC_KEY` as PEM values satisfies the check instead.)
+
+The committed `docker-compose.yml` deliberately does not contain a secret, so you provide one
+in an override file. Compose merges `docker-compose.override.yml` automatically — you never
+edit the committed file.
+
+Generate a secret:
+
+```bash
+openssl rand -base64 48
+```
+
+Then create `docker-compose.override.yml` next to `docker-compose.yml`:
+
+```yaml
+services:
+  api:
+    environment:
+      JWT_SECRET: 'paste-the-generated-value-here'
+      APP_BASE_URL: 'https://rytask.example.com'
+      CORS_ORIGIN: 'https://rytask.example.com'
+  worker:
+    environment:
+      JWT_SECRET: 'paste-the-same-value-here'
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: 'https://api.rytask.example.com'
+    environment:
+      NEXT_PUBLIC_API_URL: 'https://api.rytask.example.com'
+```
+
+Three things to get right:
+
+- **`JWT_SECRET` goes to both `api` and `worker`.** They run the same image and share the
+  signing key; give them the identical value.
+- **`NEXT_PUBLIC_API_URL` must be a build argument** on the `web` service, set to the
+  **public** API origin your users' browsers will reach (not `http://api:3001`). Next.js
+  inlines `NEXT_PUBLIC_*` values into the browser bundle at build time, so a runtime
+  environment variable alone is too late. If this URL ever changes, rebuild the web image.
+- **Use your real public URLs.** `APP_BASE_URL` is used to build verification, password-reset,
+  and invite links; `CORS_ORIGIN` should be the web app's public origin (comma-separate
+  multiple origins). Without `CORS_ORIGIN`, the API reflects whatever origin calls it — fine
+  for trying things out, too permissive for production.
+
+Other variables worth a look before you boot: `ALLOW_PUBLIC_SIGNUP` (default `false` —
+invite-only), `ACCESS_TOKEN_TTL_SECONDS` (hard-capped at 900 seconds; larger values are
+clamped), the `SLACK_*` variables if you use Slack capture (note that a configured Slack app
+also requires `SLACK_TOKEN_ENC_KEY`, a base64-encoded 32-byte key — generate it with
+`openssl rand -base64 32` — or the API refuses to start), and `MCP_PUBLIC_URL` if you want
+the MCP endpoint advertised on the Agent access page. The full table with defaults is in the
+[environment variables reference](/docs/reference/environment-variables).
+
+## 3. Bring the stack up
+
+```bash
+docker compose up -d --build
+```
+
+The first build takes a few minutes. Order is handled for you: Postgres and Redis come up
+first, then the one-shot `migrate` service runs, and only after it succeeds do `api` and
+`worker` start. `web` waits for the API's health check.
+
+## 4. What the `migrate` service did
+
+`migrate` runs two scripts and exits: transactional database migrations, then a seed. Both
+are safe to re-run — the migrator skips migrations that are already applied, and the seed
+only inserts rows that do not exist yet, so it never overwrites your changes.
+
+The seed creates a working demo workspace: an organization named **RyTask Demo** with a
+founder account (`founder@rytask.local`, password `rytask-dev-password` — these credentials
+are public in the repository). The committed `migrate` command always runs the seed, and
+today you should let it: self-registration only joins an existing organization, so a
+completely empty database would leave you with no way to create the first account. A
+first-run setup screen that replaces this is planned <StatusBadge status="coming-soon" />.
+
+So on a production server, **reclaim the seeded workspace immediately**:
+
+1. Sign in as `founder@rytask.local` with the password above.
+2. Change the password in Settings — straight away, before inviting anyone.
+3. Rename the organization to your own, and invite your team from **Settings → Members**.
+
+The seed never undoes any of this on later boots — it only inserts rows that do not already
+exist, so your renamed organization and changed password stick.
+
+## 5. Check that it is healthy
+
+The API exposes two probes at the root (not under `/api/v1`):
+
+```bash
+curl http://localhost:3001/healthz   # the process is up
+curl http://localhost:3001/readyz    # ready to serve traffic
+```
+
+The compose file already uses `/healthz` as the `api` service's health check. The web app
+is at `http://localhost:3000` until you put a [reverse proxy](/docs/guides/self-hosting/reverse-proxy)
+in front.
+
+## What is running, and where your data lives
+
+| Service | Port(s) | Notes |
+| --- | --- | --- |
+| `web` | 3000 | Next.js web app |
+| `api` | 3001 | NestJS API; REST under `/api/v1`, probes at `/healthz` and `/readyz` |
+| `worker` | — | Same image as `api`, started with `WORKER=1` |
+| `migrate` | — | One-shot; exits after migrations + seed |
+| `postgres` | 5432 | PostgreSQL 16 |
+| `redis` | 6379 | Redis 7 — queues, rate limits, idempotency cache |
+| `minio` | 9000, 9001 | Reserved for attachments <StatusBadge status="coming-soon" /> |
+| `mailhog` | 1025, 8025 | Development mail catcher |
+
+Two named volumes hold persistent data: **`pgdata`** (PostgreSQL — the single source of
+truth, and the thing you back up) and **`miniodata`** (empty today). Redis intentionally has
+no volume — everything in it is ephemeral. See
+[Backups & restore](/docs/guides/self-hosting/backups-and-restore).
+
+## Next steps
+
+- Put HTTPS in front: [Reverse proxy & TLS](/docs/guides/self-hosting/reverse-proxy).
+- Set up [backups](/docs/guides/self-hosting/backups-and-restore) before you invite the team.

@@ -1,0 +1,85 @@
+---
+title: Permissions and roles
+description: The exact permission catalog, the role-to-permission matrix, project roles, and how API token scopes compose with roles.
+---
+
+Authorization is **default-deny**: every route declares the permission it requires, and a
+request is allowed only if the caller's role holds that permission. There are 13 permission
+strings and 5 built-in organization roles.
+
+## The 13 permissions
+
+| Permission | Meaning |
+|---|---|
+| `self` | Manage your own account — who-am-i, profile, sessions. |
+| `tokens:read` | List your own API tokens. |
+| `tokens:write` | Create and revoke your own API tokens. |
+| `org:read` | Read organization details and settings. |
+| `workspace:read` | Read workspaces in the organization. |
+| `members:read` | List organization members and their roles. |
+| `org:settings:write` | Change organization settings. |
+| `members:invite` | Invite new members to the organization. |
+| `members:write` | Change members' roles and remove members. |
+| `org:delete` | Delete the organization. |
+| `org:transfer` | Transfer organization ownership. |
+| `work:read` | Read work: projects, items, comments, views, search, notifications, time entries, reports. |
+| `work:write` | Create and modify work: items, comments, views, labels, time entries, timers. |
+
+## Organization roles
+
+Five built-in roles, most to least privileged: `OWNER`, `ADMIN`, `MEMBER`, `GUEST`, `VIEWER`.
+
+## Roles × permissions
+
+This table transcribes the role-permission map in the code exactly.
+
+| Permission | OWNER | ADMIN | MEMBER | GUEST | VIEWER |
+|---|---|---|---|---|---|
+| `self` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `tokens:read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `tokens:write` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `org:read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `workspace:read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `members:read` | ✓ | ✓ | ✓ | — | ✓ |
+| `org:settings:write` | ✓ | ✓ | — | — | — |
+| `members:invite` | ✓ | ✓ | — | — | — |
+| `members:write` | ✓ | ✓ | — | — | — |
+| `org:delete` | ✓ | — | — | — | — |
+| `org:transfer` | ✓ | — | — | — | — |
+| `work:read` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `work:write` | ✓ | ✓ | ✓ | — | — |
+
+Notes that fall straight out of the matrix:
+
+- `GUEST` and `VIEWER` are globally read-only (`work:read` but no `work:write`).
+- `GUEST` is the only role that cannot list members (`members:read`).
+- Only `OWNER` can delete or transfer the organization.
+- Every role can manage its own API tokens.
+
+## Project roles
+
+Inside a project, members hold one of three project roles with a strict hierarchy:
+`ADMIN` ⊇ `MEMBER` ⊇ `VIEWER` (a higher role satisfies any lower requirement).
+
+Project access composes with org permissions in two layers:
+
+1. **Org permission first.** The route's required org permission (`work:read` / `work:write`)
+   must be held by the caller's org role — an org `VIEWER` can never write, regardless of any
+   project role.
+2. **Project role second.** Write operations then assert the required project role; reads
+   assert at least project `VIEWER`. Org `OWNER` and `ADMIN` **bypass project membership**
+   entirely — they act as project admins everywhere.
+
+For everyone else, visibility never exceeds the projects they are a member of: list-style
+endpoints (My Work, search, reports) intersect with the caller's accessible project ids.
+
+## API token (PAT) scopes
+
+A personal access token carries an optional list of scopes. The effective permission of a
+token call is the **intersection of the token's scopes and the holder's role**:
+
+- A permission must be held by the role — a scope can never grant beyond the role.
+- A non-empty scope list restricts the token to exactly the listed permissions; anything
+  out of scope is denied even if the role allows it.
+- The `*` wildcard scope, or an **empty scope list** (which is what UI sessions use), means
+  full role delegation — the token can do everything the role can.

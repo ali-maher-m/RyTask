@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+@import "fumadocs-openapi/css/preset.css";
+
+/*
+ * RyTask design tokens — imported from the upstream source of truth.
+ * Never copy primitive values out of this file; reference semantic var(--*) names only.
+ */
+@import "../../../branding/colors_and_type.css";
+
+/*
+ * Bind the loaded next/font families to the design-system font tokens
+ * (same pattern as apps/web/app/fonts.css).
+ */
+:root {
+  --font-ui: var(--font-ui-loaded), system-ui, -apple-system, sans-serif;
+  --font-brand: var(--font-brand-loaded), var(--font-ui-loaded), system-ui, sans-serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, monospace;
+}
+
+/*
+ * Map the Fumadocs UI theme onto RyTask semantic tokens. The tokens themselves
+ * resolve light/dark from [data-theme], so one mapping covers both modes
+ * (next-themes sets both the `dark` class and `data-theme`).
+ */
+:root,
+.dark {
+  --color-fd-background: var(--bg);
+  --color-fd-foreground: var(--fg);
+  --color-fd-card: var(--surface);
+  --color-fd-card-foreground: var(--fg);
+  --color-fd-popover: var(--surface);
+  --color-fd-popover-foreground: var(--fg-2);
+  --color-fd-muted: var(--surface-sunken);
+  --color-fd-muted-foreground: var(--fg-muted);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--fg-on-accent);
+  --color-fd-secondary: var(--surface-hover);
+  --color-fd-secondary-foreground: var(--fg-2);
+  --color-fd-accent: var(--surface-active);
+  --color-fd-accent-foreground: var(--fg);
+  --color-fd-ring: var(--ring);
+  --color-fd-info: var(--info);
+  --color-fd-warning: var(--warning);
+  --color-fd-error: var(--error);
+  --color-fd-success: var(--success);
+}
+
+html {
+  scrollbar-gutter: stable;
+  font-family: var(--font-ui);
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Calm motion: respect users who prefer reduced motion (brand rule). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

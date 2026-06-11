@@ -1,0 +1,73 @@
+---
+title: The time-tracking model
+description: Planned versus interruption, one timer per person, and why the totals always reconcile.
+---
+
+## Two buckets, no third
+
+Every minute tracked in RyTask is one of exactly two things: **planned work** or an
+**interruption**. There is no "other", no "uncategorized", no overlap. This is the single
+design decision the whole reporting story rests on, because it gives you an identity that
+holds at every level of aggregation:
+
+> planned + interruption = tracked
+
+Per task, per person, per project, per week, for the whole organization — the two buckets
+always sum to the total, because there is nowhere else for a minute to be. The weekly report
+is not a chart you squint at; it is an equation that balances.
+
+## Where the classification comes from
+
+You should not have to file every minute by hand, so the default is derived from the work
+itself: when time is recorded against an item, the item's priority at that moment decides the
+class. Urgent items produce interruption time; everything else produces planned time. The
+decision is snapshotted onto the entry when it is created — changing an item's priority later
+does not silently rewrite history.
+
+When the default is wrong — planned work that happened to be urgent, or a quiet task that was
+really a distraction — you can override the class on the individual entry. Overrides are
+flagged as such, so a report can always distinguish "the system classified this" from "a
+person corrected this". Honest reporting includes being honest about who decided.
+
+## One timer per person
+
+Each person has at most one running timer. Starting a timer on a second task does not stack —
+it finalizes the running timer (recording the time accrued so far) and starts the new one.
+This mirrors the truth that you can only do one thing at a time, and it means timer data never
+contains overlapping intervals that would break the arithmetic above. Manual entries exist for
+the time you forgot to track live.
+
+## Deletions leave every figure
+
+When a time entry is deleted, or a work item is moved to the trash, that time disappears from
+every report, rollup, and total at once — headline figures, ledgers, per-item meters, weekly
+summaries. There is no view that still counts deleted time and no view that forgot to exclude
+it, because every figure is computed from the same live entries under the same exclusion rule.
+Restore the item and its time comes back everywhere, equally consistently.
+
+## Reports are read-models, not a second set of books
+
+This is the part that makes the system trustworthy. Reports — the planned-vs-interruption
+overview, the interruption ledger, the personal weekly summary — are computed on demand from
+the same time entries the timer and the manual log write. There is no separate analytics
+store, no nightly aggregation job, no cached totals that can drift from the underlying data.
+
+The consequence is that reconciliation is not a feature that was implemented; it is a property
+that cannot fail to hold. The interruption ledger always sums to the headline interruption
+figure for the same period and scope, because both are sums over the identical set of rows.
+The week view's total always equals the sum of its days. If two figures ever disagreed, it
+would mean the same query returned different answers — and an integration test asserts the
+identity end to end anyway, as a tripwire.
+
+Reports are also strictly read-only by contract: opening one never writes anything, never
+creates activity, never notifies anyone. Looking at where your time went does not change
+where your time went.
+
+## Why it is built this way
+
+The founding use case for RyTask is a person who has to explain, credibly, why planned work
+slipped. A report only carries that weight if its numbers cannot be quietly wrong: no
+double-counting, no orphaned minutes, no totals that disagree between screens. Every choice
+above — two exhaustive buckets, snapshotted classification, one timer, uniform exclusion,
+read-models over a single source of entries — exists to make the arithmetic boring. Boring
+arithmetic is what a manager will trust.

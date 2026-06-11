@@ -1,0 +1,17 @@
+# deps
+/node_modules
+
+# generated content (regenerated on every build)
+.source
+/content/docs/reference/mcp-tools/*.mdx
+
+# build output
+/.next/
+/out/
+*.tsbuildinfo
+next-env.d.ts
+
+# misc
+.DS_Store
+.vercel
+.env*.local

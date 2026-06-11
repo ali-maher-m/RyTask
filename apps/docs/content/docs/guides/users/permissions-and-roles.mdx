@@ -1,0 +1,68 @@
+---
+title: Permissions and roles
+description: A plain-words explanation of who can do what — organization roles, project roles, invites, and personal access tokens.
+---
+
+RyTask has two layers of permissions: a role in the **organization**, and a role in each
+**project**. Your organization role sets your ceiling; project roles fine-tune access
+project by project.
+
+## The five organization roles
+
+| Role | In plain words |
+|------|----------------|
+| Owner | Can do everything, including transferring ownership and deleting the organization. Every organization always has at least one. |
+| Admin | Runs the place day to day: organization settings, inviting and managing members, and full access to every project. |
+| Member | The everyday role: creates and edits work, comments, logs time. Can't change organization settings or manage members. |
+| Viewer | Read-only across the work, but a full part of the team: sees the member list, browses everything they have project access to, changes nothing. |
+| Guest | The most limited: read-only access to work they're given, without even the member directory. For clients and outside collaborators. |
+
+Owners and Admins automatically have full access in **every** project — project roles
+don't restrict them.
+
+## The three project roles
+
+Everyone else gets a per-project role when they're added to a project:
+
+| Role | In plain words |
+|------|----------------|
+| Admin | Runs this project: settings, statuses, members, delete. |
+| Member | Creates and edits items, comments, logs time — in this project. |
+| Viewer | Sees this project, touches nothing. |
+
+Your organization role still caps what a project role can grant: an organization Viewer
+added to a project as Member is still read-only, because their organization role doesn't
+allow writing at all. The ceiling always wins.
+
+One deliberate exception to "project membership decides visibility": being @mentioned in a
+comment grants you read access to that item, so a mention can never point at a door you
+can't open.
+
+## Inviting people
+
+Admins and Owners invite from **Settings → Members**, two ways:
+
+- **By email** — the invite goes to one address, with a role chosen up front.
+- **By shareable link** — anyone with the link can join, with a pre-assigned role. Links
+  expire (7 days by default) and can be revoked.
+
+New invitees set their name and password when accepting; existing users just join.
+
+## Personal access tokens
+
+For scripts, integrations, and AI agents, you can mint personal access tokens under
+**Settings → Tokens**. Two rules keep them safe:
+
+- **A token can never do more than you.** A token acts as you, bounded by your role — and
+  you can restrict it further with scopes (for example, read-only). The effective power is
+  always the *intersection* of the token's scopes and your own role. If your role can't do
+  something, no token of yours can either.
+- **The secret is shown once**, at creation. Copy it then; RyTask never displays it again.
+  Tokens can be named, given an expiry, and revoked at any time, and the list shows when
+  each was last used.
+
+This is also how AI agents connect over MCP: an agent holding your token has exactly your
+reach, never more.
+
+For the complete permission-by-role matrix, see the
+[permissions reference](/docs/reference/permissions).

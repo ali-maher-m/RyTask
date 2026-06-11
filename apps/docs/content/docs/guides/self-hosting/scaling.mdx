@@ -1,0 +1,68 @@
+---
+title: Scaling
+description: One image, two roles — how the API and the background worker scale independently, and where the real bottleneck usually is.
+---
+
+Most teams never need this page — the default stack (one API, one worker) comfortably serves
+a small team. But when you do need more, the architecture keeps it simple.
+
+## One image, two roles
+
+The `api` and `worker` services run the **same Docker image** with the same code. The only
+difference is the entrypoint switch: when the `WORKER=1` environment variable is set, the
+process boots the background-job consumers (BullMQ) instead of the HTTP server. Domain logic
+lives once; you scale request handling and background processing independently.
+
+## Adding workers
+
+Workers compete for jobs on shared Redis queues, so adding more is one flag:
+
+```bash
+docker compose up -d --scale worker=2
+```
+
+Each job is processed by exactly one worker, and jobs are designed to be safe to retry, so
+this needs no further coordination.
+
+What the worker actually processes today:
+
+- **Slack capture jobs** — when someone captures a task from Slack (slash command or
+  modal), the webhook enqueues a job; the worker creates the work item and posts the
+  confirmation back to Slack.
+- **Notifications** — dispatching in-app notifications, plus a daily scheduled scan that
+  finds due-soon and overdue items and notifies their assignees.
+
+If Slack feels slow to confirm captures or notifications lag, scale workers. Otherwise one
+is plenty.
+
+## Scaling the API
+
+The API is stateless by construction: auth uses bearer tokens (no server-side sessions),
+and the shared state that does exist — rate-limit counters and the idempotency cache — lives
+in Redis, where every API instance sees it. So multiple API instances behind a load balancer
+just work.
+
+Two practical notes:
+
+- The committed compose file binds `api` to host port 3001, which prevents
+  `--scale api=2` as-is. Running several API instances means removing the fixed host port
+  and putting your reverse proxy or load balancer in front — at which point you are usually
+  better served by a real orchestrator (see below).
+- **Rate limiting fails open.** If Redis is unreachable, the API deliberately keeps serving
+  traffic rather than letting a down rate-limiter take the app down. Keep Redis healthy, and
+  do not treat the built-in throttle as your only protection at the edge.
+
+## The real bottleneck
+
+In practice, PostgreSQL is the first thing to feel load — every read and write lands there.
+Before adding application instances, give Postgres memory and fast disk, and check it is not
+starved. One healthy Postgres carries a RyTask instance much further than extra API
+containers will.
+
+## Kubernetes & Helm
+
+<StatusBadge status="coming-soon" />
+
+A Helm chart is planned. Today, Docker Compose on a single host is the supported deployment.
+Nothing in the application fights an orchestrator — same image, env-driven configuration,
+`/healthz` and `/readyz` probes — but you would be assembling the manifests yourself.

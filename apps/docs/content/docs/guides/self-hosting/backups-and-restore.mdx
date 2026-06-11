@@ -1,0 +1,84 @@
+---
+title: Backups & restore
+description: What actually needs backing up, the one-command backup, and the exact restore steps — plus how to test that your backups work.
+---
+
+## What needs backing up
+
+**PostgreSQL is the single source of truth.** Every organization, project, work item, time
+log, comment, and setting lives in the `pgdata` volume. Back that up and you can rebuild
+everything else.
+
+The other stores hold nothing you would miss:
+
+- **Redis** holds only ephemeral state — job queues, rate-limit counters, and the
+  idempotency cache (entries expire after 24 hours). Nothing durable lives only in Redis;
+  the compose file gives it no volume on purpose. If Redis is lost, the worst case is that
+  an in-flight background job (say, a Slack capture confirmation) is dropped.
+- **MinIO** is reserved for attachments <StatusBadge status="coming-soon" /> and is empty
+  today — see [Storage & email](/docs/guides/self-hosting/storage-and-email).
+
+So a RyTask backup is a Postgres backup. That is it.
+
+## Taking a backup
+
+The repository ships a Make target:
+
+```bash
+make backup
+```
+
+which runs exactly this — use it directly if you prefer:
+
+```bash
+docker compose exec -T postgres pg_dump -U rytask rytask > backup.sql
+```
+
+That writes a plain-SQL dump of the whole database to `backup.sql` in the current directory.
+Copy it somewhere off the server — a backup on the same disk as the database is not a backup.
+
+## Restoring
+
+Restore replaces the database with the dump. Stop the services that hold connections first,
+recreate the database, load the dump, and start things back up:
+
+```bash
+# 1. Stop the app (Postgres stays up)
+docker compose stop api worker web
+
+# 2. Recreate the database
+docker compose exec -T postgres psql -U rytask -d postgres \
+  -c 'DROP DATABASE IF EXISTS rytask;'
+docker compose exec -T postgres psql -U rytask -d postgres \
+  -c 'CREATE DATABASE rytask OWNER rytask;'
+
+# 3. Load the dump
+docker compose exec -T postgres psql -U rytask -d rytask < backup.sql
+
+# 4. Start the app again
+docker compose start api worker web
+```
+
+If you are restoring onto a brand-new server, bring up only Postgres first
+(`docker compose up -d postgres`), load the dump as above, then start the rest. The dump
+already contains the full schema, so the migrator will simply find everything applied.
+
+## Test your restores
+
+A backup you have never restored is a hope, not a backup. Every so often, take a current
+dump and restore it on a scratch machine (or a second compose project) and click around.
+Five minutes of checking beats discovering a corrupt dump on the worst day.
+
+## Scheduled backups
+
+<StatusBadge status="coming-soon" />
+
+Built-in scheduled backups are planned. Today, cron plus `make backup` does the job:
+
+```bash
+# crontab -e  — nightly at 03:00, keeping one dump per weekday
+0 3 * * * cd /opt/rytask && make backup && cp backup.sql "backups/rytask-$(date +\%a).sql"
+```
+
+Adjust the path to wherever you cloned the repository, and make sure the dumps are copied
+off the machine.

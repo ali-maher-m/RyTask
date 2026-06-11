@@ -1,0 +1,14 @@
+{
+  "title": "Explanation",
+  "root": true,
+  "pages": [
+    "index",
+    "why-rytask",
+    "architecture",
+    "multi-tenancy",
+    "time-tracking-model",
+    "mcp-parity",
+    "testing-and-quality",
+    "contributing"
+  ]
+}

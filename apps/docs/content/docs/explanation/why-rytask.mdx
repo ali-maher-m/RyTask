@@ -1,0 +1,88 @@
+---
+title: Why RyTask
+description: The problem RyTask solves, the nine differentiators, and the metric the team steers by.
+---
+
+## The problem
+
+Small teams that live with interruptions have a hard time proving where their week went. Work
+arrives from every direction — a Slack DM, a busy channel, an email thread, a ticket marked
+urgent. Each interruption feels small. Together they consume the days you had budgeted for
+planned work, and at the end of the week you have no credible, low-effort way to show that the
+gap between plan and reality was the cost of firefighting, not a lack of focus.
+
+Existing trackers fail this in one of two ways. Some ignore time entirely — they track tasks
+beautifully but cannot tell you what anything cost. Others can tell you, but only if you pay:
+time tracking, Slack capture, and honest reporting are exactly the features that tend to sit
+behind paid tiers, even in tools whose core is open source. And the tools deep enough for
+engineers are usually hostile to everyone else on the team, so the "source of truth" fragments
+back into chat and spreadsheets.
+
+## The wedge
+
+RyTask is built around three things that have to work together:
+
+- **Native time tracking with a planned-vs-interruption ledger.** Every minute you track is
+  either planned work or an interruption — there is no third bucket. That single constraint is
+  what makes the weekly report honest: planned plus interruption always equals tracked, and the
+  ledger of interruptions is the evidence behind the headline number. See
+  [the time-tracking model](/docs/explanation/time-tracking-model).
+- **Capture where the work arrives.** Urgent work shows up in Slack, so RyTask captures it from
+  Slack — a slash command or mention becomes a task in seconds, with the interruption recorded
+  at the moment it happened rather than reconstructed later.
+- **Agents as first-class users.** Anything a person can do in the UI, an AI agent can do
+  through the built-in MCP server — and a CI gate fails the build if that parity ever slips.
+  See [MCP parity](/docs/explanation/mcp-parity).
+
+## The nine differentiators
+
+These are the commitments the product is steered by, each in one sentence.
+
+| | Differentiator | In plain terms |
+|---|---|---|
+| D1 | Non-technical-friendly UX | Every primary flow must work for a teammate who is not an engineer, on first contact. |
+| D2 | First-class Slack capture | A slash command or mention becomes a task in seconds, with sensible defaults, for free. |
+| D3 | MCP with full workspace control | An agent can do anything a person can do — read and write, not a read-only bolt-on. |
+| D4 | GitHub integration | Branch, PR, and commit linking with status sync, free from day one. |
+| D5 | Real dates and timelines | Start, end, and due dates plus estimates, with a timeline that is not paywalled. |
+| D6 | Native time tracking and honest reporting | A one-click timer, planned-vs-interruption tagging, and reports a manager can trust. |
+| D7 | Priorities, custom workflows, multiple views | The table stakes — board, list, statuses, priorities — with friendly defaults. |
+| D8 | One-command self-host | The whole stack comes up with Docker Compose; self-hosting is the primary path, not a fallback. |
+| D9 | Depth without metering | Sub-tasks, custom fields, cycles, and (when they land) unlimited automations — self-hosting removes the meter. |
+
+No competitor combines all nine, and the most-needed pieces — Slack capture and time tracking —
+are exactly the ones that tend to be paywalled elsewhere.
+
+## The north-star metric
+
+RyTask steers by one number: **tasks captured-and-tracked per active user per week (CTW)**. A
+task counts only if it was both created with low friction (quick-add, Slack, or MCP) *and* had
+time logged against it.
+
+The coupling is deliberate. Capture alone can be gamed — a tool can fill up with tasks nobody
+works on. Tracking alone proves nothing about whether the tool meets work where it arrives. A
+high CTW means both halves are true at once: capture is frictionless enough to record reality,
+and the tool is trusted enough that people log honest time against what they captured. That is
+the whole product in one metric.
+
+## The Albert and Marissa bar
+
+Two personas act as a permanent product gate. Albert is a manager who wants status and
+accountability without learning query syntax or new vocabulary. Marissa is an ops teammate who
+creates and tracks her own work but will not tolerate a tool built for developers. Every surface
+in RyTask — every screen, every report, every notification — must be usable by both of them on
+first contact, with no training. A feature that fails this bar ships behind an advanced surface
+or not at all. It is the discipline most engineering-led tools never enforce, which is exactly
+why it is a differentiator.
+
+## Free because you run it
+
+RyTask is licensed under AGPL-3.0 and designed to be self-hosted. That stance is also the
+business model's honest answer to paywalls: the features competitors gate — native time
+tracking today, unlimited automations when they land, single sign-on eventually — are free in
+RyTask because you provide the hardware. There is no metering to enforce and no tier to upsell
+inside the core product. If a paid offering ever exists, it covers organizational concerns and
+hosted convenience, never the capabilities the product exists to provide.
+
+For what the license asks of you in return, see
+[Contributing](/docs/explanation/contributing).

@@ -1,0 +1,106 @@
+---
+title: Reverse proxy & TLS
+description: Put HTTPS in front of the web app and the API, with Caddy and nginx examples — and the two URLs that must point at the public API origin.
+---
+
+The compose stack publishes the web app on port 3000 and the API on port 3001, plain HTTP.
+For production, terminate TLS at a reverse proxy in front of both. The clean setup is two
+subdomains:
+
+- `rytask.example.com` → the web app (`localhost:3000`)
+- `api.rytask.example.com` → the API (`localhost:3001`)
+
+A few things make this simpler than most apps:
+
+- **The API handles HSTS itself.** When `NODE_ENV=production` (which the Docker image sets),
+  the API sends `Strict-Transport-Security` and `X-Content-Type-Options: nosniff` on every
+  response. Your proxy only needs to terminate TLS and forward traffic.
+- **Auth is cookieless.** RyTask uses bearer tokens in the `Authorization` header — there is
+  no session cookie, so there are no cookie flags to set at the proxy and no CSRF
+  configuration to worry about.
+
+## Caddy
+
+Caddy provisions certificates automatically. A minimal `Caddyfile`:
+
+```text
+rytask.example.com {
+	reverse_proxy localhost:3000
+}
+
+api.rytask.example.com {
+	reverse_proxy localhost:3001
+}
+```
+
+## nginx
+
+With certificates from certbot or your own CA:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name rytask.example.com;
+
+    ssl_certificate     /etc/ssl/rytask.example.com/fullchain.pem;
+    ssl_certificate_key /etc/ssl/rytask.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name api.rytask.example.com;
+
+    ssl_certificate     /etc/ssl/api.rytask.example.com/fullchain.pem;
+    ssl_certificate_key /etc/ssl/api.rytask.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Redirect port 80 to 443 as usual; the API's HSTS header keeps browsers on HTTPS after the
+first visit.
+
+## Tell RyTask about its public URLs
+
+Splitting web and API across two origins means three settings must agree with your proxy
+(all set in your `docker-compose.override.yml` — see
+[Production setup](/docs/guides/self-hosting/production)):
+
+1. **`CORS_ORIGIN` on the `api` service** — set it to the web app's public origin, e.g.
+   `https://rytask.example.com`. Without it the API reflects any calling origin, which you
+   do not want in production. Comma-separate multiple origins if you need them.
+
+2. **`NEXT_PUBLIC_API_URL` is baked in at build time.** It is a Docker build argument on the
+   web image, inlined into the browser bundle by Next.js. Set it to the **public** API
+   origin (`https://api.rytask.example.com`). If you later change the public API URL,
+   updating the environment is not enough — rebuild the web image:
+
+   ```bash
+   docker compose up -d --build web
+   ```
+
+3. **Integration URLs use the public API origin too.** If you use Slack capture, the OAuth
+   callback (`SLACK_OAUTH_CALLBACK_URL`, and the matching redirect URL in your Slack app's
+   settings) must be `https://api.rytask.example.com/integrations/slack/oauth/callback` —
+   note this path is served at the root, not under `/api/v1`, because Slack redirects a
+   browser straight to it. Likewise, `MCP_PUBLIC_URL` is the address you tell MCP clients to
+   connect to, so it must be reachable from outside: `https://api.rytask.example.com/mcp`.
+
+## A note on paths
+
+The REST API lives under `/api/v1/...`. Three things are intentionally at the API's root:
+the `/healthz` and `/readyz` probes, and the Slack OAuth callback above. A plain
+`reverse_proxy` / `proxy_pass` of the whole origin, as in the examples, handles all of them —
+avoid path-based routing rules that only forward `/api/v1`.

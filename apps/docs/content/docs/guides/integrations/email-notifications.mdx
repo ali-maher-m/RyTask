@@ -1,0 +1,26 @@
+---
+title: Email notifications
+description: Outgoing email is planned but not wired up yet — here is what works today and what's coming.
+---
+
+<ComingSoon tier="MVP scope" />
+
+Honest status first: **RyTask does not send email today.** The in-app inbox works — you
+get notifications inside the app for assignments, mentions, comments, and the rest. But
+outgoing email (verification, password reset, invites, notification emails) sits behind a
+mailer port whose current adapter logs the message instead of sending it. Mailhog already
+ships in the development stack, ready for the day the real SMTP adapter lands. In the
+meantime, invites work today via shareable links, so nothing blocks you from bringing your
+team in.
+
+When email ships, the plan is per-event and digest emails with sensible defaults, an
+unsubscribe path, and per-user, per-type preferences so you only get the mail you want
+(FR-NOTIF-003). Granular controls are covered on the
+[notification preferences](/docs/guides/roadmap/notification-preferences) roadmap page.
+
+What's planned:
+
+- **Transactional email** — verification, password reset, invites (MVP scope).
+- **Per-event notification emails** — assignment, mention, comment, and similar (MVP scope).
+- **Digest emails and unsubscribe** — batch low-priority events; opt out cleanly (v2).
+- **Per-project preferences** — see [notification preferences](/docs/guides/roadmap/notification-preferences) (MVP scope).

@@ -1,0 +1,68 @@
+---
+title: Projects
+description: Creating a project, how item numbering works, project members and roles, settings, archiving versus deleting, and the trash.
+---
+
+A project is where work items live. Each project has its own statuses, its own members, and
+its own numbering, so two teams can run very different workflows side by side.
+
+## Creating a project
+
+From the Projects page, choose **New project**. You'll pick:
+
+- **Name** — anything up to 120 characters.
+- **Key prefix** — a short uppercase code like `OPS` or `WEB` (a letter followed by up to
+  nine letters or digits). Every item in the project gets a number from this prefix:
+  the first item is `OPS-1`, the next `OPS-2`, and so on. Numbers are never reused.
+- **Description, icon, color, and lead** — all optional, all changeable later. The lead is
+  simply the person who fronts the project; it doesn't grant extra permissions by itself.
+
+Creating a project also seeds a sensible default set of statuses (which you can rename,
+recolor, and reorder later — see [Work items](/docs/guides/users/work-items)) and makes you a
+member automatically.
+
+## Project members and roles
+
+People are added to a project with one of three roles:
+
+| Role | What it means |
+|------|---------------|
+| Admin | Full control of this project: settings, statuses, members, and the ability to delete the project. |
+| Member | Can create and edit work items, comment, and log time. |
+| Viewer | Can see everything in the project but can't change it. |
+
+Two notes that save confusion later:
+
+- Organization **Owners and Admins** can act in every project regardless of project role.
+- Being mentioned in a comment quietly grants someone read access to that item, even if they
+  aren't a project member yet — see
+  [Inbox and notifications](/docs/guides/users/inbox-and-notifications).
+
+The full picture of who can do what is in
+[Permissions and roles](/docs/guides/users/permissions-and-roles).
+
+## Project settings
+
+Each project has a settings page (open the project, then **Settings**) where admins can
+rename the project, change the description, icon, color, and lead, manage members, and
+manage the project's statuses — adding, renaming, recoloring, reordering, or removing them.
+
+## Archive versus delete
+
+These do very different things, so it's worth being precise:
+
+- **Archive** hides the project without touching its data. Items, history, and time entries
+  are all kept, and an admin can unarchive at any time. This is the right choice for a
+  finished or paused project.
+- **Delete** permanently removes the project and everything in it — members, statuses,
+  work items, their labels and activity history. It is restricted to project admins and it
+  is **irreversible**. There is no undo and no trash for a deleted project.
+
+If you're unsure, archive. You can always delete later; you can never un-delete.
+
+## The trash (for items, not projects)
+
+Deleted *work items* are different: they go to the project's trash at
+**Projects → your project → Trash**, where they can be restored. Time logged against a
+trashed item stops counting in every total until the item is restored. Details in
+[Work items](/docs/guides/users/work-items).

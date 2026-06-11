@@ -1,0 +1,65 @@
+---
+title: Security model
+description: Plain words on what keeps agents in bounds — the token is the identity, tenancy is fixed server-side, and tools run the exact code the UI runs.
+---
+
+The MCP server's security model fits in a few sentences, and each one is enforced in code
+rather than by convention.
+
+## The token is the identity
+
+There is no separate "agent account". A token resolves, on every request, to the person who
+minted it: their user, their organization, their role, and the token's scopes. The agent
+*is* that person, narrowed by the token. Treat the secret accordingly — anyone holding it
+holds that slice of your access. If a token leaks, [revoke it](/docs/guides/mcp/agent-access);
+the next request with it fails.
+
+## Tenancy is fixed server-side
+
+Which organization an agent operates in is decided by the server from the resolved token —
+on every single request. It is **never a parameter** an agent can pass, so a confused or
+malicious agent cannot ask for someone else's organization; there is simply no knob for it.
+Cross-tenant isolation in RyTask is also covered by automated tests, for the MCP edge
+included.
+
+## Permissions: scope ∩ role, default-deny
+
+Every tool declares the permission it requires, and a call proceeds only if that permission
+is inside **both** the token's scopes and the holder's role. Anything else is denied by
+default — a read-only token cannot mutate, and no scope can grant what the role doesn't
+hold. Denials come back as a categorized `PERMISSION_DENIED` tool error (alongside
+`INVALID_ARGUMENT`, `NOT_FOUND`, and `CONFLICT` for other failures), so agents can react
+sensibly instead of guessing.
+
+An invalid or revoked token never gets that far: the transport answers with JSON-RPC error
+code `-32001` before any tool runs.
+
+## Destructive tools are flagged
+
+Three tools are marked `destructive` in the tool registry, because they are hard or
+impossible to walk back:
+
+| Tool | What it does |
+| --- | --- |
+| `transfer_ownership` | Hands the organization to another member (Owner only). |
+| `remove_member` | Removes a member and revokes their sessions and tokens. |
+| `revoke_api_token` | Kills a token immediately. |
+
+The flag travels with the tool definitions so clients and agents can see it — a
+well-behaved agent should pause and confirm with its human before running one of these.
+Scoping helps here too: a token without `org:transfer`, `members:write`, or `tokens:write`
+cannot reach them at all.
+
+## No shadow paths
+
+Each MCP tool is wired to the **same service the REST controller calls** — parity is
+structural, not duplicated. A tool runs the exact code path its UI sibling runs, under the
+same role checks and the same tenant context. There is no agent-only backdoor that could
+skip validation, and no parallel implementation that could drift from the app's behavior.
+
+## Provenance is stamped
+
+Work an agent captures is recorded with `source = MCP` and shows an **"Agent"** badge in
+the UI — on the item and in its activity history. Teammates always know which work arrived
+via an agent, the same way Slack captures wear a Slack badge. The full tool catalog is in
+the [MCP tools reference](/docs/reference/mcp-tools).

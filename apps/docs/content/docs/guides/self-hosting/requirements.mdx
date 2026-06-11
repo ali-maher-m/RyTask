@@ -1,0 +1,60 @@
+---
+title: Requirements
+description: What you need before self-hosting RyTask — for the recommended Docker route and for running from source.
+---
+
+There are two ways to run RyTask. Most people should use Docker — it brings up everything
+in one command, already migrated and seeded. Running from source is for development.
+
+## The Docker route (recommended)
+
+You need:
+
+| Requirement | Notes |
+| --- | --- |
+| Docker Engine with the Compose plugin | `docker compose version` should work. Docker Desktop and OrbStack both include it. |
+| ~2 GB of RAM for the stack | Comfortable for the whole stack — Postgres, Redis, API, worker, web app, and the dev extras. A small team fits easily. |
+| x86_64 or arm64 | The images build and run on both, including Apple Silicon and ARM cloud machines. |
+| Disk space for your data | Your data lives in a named Postgres volume. Start with a few GB and watch it grow with use. |
+
+That is the whole list. You do not need Node, pnpm, or a database installed on the host —
+the images contain everything, and `docker compose up -d --build` builds them locally from
+the source you cloned.
+
+## The source route (development)
+
+If you want to hack on RyTask itself, run it from source:
+
+| Requirement | Notes |
+| --- | --- |
+| Node.js 22 or newer | The repo pins `engines.node >= 22`; the Docker images use Node 22 too. |
+| pnpm 9 | Pinned via `packageManager` (`pnpm@9.15.9`). With corepack enabled, the right version is used automatically. |
+| PostgreSQL 16 | All durable data. `docker compose up -d postgres` is an easy way to get one. |
+| Redis 7 | Queues, rate limiting, and the idempotency cache. Also easy to run from the compose file. |
+
+Copy `.env.example` to `.env` and adjust the connection strings if your Postgres or Redis
+are not on the default local ports.
+
+## What each service is for
+
+Whichever route you take, this is what is actually running:
+
+| Service | What it does |
+| --- | --- |
+| `web` | The Next.js web app your team uses, on port 3000. |
+| `api` | The NestJS HTTP API, on port 3001. Everything — the web app, the Slack integration, the MCP server — talks to RyTask through it. |
+| `worker` | Background jobs. The same image as `api`, started with `WORKER=1`. Processes Slack captures and notification jobs. |
+| `migrate` | A one-shot job that runs database migrations and the seed, then exits. Re-runs safely on every start. |
+| `postgres` | PostgreSQL 16. The single source of truth — this is what you back up. |
+| `redis` | Redis 7. Job queues, rate-limit counters, and the idempotency cache. Nothing durable lives here. |
+| `minio` | S3-compatible object storage, reserved for attachments <StatusBadge status="coming-soon" />. Nothing writes to it yet. |
+| `mailhog` | A development mail catcher. See [Storage & email](/docs/guides/self-hosting/storage-and-email) for the honest state of email. |
+
+## Browser support
+
+RyTask supports current versions of the evergreen browsers — Chrome, Edge, Firefox, and Safari.
+
+## Next step
+
+Ready to go? Follow the [production setup walkthrough](/docs/guides/self-hosting/production),
+or try the [quickstart](/docs/tutorials/quickstart) first on your own machine.

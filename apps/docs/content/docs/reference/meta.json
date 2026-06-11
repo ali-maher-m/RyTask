@@ -1,0 +1,15 @@
+{
+  "title": "Reference",
+  "root": true,
+  "pages": [
+    "index",
+    "feature-status",
+    "rest-api",
+    "mcp-tools",
+    "environment-variables",
+    "permissions",
+    "capture-syntax",
+    "rate-limits",
+    "webhooks-idempotency"
+  ]
+}

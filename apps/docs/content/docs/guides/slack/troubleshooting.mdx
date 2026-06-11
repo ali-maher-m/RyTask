@@ -1,0 +1,75 @@
+---
+title: Troubleshooting
+description: The handful of real ways Slack capture can fail, what each one looks like, and how to fix it.
+---
+
+Slack capture is designed to fail loudly and safely: forged requests are rejected, retries
+never duplicate work, and a broken setup refuses to start rather than limping along. Here
+are the failure modes that actually exist, and what to do about each.
+
+## "RyTask isn't connected to this Slack workspace yet"
+
+Typing `/task` gets you this quiet reply when there is no active connection for your Slack
+workspace — either it was never connected, or an admin has since disconnected it. The fix
+is in the message: an admin connects (or reconnects) in **Settings → Integrations**.
+
+## Slash commands fail and nothing is ever created
+
+Every request from Slack is verified before any work happens: RyTask recomputes Slack's
+signature over the raw request body using `SLACK_SIGNING_SECRET` and rejects anything that
+doesn't match — or whose timestamp is more than five minutes old — with a `401`. Forged or
+replayed requests never create anything.
+
+The flip side: if the signing secret on your server doesn't match the Slack app (a typo, or
+the secret was rotated in Slack), **every** webhook is rejected the same way. If `/task`
+consistently errors in Slack and the API logs show `401`s on the Slack routes, re-copy the
+Signing Secret from the Slack app's *Basic Information* page into `SLACK_SIGNING_SECRET`
+and restart.
+
+## A task was created, but it has no reporter
+
+The captor's Slack account isn't linked to a RyTask account, so the item couldn't be
+attributed — the capture confirmation will have said so. The item itself is fine. An admin
+can link the person under **Settings → Integrations → Slack users**; see
+[user mapping](/docs/guides/slack/user-mapping).
+
+## Slack said "On it — capturing…" but no item appeared
+
+The acknowledgement comes from the API; the actual creation runs on the **background
+worker**. If items stop appearing, the worker is the place to look:
+
+```bash
+docker compose logs worker
+```
+
+A common, self-explaining case is no default project: the follow-up message in Slack says
+RyTask has no default project for capture yet, and an admin needs to pick one in
+**Settings → Integrations**. If there's no follow-up message at all, check that the worker
+container is running and healthy.
+
+## Capture keeps working after disconnecting
+
+It shouldn't, and it doesn't. Disconnecting in **Settings → Integrations** revokes the
+connection immediately: the next `/task` gets the "isn't connected" reply, and any capture
+jobs already queued at that moment notice the revoked connection and quietly do nothing —
+no orphaned items appear after the fact.
+
+## The API won't start after configuring Slack
+
+When Slack is configured (client ID, client secret, and signing secret all set), RyTask
+requires a valid token-encryption key and otherwise refuses to boot, with one of:
+
+```
+Refusing to start: SLACK_TOKEN_ENC_KEY is required when Slack is configured.
+Generate one with `openssl rand -base64 32`.
+```
+
+```
+Refusing to start: SLACK_TOKEN_ENC_KEY must be a base64-encoded 32-byte key (got N bytes).
+Generate one with `openssl rand -base64 32`.
+```
+
+This is deliberate — the Slack bot token is encrypted at rest, and starting without a
+proper key would mean storing it badly. Generate a key with `openssl rand -base64 32`, set
+`SLACK_TOKEN_ENC_KEY`, and start again. See the
+[environment variables reference](/docs/reference/environment-variables).

@@ -1,0 +1,35 @@
+---
+title: REST API
+description: The full HTTP API — generated from the committed OpenAPI contracts.
+---
+
+Everything in RyTask is API-first: the web app, the Slack bot, and the MCP server all speak to
+the same REST API you see here. The pages in this section are generated from the project's
+OpenAPI documents — the committed M0/M1 contract specs, plus a maintained document for the
+time-tracking, Slack, and MCP surface that is verified against the live controllers.
+
+## The basics
+
+| | |
+| --- | --- |
+| Base URL | `http://your-server:3001/api/v1` |
+| Authentication | `Authorization: Bearer` — a session access token or a personal access token |
+| Content type | `application/json` |
+| Single resource | `{ "data": … }` |
+| Lists | `{ "data": […], "pageInfo": { "nextCursor", "hasNextPage" } }` (keyset pagination) |
+| Errors | Standard HTTP codes; cross-tenant lookups answer 404, never 403 |
+
+Three routes live at the server root instead of under `/api/v1`: the health probes
+(`/healthz`, `/readyz`) and the Slack OAuth callback.
+
+Mutating calls on work items, comments, and time tracking accept an optional
+`Idempotency-Key` header — see [idempotency](/docs/reference/webhooks-idempotency) for the
+exact semantics. Request budgets are described under [rate limits](/docs/reference/rate-limits),
+and what each role may call under [permissions](/docs/reference/permissions).
+
+## Browse by area
+
+Use the sidebar to browse operations grouped by tag — auth, organizations, workspaces,
+memberships, invites, API tokens, projects, statuses, work items, comments, labels, views,
+search, notifications, timers, time logs, time aggregates, time reports (in progress), Slack,
+MCP, and health.

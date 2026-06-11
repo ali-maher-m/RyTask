@@ -1,0 +1,65 @@
+---
+title: Reporting
+description: The "where did my time go?" report, the interruption ledger, and the My week summary — shipping in the next release.
+---
+
+<InProgress />
+
+Reporting answers the question every interrupt-driven team asks at the end of the week:
+**"where did my time go?"** — in plain language, with the receipts to back it up.
+
+## The time report
+
+At **/reports**, pick a range — this week, last week, last 2 weeks, this month, or a custom
+from/to — and optionally narrow to one project or one person.
+
+The report leads with a single plain-language sentence: the range, the total hours, and the
+split between planned work and interruptions. Under it, the numbers: total tracked time
+split into **planned** and **interruption**, as hours and as percentages that visibly sum
+to exactly 100%, plus a week-by-week breakdown and your top time-sink items.
+
+The two classes always reconcile — planned plus interruption equals the total, at every
+level, for every range. If the headline says 12 hours of interruptions, the drill-down
+accounts for all 12.
+
+## The interruption ledger
+
+The evidence layer. For the same range and scope, the ledger lists every item that ate
+interruption time, and for each one:
+
+| Column | Why it's there |
+|--------|----------------|
+| Item | What interrupted you, linked to the item. |
+| Capture source | Where it came from — Web, Slack, Agent, or API. |
+| Raised by | Who brought it to you. |
+| Entries and hours | How often and how much. |
+
+A per-week breakdown shows when the interruptions landed, and the ledger's total always
+matches the headline interruption figure — same range, same scope, same number.
+
+This is the page you bring to the conversation about why the planned work slipped. Not a
+feeling — a ledger.
+
+## My week
+
+At **/reports/week**: one person, one Monday-to-Sunday week.
+
+- **What I tracked** — each item you logged time on, with tracked time beside the estimate
+  where one exists.
+- **Completed this week** — what you finished.
+- **Copy as text** — one click produces a paste-ready, plain-language digest (week range,
+  totals, the split, completed items) that reads like a sentence, not a data dump. Made for
+  Slack, email, or a standup.
+
+## Take it with you
+
+Every report exports to **CSV** with one click, honoring the active range and scope — rows
+and totals match what's on screen. The export happens in your browser; nothing extra is
+sent anywhere.
+
+## Available now
+
+Reporting ships in the next release — but the data it reads is **already being collected**.
+Every timer you run and every entry you log today, with its planned-or-interruption
+classification, becomes your history the moment the reports page arrives. Start tracking
+now; the report will have something to say on day one.

@@ -1,0 +1,13 @@
+{
+  "title": "Self-hosting & administration",
+  "pages": [
+    "index",
+    "requirements",
+    "production",
+    "reverse-proxy",
+    "backups-and-restore",
+    "upgrades-and-migrations",
+    "scaling",
+    "storage-and-email"
+  ]
+}

@@ -1,0 +1,74 @@
+---
+title: Time tracking
+description: The flagship — the one-click timer, manual entries, planned-versus-interruption classification, and the plan-vs-actual meter in every row.
+---
+
+Time tracking is the heart of RyTask, and it's built to be honest with near-zero effort:
+one click to start, one click to stop, and a classification that tells you whether the time
+was planned or an interruption.
+
+## The timer
+
+Open an item and press **Start timer**. From there:
+
+- **One timer per person.** You can only be doing one thing at a time, and RyTask agrees.
+  Starting a timer on another item automatically stops the first one and logs its time —
+  switching tasks is one click, with nothing to remember to stop.
+- **It survives anything.** The running timer lives on the server, not in your browser tab.
+  Reload, switch devices, lose your connection — when you come back, the timer is still
+  running with the correct elapsed time.
+- Stopping the timer turns it into a **time entry** on the item, with an optional note.
+
+## Manual entries
+
+Forgot to run the timer? Add time by hand on the item: either a plain **duration** ("2h")
+with a date (today by default), or an explicit **start and end** time. Manual entries can
+carry a note and a **billable** flag, just like timer entries.
+
+## Planned or interruption?
+
+Every entry is classified as **planned** or **interruption** — this binary split is what
+powers the "where did my time go?" answer in [Reporting](/docs/guides/users/reporting).
+
+- The default comes from the item's priority: time on an **Urgent** item is assumed to be
+  an interruption; everything else is assumed planned.
+- You can **override** the classification on any individual entry — your judgement beats
+  the rule. Overridden entries are marked as such, so reports can tell defaults from
+  deliberate choices.
+
+Planned plus interruption always sums exactly to total logged time. No third bucket, no
+unaccounted remainder.
+
+## Editing and deleting entries
+
+You can edit or delete **your own** entries; project and organization admins can edit or
+delete anyone's. Every edit and deletion is recorded in the item's activity history, so
+the trail stays honest.
+
+## The plan-vs-actual meter
+
+The signature of RyTask: a small meter inside the task row and on the item page.
+
+- A honey-colored fill grows as time is logged, toward a tick mark at the **estimate**.
+- Go past the estimate and the over-portion turns **red**. Not as a punishment — as
+  information.
+- No estimate? No tick, no red, no judgement. The meter just shows what was logged.
+
+## Where totals show up
+
+| Place | What you see |
+|-------|--------------|
+| Task row | The plan-vs-actual meter with the item's logged total. |
+| Item page | The meter, the timer, and the full list of time entries. |
+| Reports | Totals split planned vs interruption, by person, project, item, day, or week. |
+
+## What never counts
+
+Two exclusion rules keep every figure trustworthy, everywhere:
+
+- **Deleted time entries** are gone from every total the moment they're deleted.
+- **Time on trashed items** doesn't count while the item is in the trash. Restore the item
+  and its time counts again.
+
+There is no hidden bucket where excluded time still lurks — the row meter, the item page,
+and every report all agree.

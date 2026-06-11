@@ -1,0 +1,70 @@
+---
+title: Multi-tenancy and data isolation
+description: How every query is fenced to your organization — by construction, not by review.
+---
+
+## The model
+
+RyTask is multi-tenant from the first table. Every tenant-scoped table carries an
+`organizationId` column, `NOT NULL`, with composite indexes that lead on `organizationId` —
+so tenant-filtered queries are also the fast path, not a tax. The schema in
+`packages/db/src/tables.ts` is the single source of truth, and the pattern holds for every
+table in it: workspaces, users, memberships, work items, time logs, all of them.
+
+## How a request gets its tenant
+
+When a request arrives, the organization is resolved from the verified credential — never
+from a request body, query parameter, or header a caller could forge. The tenant context is
+established in Node's `AsyncLocalStorage` for the lifetime of the request, and `TenantGuard`
+then verifies two things before any handler runs: the caller is an active member of that
+organization, and the ambient context matches the principal. From that point on, every piece
+of code in the request can ask "which org am I serving?" without the answer being passed
+around by hand — and without anyone being able to pass the wrong one.
+
+## Repositories that cannot forget the filter
+
+All database access goes through repositories, and every tenant-scoped repository extends
+`TenantScopedRepository`. The base class owns the mandatory predicate: its `scoped()` helper
+combines `organization_id = :orgId` (read from the tenant context) with whatever other
+conditions a query needs, so the tenant filter is applied structurally rather than remembered
+per query. A repository author cannot accidentally write an unscoped query through the helper,
+because the helper will not produce one.
+
+The escape hatch is closed too. A CI boundary rule (`no-raw-db-outside-repositories` in
+`packages/config/dependency-cruiser.cjs`) forbids importing the database package anywhere
+outside `repositories/` and the tenancy machinery itself. Raw Drizzle access from a service,
+controller, or provider is a build failure, not a code-review comment.
+
+## Cross-tenant lookups answer 404
+
+If a caller references an id that belongs to another organization, the repository's tenant
+scope simply finds nothing, and the API answers 404 — exactly the same response as for an id
+that never existed. The existence of another tenant's data is never leaked, not even as a 403.
+There is no special "is this yours?" check to get wrong; the scoping makes other tenants' rows
+invisible by construction.
+
+## Proven by tests, per table
+
+Every tenant-scoped table has an automated isolation test: seed two organizations, act as one,
+and assert the other's rows can neither be read nor written through any path. These tests run
+against real PostgreSQL, not mocks, because tenancy bugs live in SQL — a mock would happily
+return whatever the test author assumed. The required-tests gate
+(see [testing and quality](/docs/explanation/testing-and-quality)) fails the build if a
+tenant-scoped table exists without its isolation test.
+
+## Why "by construction" beats "by review"
+
+The conventional approach to multi-tenancy is a rule in the contributing guide: "always filter
+by organization." That works until the one Friday-afternoon query that forgets, and a tenancy
+leak is the kind of bug you do not get to apologize for. RyTask's stance is that isolation
+should not depend on anyone's discipline:
+
+- the **schema** makes the tenant column mandatory,
+- the **request pipeline** makes the tenant ambient and verified,
+- the **repository base class** makes the filter automatic,
+- the **boundary lint** makes bypassing the repository a build failure, and
+- the **isolation suite** proves the whole chain end to end, per table.
+
+Each layer alone could be circumvented by a sufficiently creative mistake. Together they mean
+a cross-tenant leak requires several independent failures at once — and the test suite is
+standing at the end of the chain. That is the difference between a policy and a property.
