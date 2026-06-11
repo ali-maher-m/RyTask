@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+# Builds the Fumadocs documentation site (apps/docs).
+# Mirrors Dockerfile.web: full workspace build, then `pnpm deploy` a standalone prod tree.
+
+FROM node:22-alpine AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS build
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# Root turbo build also runs the docs `build` script (generate-mcp-pages + drift check + next build).
+RUN pnpm build
+RUN pnpm --filter @rytask/docs --prod deploy /app
+
+FROM base AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app /app
+# `pnpm deploy` honors apps/docs/.gitignore, which excludes the build output —
+# copy `.next` in explicitly (the generated .source/mdx are already compiled into it).
+COPY --from=build /repo/apps/docs/.next /app/.next
+RUN rm -rf /app/.next/cache
+# The OpenAPI reference resolves repo-root spec contracts at REQUEST time
+# (lib/openapi.ts: `path.resolve(process.cwd(), '../../specs/...')` → /specs
+# when cwd is /app), so the specs tree must exist in the runtime image too.
+COPY --from=build /repo/specs /specs
+EXPOSE 3002
+# Run the real Next bin directly: `pnpm start` trips pnpm's verify-deps check (no TTY → abort),
+# and the `.bin/next` shim is a shell script, not JS — same trap as Dockerfile.web.
+CMD ["node", "node_modules/next/dist/bin/next", "start", "--port", "3002"]
