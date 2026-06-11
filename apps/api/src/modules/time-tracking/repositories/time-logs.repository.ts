@@ -368,7 +368,13 @@ export class TimeLogsRepository extends TenantScopedRepository {
       .innerJoin(workItems, eq(workItems.id, timeLogs.workItemId))
       .innerJoin(projects, eq(projects.id, workItems.projectId))
       .where(this.scoped(timeLogs, ...this.reportFilters(scope)))
-      .groupBy(timeLogs.workItemId, timeLogs.projectId, projects.keyPrefix, workItems.number, workItems.title)
+      .groupBy(
+        timeLogs.workItemId,
+        timeLogs.projectId,
+        projects.keyPrefix,
+        workItems.number,
+        workItems.title,
+      )
       .orderBy(desc(loggedExpr), asc(keyExpr))
       .limit(limit);
     return rows.map((r) => ({

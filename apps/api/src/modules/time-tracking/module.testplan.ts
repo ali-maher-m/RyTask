@@ -226,6 +226,19 @@ export const testPlan: ModuleTestPlan = {
       target: 'WeeklySummaryProvider',
       file: 'providers/weekly-summary.provider.int.spec.ts',
     },
+    // M4 Polish — the SC-002/SC-003 cross-surface reconciliation authority (two orgs, all 3 endpoints
+    // + /time/summary; planned + interruption === logged and overview interruption === ledger total).
+    {
+      kind: 'integration',
+      target: 'reports cross-surface reconciliation (SC-002/SC-003)',
+      file: 'reports-reconciliation.int.spec.ts',
+    },
+    // M4 Polish — cross-tenant isolation for the new ledger/weekly read-models (Principle II).
+    {
+      kind: 'tenancy',
+      target: 'reports read-models cross-tenant isolation',
+      file: 'reports-tenancy.int.spec.ts',
+    },
   ],
 };
 

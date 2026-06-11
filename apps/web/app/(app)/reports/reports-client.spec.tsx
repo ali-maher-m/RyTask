@@ -1,6 +1,7 @@
 import type { InterruptionLedger, ReportOverview } from '@rytask/contracts';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { axe } from 'vitest-axe';
 
 /**
  * Component test for the flagship report client (US1, web-surfaces §6). With the API mocked, the
@@ -34,7 +35,12 @@ const overview: ReportOverview = {
   range: { from: '2026-06-01', to: '2026-06-14' },
   totals: { loggedSeconds: 13200, plannedSeconds: 11400, interruptionSeconds: 1800 },
   weeks: [
-    { weekStart: '2026-06-01', loggedSeconds: 5400, plannedSeconds: 3600, interruptionSeconds: 1800 },
+    {
+      weekStart: '2026-06-01',
+      loggedSeconds: 5400,
+      plannedSeconds: 3600,
+      interruptionSeconds: 1800,
+    },
     { weekStart: '2026-06-08', loggedSeconds: 7800, plannedSeconds: 7800, interruptionSeconds: 0 },
   ],
   topItems: [
@@ -123,6 +129,14 @@ describe('ReportsClient', () => {
     expect(screen.getByTestId('report-interruption').textContent).toBe('30m');
   });
 
+  it('has no axe violations once the report has rendered', async () => {
+    const { container } = render(<ReportsClient />);
+    await screen.findByTestId('report-ledger');
+    // Color contrast needs computed styles jsdom does not provide; structure/labels/roles are checked.
+    const results = await axe(container, { rules: { 'color-contrast': { enabled: false } } });
+    expect(results).toHaveNoViolations();
+  });
+
   it('shows "(removed user)" when a ledger row has no reporter', async () => {
     fetchInterruptionLedger.mockResolvedValue({
       ...ledger,
@@ -143,6 +157,8 @@ describe('ReportsClient', () => {
     fetchInterruptionLedger.mockResolvedValue(emptyLedger);
     render(<ReportsClient />);
     await waitFor(() => expect(screen.getByTestId('reports-empty')).toBeTruthy());
-    expect(screen.getByTestId('reports-empty').textContent).toContain('No time tracked in this range');
+    expect(screen.getByTestId('reports-empty').textContent).toContain(
+      'No time tracked in this range',
+    );
   });
 });

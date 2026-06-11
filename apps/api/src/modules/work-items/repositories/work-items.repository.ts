@@ -646,7 +646,13 @@ export class WorkItemsRepository extends TenantScopedRepository {
     to: string,
     projectIds: string[] | null,
   ): Promise<
-    Array<{ workItemId: string; projectId: string; key: string; title: string; completedAt: string }>
+    Array<{
+      workItemId: string;
+      projectId: string;
+      key: string;
+      title: string;
+      completedAt: string;
+    }>
   > {
     const end = new Date(`${to}T00:00:00.000Z`);
     end.setUTCDate(end.getUTCDate() + 1); // exclusive upper bound = the day after `to`

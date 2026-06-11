@@ -17,12 +17,12 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
 import { type StartedPostgres, startPostgres } from '../../../common/testing/postgres';
+import { ProjectMembersRepository } from '../../projects/repositories/project-members.repository';
+import { ProjectAccessServiceImpl } from '../../projects/services/project-access.service';
 import { ActivityRepository } from '../../work-items/repositories/activity.repository';
 import { WorkItemWatchersRepository } from '../../work-items/repositories/work-item-watchers.repository';
 import { WorkItemsRepository } from '../../work-items/repositories/work-items.repository';
 import { WorkItemAccessServiceImpl } from '../../work-items/services/work-item-access.service';
-import { ProjectMembersRepository } from '../../projects/repositories/project-members.repository';
-import { ProjectAccessServiceImpl } from '../../projects/services/project-access.service';
 import { TimeLogsRepository } from '../repositories/time-logs.repository';
 import { TimeSummaryProvider } from './time-summary.provider';
 import { WeeklySummaryProvider } from './weekly-summary.provider';
@@ -174,7 +174,11 @@ describe('WeeklySummaryProvider (integration)', () => {
     // Items descending by logged seconds; the estimate is the raw numeric-as-string (or null).
     expect(wk.items.map((i) => i.workItemId)).toEqual([ITEM_A, ITEM_B]);
     expect(wk.items[0]).toMatchObject({ loggedSeconds: 7200, estimateValue: '8', completed: true });
-    expect(wk.items[1]).toMatchObject({ loggedSeconds: 1800, estimateValue: null, completed: false });
+    expect(wk.items[1]).toMatchObject({
+      loggedSeconds: 1800,
+      estimateValue: null,
+      completed: false,
+    });
     // The unreadable project's 5555s never appears.
     expect(wk.items.some((i) => i.loggedSeconds === 5555)).toBe(false);
   });

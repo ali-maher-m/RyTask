@@ -120,7 +120,9 @@ export function WeekClient() {
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>My week</h1>
-          <p className={styles.subtitle}>Your tracked time and what you finished, one week at a time.</p>
+          <p className={styles.subtitle}>
+            Your tracked time and what you finished, one week at a time.
+          </p>
         </div>
         <nav className={styles.tabs} aria-label="Report views">
           <Link className={styles.tab} href="/reports">

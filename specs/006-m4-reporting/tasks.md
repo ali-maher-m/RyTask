@@ -222,55 +222,55 @@ tracked-vs-estimate, and that the copied digest matches the on-screen figures (s
 
 ### Tests for User Story 3 (write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T032 [P] [US3] Extend `time-reports.controller.contract.spec.ts` with `GET /time/reports/week`:
+- [X] T032 [P] [US3] Extend `time-reports.controller.contract.spec.ts` with `GET /time/reports/week`:
       `weekStart` MUST be a Monday (400 plain-language message), `userId?` defaults to the principal; range
       is `weekStart..+6`; `items` desc with raw `estimateValue`; `completedItems` shape
       (contracts/reports-rest.md §3).
-- [ ] T033 [P] [US3] Integration spec
+- [X] T033 [P] [US3] Integration spec
       `apps/api/src/modules/time-tracking/providers/weekly-summary.provider.int.spec.ts` (real Postgres):
       totals/split; per-item logged + estimate + `completed` flag; `completedItems` via the work-items
       contract; reconciles with `GET /time/summary?groupBy=period&userId=…` for the same week; scoping.
-- [ ] T034 [P] [US3] Integration spec for `listCompletedForUser` in the work-items module (e.g.
+- [X] T034 [P] [US3] Integration spec for `listCompletedForUser` in the work-items module (e.g.
       `apps/api/src/modules/work-items/services/work-item-access.completed.int.spec.ts`): non-deleted items
       assigned to the user with `completed_at ∈ [from,to] ∩ projectIds` (research D6 — the
       `listDueAndOverdue` precedent).
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Add `listCompletedForUser(userId, from, to, projectIds)` to the `WorkItemAccessService`
+- [X] T035 [US3] Add `listCompletedForUser(userId, from, to, projectIds)` to the `WorkItemAccessService`
       interface in `apps/api/src/modules/work-items/work-items.contract.ts` (+ its return row type).
-- [ ] T036 [US3] Implement `listCompletedForUser` in
+- [X] T036 [US3] Implement `listCompletedForUser` in
       `apps/api/src/modules/work-items/services/work-item-access.service.ts` (non-deleted, `assignee_id =
       userId`, `completed_at` in range, project filter) to pass T034.
-- [ ] T037 [US3] Update `apps/api/src/modules/work-items/module.testplan.ts`: declare the `listCompletedForUser`
+- [X] T037 [US3] Update `apps/api/src/modules/work-items/module.testplan.ts`: declare the `listCompletedForUser`
       coverage (T034) on the access service.
-- [ ] T038 [US3] Add the `weeklyItems(userId, week)` query to `time-logs.repository.ts` — per-item sums for
+- [X] T038 [US3] Add the `weeklyItems(userId, week)` query to `time-logs.repository.ts` — per-item sums for
       one user/week `⋈ work_items(key,title,estimate_value,completed_at)` (data-model §3).
-- [ ] T039 [US3] Implement `apps/api/src/modules/time-tracking/providers/weekly-summary.provider.ts`
+- [X] T039 [US3] Implement `apps/api/src/modules/time-tracking/providers/weekly-summary.provider.ts`
       (validate `weekStart` is a Monday via `report-range.policy`; default `userId` to the principal; compose
       `weeklyItems` + totals + `WORK_ITEM_ACCESS.listCompletedForUser`; apply visibility scoping) and register
       it in `time-tracking.module.ts`.
-- [ ] T040 [US3] Add the `GET /time/reports/week` handler to `time-reports.controller.ts` (zod
+- [X] T040 [US3] Add the `GET /time/reports/week` handler to `time-reports.controller.ts` (zod
       `reportWeekQuery` pipe).
-- [ ] T041 [US3] Update `module.testplan.ts` (time-tracking): add `WeeklySummaryProvider`, the new route, and
+- [X] T041 [US3] Update `module.testplan.ts` (time-tracking): add `WeeklySummaryProvider`, the new route, and
       the two `requiredTests` entries (T032, T033).
-- [ ] T042 [P] [US3] Add the typed fetcher `fetchWeeklySummary(weekStart, userId?)` to `apps/web/lib/api/time.ts`.
-- [ ] T043 [P] [US3] Write the failing unit spec in `apps/web/lib/report-text.spec.ts` (extend) for the
+- [X] T042 [P] [US3] Add the typed fetcher `fetchWeeklySummary(weekStart, userId?)` to `apps/web/lib/api/time.ts`.
+- [X] T043 [P] [US3] Write the failing unit spec in `apps/web/lib/report-text.spec.ts` (extend) for the
       `digest()` template (week range, total, split, completed items, top items — the paste-ready format in
       web-surfaces §4; pluralization + zero-states).
-- [ ] T044 [US3] Implement `digest()` in `apps/web/lib/report-text.ts` to pass T043.
-- [ ] T045 [US3] Create `apps/web/app/(app)/reports/week/page.tsx` (RSC shell + auth).
-- [ ] T046 [US3] Create `apps/web/app/(app)/reports/week/week-client.tsx` (+ `week-client.module.css`): week
+- [X] T044 [US3] Implement `digest()` in `apps/web/lib/report-text.ts` to pass T043.
+- [X] T045 [US3] Create `apps/web/app/(app)/reports/week/page.tsx` (RSC shell + auth).
+- [X] T046 [US3] Create `apps/web/app/(app)/reports/week/week-client.tsx` (+ `week-client.module.css`): week
       picker (◀/▶, label "Mon D – Sun D", never into the future, default current ISO week, always sends a
       computed Monday), header figures + `<SplitBar>`, **What I tracked** rows (logged + shipped `<Meter>`
       tracked-vs-estimate where an estimate exists, logged-only otherwise; completed check on rows completed
       this week), **Completed this week** list with plain empty wording, and **Copy as text**
       (`navigator.clipboard.writeText` + hidden-textarea fallback, `aria-live="polite"` success)
       (web-surfaces §3).
-- [ ] T047 [US3] Add the **My week** entry point: a quiet link from
+- [X] T047 [US3] Add the **My week** entry point: a quiet link from
       `apps/web/app/(app)/my-work/my-work-client.tsx` and the `/reports ↔ /reports/week` two-tab header
       cross-link (web-surfaces §1).
-- [ ] T048 [US3] Extend `apps/web/e2e/reports.e2e.spec.ts`: open `/reports/week`, switch weeks, click **Copy
+- [X] T048 [US3] Extend `apps/web/e2e/reports.e2e.spec.ts`: open `/reports/week`, switch weeks, click **Copy
       as text** and assert the clipboard digest matches the on-screen figures, **+ axe scan on
       `/reports/week`**.
 
@@ -289,17 +289,17 @@ export an empty range and verify a valid headers-only CSV (spec US4 Independent 
 
 ### Tests for User Story 4 (write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T049 [P] [US4] Unit spec `apps/web/lib/csv.spec.ts`: RFC-4180 quoting, the three sections (summary,
+- [X] T049 [P] [US4] Unit spec `apps/web/lib/csv.spec.ts`: RFC-4180 quoting, the three sections (summary,
       ledger, weeks), exact equality with the input state, and the empty-range headers-only case
       (web-surfaces §4; SC-004).
 
 ### Implementation for User Story 4
 
-- [ ] T050 [US4] Implement `apps/web/lib/csv.ts` — pure `toCsv(overview, ledger)` (RFC-4180, UTF-8, the
+- [X] T050 [US4] Implement `apps/web/lib/csv.ts` — pure `toCsv(overview, ledger)` (RFC-4180, UTF-8, the
       three sections) + a `Blob` download helper (filename `rytask-report-<from>-<to>.csv`) — to pass T049.
-- [ ] T051 [US4] Add the **Export CSV** button to `apps/web/app/(app)/reports/reports-client.tsx`,
+- [X] T051 [US4] Add the **Export CSV** button to `apps/web/app/(app)/reports/reports-client.tsx`,
       serializing the **already-rendered** overview + ledger state (no refetch — research D7).
-- [ ] T052 [US4] Extend `apps/web/e2e/reports.e2e.spec.ts`: export CSV and assert its content matches the
+- [X] T052 [US4] Extend `apps/web/e2e/reports.e2e.spec.ts`: export CSV and assert its content matches the
       screen for the active range/scope; export an empty range → valid headers-only CSV.
 
 **Checkpoint**: All four user stories complete and independently testable.
@@ -311,28 +311,28 @@ export an empty range and verify a valid headers-only CSV (spec US4 Independent 
 **Purpose**: The cross-surface acceptance authorities, isolation, contract/SDK propagation, and the gate
 sweep. The reconciliation and tenancy specs are **MANDATORY** (Constitution V) and gate release.
 
-- [ ] T053 [P] **(MANDATORY — SC-002/SC-003 authority)** Cross-surface reconciliation integration spec
+- [X] T053 [P] **(MANDATORY — SC-002/SC-003 authority)** Cross-surface reconciliation integration spec
       `apps/api/src/modules/time-tracking/reports-reconciliation.int.spec.ts`: one fixture seeding **two
       orgs**, exercising all three report endpoints + `GET /time/summary` for the same range/scope, asserting
       `planned + interruption === logged` at every level and `overview.interruptionSeconds ===
       ledger.totalSeconds === Σ ledger weeks`; declare it in `module.testplan.ts` (contracts/README §
       Reconciliation; research D14).
-- [ ] T054 [P] **(MANDATORY)** Cross-tenant assertion spec for the new ledger/weekly read-models (extend
+- [X] T054 [P] **(MANDATORY)** Cross-tenant assertion spec for the new ledger/weekly read-models (extend
       `apps/api/src/modules/time-tracking/repositories/time-logs.tenancy.spec.ts` or add a reports tenancy
       spec) — org B never sees org A's report rows; declare it in `module.testplan.ts` (research D14;
       Principle II).
-- [ ] T055 Regenerate the SDK from OpenAPI for the three new GET operations (`packages/sdk`) and run
+- [X] T055 Regenerate the SDK from OpenAPI for the three new GET operations (`packages/sdk`) and run
       `pnpm --filter web typecheck` to confirm the web fetchers stay typed (plan Project Structure;
       reports-rest §6).
-- [ ] T056 Verify `pnpm tsx scripts/check-mcp-parity.ts` stays **49/49** and that
+- [X] T056 Verify `pnpm tsx scripts/check-mcp-parity.ts` stays **49/49** and that
       `apps/api/src/modules/time-tracking/module.testplan.ts` keeps `mcpTools: []` with a comment citing the
       FR-RPT-009 v2 deferral (plan Complexity Tracking; research D9).
-- [ ] T057 [P] Run `pnpm tsx scripts/check-design-tokens.ts` green for `<SplitBar>` and both report surfaces
+- [X] T057 [P] Run `pnpm tsx scripts/check-design-tokens.ts` green for `<SplitBar>` and both report surfaces
       (token-only, **no new tokens**, no hex/px brand literals — Principle VIII; web-surfaces §5).
-- [ ] T058 Run the full gate sweep from quickstart.md §Gates: `pnpm lint`, `pnpm --filter api test`,
+- [X] T058 Run the full gate sweep from quickstart.md §Gates: `pnpm lint`, `pnpm --filter api test`,
       `pnpm --filter web test`, `pnpm test:integration`, `pnpm tsx scripts/check-required-tests.ts`,
       `pnpm --filter web e2e`, and `pnpm test:coverage` (thresholds hold: ≥80% line / ≥90% domain+providers).
-- [ ] T059 [P] Brand-fidelity + Albert/Marissa pass on `/reports` and `/reports/week` (sentence-case kind copy,
+- [X] T059 [P] Brand-fidelity + Albert/Marissa pass on `/reports` and `/reports/week` (sentence-case kind copy,
       Geist-Mono `tabular-nums` figures, flat fills/hairlines, dark ink on honey/amber, `--time-over` red
       reserved for over-estimate) and walk quickstart.md US1–US4 verification end-to-end.
 

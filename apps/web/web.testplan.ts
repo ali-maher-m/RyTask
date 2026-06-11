@@ -143,7 +143,8 @@ export const testPlan: WebTestPlan = {
     // (US1–US4). Extended in place per story (T031/T048/T052).
     {
       kind: 'e2e',
-      target: 'reports: split + narrative + reconciliation + ledger + My week + copy + CSV + axe (M4)',
+      target:
+        'reports: split + narrative + reconciliation + ledger + My week + copy + CSV + axe (M4)',
       file: 'e2e/reports.e2e.spec.ts',
     },
     // M4 US1/US3 — the plain-language narrative + digest templates (pluralization, zero-state, rounding).
@@ -157,6 +158,12 @@ export const testPlan: WebTestPlan = {
       kind: 'component',
       target: 'reports-client: controls + narrative + tables + empty state (M4 US1)',
       file: 'app/(app)/reports/reports-client.spec.tsx',
+    },
+    // M4 US4 — CSV serialization: RFC-4180 quoting, the three sections, equality with input state.
+    {
+      kind: 'unit',
+      target: 'csv toCsv: quoting + sections + headers-only empty range (M4 US4)',
+      file: 'lib/csv.spec.ts',
     },
   ],
 };

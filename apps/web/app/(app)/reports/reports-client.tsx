@@ -9,9 +9,10 @@ import {
   fetchInterruptionLedger,
   fetchReportOverview,
 } from '@/lib/api/time';
+import { downloadReportCsv } from '@/lib/csv';
 import { formatHm, narrative } from '@/lib/report-text';
 import type { InterruptionLedger, Membership, Project, ReportOverview } from '@rytask/contracts';
-import { EmptyState, Figure, SplitBar } from '@rytask/ui';
+import { Button, EmptyState, Figure, SplitBar } from '@rytask/ui';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -51,7 +52,12 @@ const mondayOf = (d: Date) => {
 };
 
 /** A preset → an explicit inclusive `from`/`to` (the only thing the server sees, research D5). */
-function computeRange(preset: Preset, customFrom: string, customTo: string, now = new Date()): ReportRange {
+function computeRange(
+  preset: Preset,
+  customFrom: string,
+  customTo: string,
+  now = new Date(),
+): ReportRange {
   const monday = mondayOf(now);
   switch (preset) {
     case 'last-week': {
@@ -260,6 +266,20 @@ export function ReportsClient() {
             ))}
           </select>
         </label>
+
+        <div className={styles.exportSlot}>
+          <Button
+            variant="secondary"
+            size="sm"
+            data-testid="export-csv"
+            disabled={!overview || !ledger}
+            onClick={() => {
+              if (overview && ledger) downloadReportCsv(overview, ledger);
+            }}
+          >
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -291,7 +311,9 @@ export function ReportsClient() {
                 <div className={styles.figureGroup}>
                   <span className={styles.figureLabel}>Planned</span>
                   <span data-testid="report-planned">
-                    <Figure className={styles.figureValue}>{formatHm(totals.plannedSeconds)}</Figure>
+                    <Figure className={styles.figureValue}>
+                      {formatHm(totals.plannedSeconds)}
+                    </Figure>
                   </span>
                   <span className={styles.figurePct}>{plannedPct}%</span>
                 </div>

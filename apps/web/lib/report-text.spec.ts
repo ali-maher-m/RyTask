@@ -88,8 +88,20 @@ const weekly = (over: Partial<WeeklySummary> = {}): WeeklySummary => ({
     },
   ],
   completedItems: [
-    { workItemId: 'a', projectId: 'p', key: 'OPS-214', title: 'Checkout outage', completedAt: '2026-05-20T00:00:00.000Z' },
-    { workItemId: 'c', projectId: 'p', key: 'WEB-87', title: 'Pricing page copy', completedAt: '2026-05-21T00:00:00.000Z' },
+    {
+      workItemId: 'a',
+      projectId: 'p',
+      key: 'OPS-214',
+      title: 'Checkout outage',
+      completedAt: '2026-05-20T00:00:00.000Z',
+    },
+    {
+      workItemId: 'c',
+      projectId: 'p',
+      key: 'WEB-87',
+      title: 'Pricing page copy',
+      completedAt: '2026-05-21T00:00:00.000Z',
+    },
   ],
   ...over,
 });
@@ -114,7 +126,9 @@ describe('digest', () => {
         completedItems: [],
       }),
     );
-    expect(s).toBe(['Week of May 18–24 — 0m tracked', 'Planned 0m (0%) · Interruptions 0m (0%)'].join('\n'));
+    expect(s).toBe(
+      ['Week of May 18–24 — 0m tracked', 'Planned 0m (0%) · Interruptions 0m (0%)'].join('\n'),
+    );
   });
 
   it('spans months in the week label when the week crosses a month boundary', () => {

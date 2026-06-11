@@ -31,7 +31,12 @@ const overview: ReportOverview = {
   range: { from: '2026-06-01', to: '2026-06-14' },
   totals: { loggedSeconds: 13200, plannedSeconds: 11400, interruptionSeconds: 1800 },
   weeks: [
-    { weekStart: '2026-06-01', loggedSeconds: 5400, plannedSeconds: 3600, interruptionSeconds: 1800 },
+    {
+      weekStart: '2026-06-01',
+      loggedSeconds: 5400,
+      plannedSeconds: 3600,
+      interruptionSeconds: 1800,
+    },
     { weekStart: '2026-06-08', loggedSeconds: 7800, plannedSeconds: 7800, interruptionSeconds: 0 },
   ],
   topItems: [

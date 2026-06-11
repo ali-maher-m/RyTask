@@ -59,6 +59,12 @@
   gap: var(--space-3);
 }
 
+/* Push Export CSV to the right edge of the controls bar (top-right of the report card). */
+.exportSlot {
+  margin-left: auto;
+  align-self: flex-end;
+}
+
 .control {
   display: flex;
   flex-direction: column;

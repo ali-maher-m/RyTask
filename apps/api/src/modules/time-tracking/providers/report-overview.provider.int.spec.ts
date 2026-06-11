@@ -186,7 +186,11 @@ describe('ReportOverviewProvider (integration)', () => {
     const w1 = r.weeks.find((w) => w.weekStart === '2026-06-01');
     const w2 = r.weeks.find((w) => w.weekStart === '2026-06-08');
     const w3 = r.weeks.find((w) => w.weekStart === '2026-06-15');
-    expect(w1).toMatchObject({ loggedSeconds: 5400, plannedSeconds: 3600, interruptionSeconds: 1800 });
+    expect(w1).toMatchObject({
+      loggedSeconds: 5400,
+      plannedSeconds: 3600,
+      interruptionSeconds: 1800,
+    });
     expect(w2).toMatchObject({ loggedSeconds: 7800, plannedSeconds: 7800, interruptionSeconds: 0 });
     expect(w3).toMatchObject({ loggedSeconds: 0, plannedSeconds: 0, interruptionSeconds: 0 });
     expect(r.weeks.reduce((s, w) => s + w.loggedSeconds, 0)).toBe(r.totals.loggedSeconds);

@@ -88,7 +88,8 @@ export function digest(summary: WeeklySummary): string {
   const { weekStart, weekEnd, totals, items, completedItems } = summary;
   const { loggedSeconds, plannedSeconds, interruptionSeconds } = totals;
 
-  const interruptionPct = loggedSeconds > 0 ? Math.round((interruptionSeconds / loggedSeconds) * 100) : 0;
+  const interruptionPct =
+    loggedSeconds > 0 ? Math.round((interruptionSeconds / loggedSeconds) * 100) : 0;
   const plannedPct = loggedSeconds > 0 ? 100 - interruptionPct : 0;
 
   const lines = [

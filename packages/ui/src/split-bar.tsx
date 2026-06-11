@@ -50,11 +50,7 @@ export function SplitBar({
       : 'No time tracked';
 
   return (
-    <div
-      className={cx(styles.bar, styles[size], className)}
-      role="img"
-      aria-label={ariaLabel}
-    >
+    <div className={cx(styles.bar, styles[size], className)} role="img" aria-label={ariaLabel}>
       {planned > 0 ? (
         <div className={styles.planned} style={{ width: `${plannedPct}%` }} aria-hidden="true" />
       ) : null}

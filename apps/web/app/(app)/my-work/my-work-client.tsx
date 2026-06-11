@@ -182,6 +182,13 @@ export function MyWorkClient() {
               <Figure>{formatDuration(myTime.interruptionSeconds)}</Figure> interruptions)
             </span>
           ) : null}
+          {/* M4 — a quiet link to the personal weekly summary (web-surfaces §1). */}
+          <Link
+            href="/reports/week"
+            style={{ fontSize: 'var(--fs-sm)', color: 'var(--accent-fg)' }}
+          >
+            My week →
+          </Link>
         </section>
       ) : null}
 
