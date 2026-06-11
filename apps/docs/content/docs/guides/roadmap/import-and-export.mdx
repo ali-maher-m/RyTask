@@ -1,19 +1,26 @@
 ---
 title: Import and export
-description: Planned CSV import, competitor importers, and full data export in open formats — your data stays yours.
+description: Full data export ships today; CSV import, competitor importers, and scheduled backups are on the way — your data stays yours.
 ---
 
-<ComingSoon tier="MVP scope" />
+RyTask aims to make data movement boring, in the best way. Self-hosting only counts as owning
+your data if you can actually take all of it with you — and the "getting it out" half is here
+today.
 
-RyTask plans to make data movement boring, in the best way. Getting data in: CSV import
-and, later, importers from the tools people leave. Getting data out: a **full export in
-an open format** — not the crippled partial exports SaaS tools use to keep you in.
-Self-hosting only counts as owning your data if you can actually take all of it with you.
+## Available now
 
-What's planned:
+- **Full data export in an open format** <StatusBadge status="available" /> — a complete,
+  versioned dump of your whole organization, not the crippled partial exports SaaS tools use to
+  keep you in. See [exporting your data](/docs/guides/users/export).
+- **CSV export** <StatusBadge status="available" /> — every [report](/docs/guides/users/reporting)
+  exports to CSV, and the workspace export offers per-entity CSV for work items and time logs.
+- **API-based bulk export** <StatusBadge status="available" /> — `GET /export/workspace` returns
+  the full org as JSON or CSV for programmatic backup.
 
-- **CSV import and export** — bulk in and out (MVP scope).
-- **Full data export in an open format** — a complete dump of everything (MVP scope).
-- **API-based bulk export** — programmatic backup without punishing rate limits (MVP scope).
-- **Importers from Jira, Linear, Trello, and Asana** — migration without friction (v2).
-- **Scheduled backups** — automated dumps for self-hosted instances (v2).
+## Still planned
+
+- **CSV import** <StatusBadge status="coming-soon" /> — bulk data in (MVP scope).
+- **Importers from Jira, Linear, Trello, and Asana** <StatusBadge status="coming-soon" /> —
+  migration without friction (v2).
+- **Scheduled backups** <StatusBadge status="coming-soon" /> — automated dumps for self-hosted
+  instances (v2).

@@ -12,6 +12,7 @@
     "reporting",
     "inbox-and-notifications",
     "search",
-    "permissions-and-roles"
+    "permissions-and-roles",
+    "export"
   ]
 }

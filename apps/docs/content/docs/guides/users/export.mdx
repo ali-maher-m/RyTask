@@ -1,0 +1,70 @@
+---
+title: Exporting your data
+description: Take everything with you — a complete workspace export as a JSON archive or per-entity CSV, owner-triggered and read-only.
+---
+
+<StatusBadge status="available" />
+
+Self-hosting only counts as owning your data if you can actually take all of it with you. RyTask
+gives you a **complete export** of your organization — every work item, comment, time log, and
+all the people, projects, and metadata around them — as a machine-readable archive or as CSV
+(FR-PORT-003, FR-PORT-004). There are no crippled partial exports here.
+
+## Who can export, and from where
+
+Exporting is **Owner / Admin only** — it reaches across the whole organization, so it sits with
+the people who already administer it. Others get a polite `403`.
+
+In the app, open **Settings → Organization** and use the **Export** card. Or call the API
+directly:
+
+```
+GET /export/workspace
+```
+
+Both paths return the same data; the UI buttons just trigger an authenticated download in your
+browser, saved with a sensible filename.
+
+## The JSON archive
+
+The default export is a single JSON document, versioned `rytask.workspace-export` v1 (the version
+field is there so future readers can stay backward-compatible). It contains:
+
+| Section | What's in it |
+|---|---|
+| Organization | The org's own metadata. |
+| Workspaces & members | Every workspace and who belongs to it. |
+| Projects | Projects with their statuses, labels, and custom fields. |
+| Work items | **Every** item — including soft-deleted ones, flagged with `deletedAt`. |
+| Label links | Which labels are attached to which items. |
+| Comments | All comments, including soft-deleted ones. |
+| Time logs | All tracked time, including soft-deleted entries. |
+| `counts` | A self-consistency block — how many items, comments, and time logs the archive holds, so you can check nothing was dropped. |
+
+## CSV exports
+
+When you want a spreadsheet instead of the full archive, ask for CSV one entity at a time:
+
+```
+GET /export/workspace?format=csv&entity=work-items
+GET /export/workspace?format=csv&entity=time-logs
+```
+
+Each returns RFC-4180 CSV with one row per record and a `rytask-<entity>.csv` download filename.
+The CSV is assembled from the same read-model as the JSON archive, so the two can never disagree.
+
+## What you can count on
+
+- **Complete.** Unlike the JSON in reports (which omits deleted rows), this is a *safe-exit*
+  archive — soft-deleted items, comments, and time logs are **included** and clearly flagged, so
+  the export is suitable for a full migration or a GDPR data request.
+- **Tenant-scoped.** The export contains your organization's data and nothing else; there is no
+  way to reach another org's rows.
+- **Read-only.** Exporting changes nothing — it writes no activity, sends no notifications, and
+  leaves every record exactly as it was.
+
+## What's next
+
+CSV *import*, importers from other trackers, and scheduled self-hosted backups are on the
+roadmap — see [import and export](/docs/guides/roadmap/import-and-export). Roles and what each
+can do are covered under [permissions and roles](/docs/reference/permissions).

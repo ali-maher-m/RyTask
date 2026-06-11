@@ -1,25 +1,86 @@
 ---
 title: GitHub
-description: Planned GitHub App integration — branch, PR, and commit linking with auto-close and status sync, free from day one.
+description: Link commits and pull requests to work items with a key or a magic word — free from day one. Auto-close and status sync are still on the way.
 ---
 
-<ComingSoon tier="MVP scope" />
+<StatusBadge status="available" />
 
-RyTask plans a first-class GitHub integration, free from day one — one of the project's
-core differentiators (D4). It will be delivered as a **GitHub App** installed per
-repository or organization, scoped to the repositories you select (FR-INT-GH-001).
-Nothing on this page exists in the product yet.
+RyTask connects your code to your work items — one of the project's core differentiators (D4),
+free from day one. Today that means **linking**: mention an item key in a commit message or a
+pull request and RyTask records the connection on the item's activity feed. The richer moves
+that close the loop — auto-closing an item on merge, syncing status from PR state — are
+[still planned](#still-planned).
 
-The goal is the Linear/Shortcut-grade experience that open-source trackers usually gate
-behind commercial editions: connect code to work items, and let your normal Git workflow
-move the tracker for you. Referencing an item key in a branch, PR, or commit links them
-both ways, and a magic word like `Fixes RY-123` in a merged PR closes the item
-automatically (FR-INT-GH-002, FR-INT-GH-005).
+## Connect a repository
 
-What's planned:
+Connecting a repo takes two parts: a connection created in RyTask, and a webhook added on the
+GitHub side that points back at it. Throughout this section, `https://rytask.example.com`
+stands for the public address of your RyTask **API** server — replace it with your own.
 
-- **Branch / PR / commit linking** — bidirectional references between work items and GitHub (MVP scope).
-- **Magic-word auto-close on merge** — `Fixes RY-123` transitions the item to the mapped status (MVP scope).
-- **Status sync from PR state** — the item moves when a PR opens, goes to review, or merges (MVP scope, FR-INT-GH-004).
-- **Auto-create branch from an item** — one click creates a conventionally named branch (v2, FR-INT-GH-003).
-- **GitLab / Bitbucket parity** — the integration is provider-abstracted so other forges can follow (v2, FR-INT-GH-011).
+**1. Create the connection in RyTask.** An admin opens **Settings → Integrations** and connects
+a GitHub repository (for example `your-org/backend`). RyTask responds with two things:
+
+| | What it is |
+| --- | --- |
+| Webhook URL | Where GitHub should deliver events, e.g. `https://rytask.example.com/api/v1/webhook/github/<connection-id>`. |
+| Webhook secret | A signing secret, shown **once**. Copy it now — RyTask never displays it again. |
+
+Connecting is **admin-only**: it requires the Owner or Admin role. Other members can see
+connected repositories but not add or remove them.
+
+**2. Add the webhook on GitHub.** In the repository's **Settings → Webhooks → Add webhook**,
+paste the webhook URL as the *Payload URL*, set the content type to `application/json`, paste
+the secret into the *Secret* field, and subscribe to the **Push** and **Pull request** events.
+Save it, and GitHub starts delivering events to RyTask.
+
+To rotate the secret, reconnect the repository: RyTask mints a fresh secret and revokes the old
+connection. Disconnecting a repository stops new links from forming; links already on your items
+stay as a read-only record.
+
+## How linking works
+
+Once a repository is connected, write a work-item key into your normal Git workflow and RyTask
+does the rest. Two forms are recognised, in commit messages and in pull-request titles or bodies:
+
+- A **bare key** — `RY-12 fix the login redirect`.
+- A **magic word** followed by a key — `Fixes RY-12`, `Closes RY-12`, or `Resolves RY-12`.
+
+Push the commit, or open the PR, and a row appears on item **RY-12**'s activity feed. RyTask
+distinguishes a `COMMIT` link from a `PR` link and records the commit SHA or PR number, the
+message or title, the repository, and a link straight back to GitHub.
+
+A few details worth knowing:
+
+- Keys are **case-insensitive** (`ry-12` and `RY-12` are the same item).
+- A single push or PR links up to **20 distinct keys** — a guard against a giant force-push
+  fanning out into hundreds of links.
+- Unknown keys, or keys pointing to a trashed item, are **silently skipped** — no errors, no
+  noise.
+- **Magic words currently only _link_.** `Fixes RY-12` records the connection; it does **not**
+  yet move the item to Done or change its status. Auto-close is [still planned](#still-planned).
+
+### Safe by construction
+
+The webhook endpoint is built to be exposed to the public internet:
+
+- **Signed.** Every delivery is verified with HMAC-SHA256 against your webhook secret *before*
+  RyTask does any work. A bad or missing signature is rejected with `401` and nothing happens.
+- **Idempotent.** GitHub retries deliveries on a network blip. RyTask keys the work on the
+  delivery and on the link itself, so a redelivered event produces the link **exactly once** —
+  never a duplicate row.
+- **Revoke-safe.** If the connection has been disconnected, RyTask acknowledges the webhook and
+  processes it as a no-op — no new links are created.
+
+## Still planned
+
+The linking above is the first slice. The rest of the GitHub experience — the Linear/Shortcut-grade
+flow that open-source trackers usually gate behind commercial editions — is on the roadmap:
+
+- **Magic-word auto-close on merge** <StatusBadge status="coming-soon" /> — `Fixes RY-12` in a
+  merged PR transitions the item to the mapped status (MVP scope, FR-INT-GH-002 / FR-INT-GH-005).
+- **Status sync from PR state** <StatusBadge status="coming-soon" /> — the item moves when a PR
+  opens, goes to review, or merges (MVP scope, FR-INT-GH-004).
+- **Auto-create branch from an item** <StatusBadge status="coming-soon" /> — one click creates a
+  conventionally named branch (v2, FR-INT-GH-003).
+- **GitLab / Bitbucket parity** <StatusBadge status="coming-soon" /> — the integration is
+  provider-abstracted so other forges can follow (v2, FR-INT-GH-011).
