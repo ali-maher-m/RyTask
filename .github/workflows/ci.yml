@@ -22,8 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -42,8 +40,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -68,8 +64,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -85,11 +79,14 @@ jobs:
   e2e:
     name: E2E + Accessibility (Playwright + axe)
     runs-on: ubuntu-latest
+    env:
+      # Baked into the web bundle at build time AND read by the SSR server at run time —
+      # the e2e suite drives the real browser against the real API on :3001.
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      API_URL: http://localhost:3001
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -97,10 +94,35 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
+      - name: Start infrastructure (Postgres, Redis, MinIO, Mailhog)
+        run: |
+          docker compose up -d postgres redis minio mailhog
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U rytask > /dev/null 2>&1 && break
+            sleep 1
+          done
+          docker compose exec -T postgres pg_isready -U rytask
+      - name: Migrate + seed
+        env:
+          DATABASE_URL: postgres://rytask:rytask@localhost:5432/rytask
+        run: pnpm db:migrate && pnpm db:seed
+      - name: Start API + worker (compiled, dev-mode env)
+        working-directory: apps/api
+        run: |
+          node dist/main.js > /tmp/api.log 2>&1 &
+          WORKER=1 node dist/main.js > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3001/healthz > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3001/healthz
       - name: Install Playwright browser
         run: pnpm --filter @rytask/web exec playwright install --with-deps chromium
       - name: E2E + a11y
         run: pnpm test:e2e
+      - name: Server logs (on failure)
+        if: failure()
+        run: tail -n 100 /tmp/api.log /tmp/worker.log || true
 
   # --- Post-merge (documented; enable when deploy + nightly infra exist) ---
   # build-and-push:  build & push api/web images, deploy staging->prod + drizzle migrate

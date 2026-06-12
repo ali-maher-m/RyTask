@@ -10,7 +10,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'pnpm dev',
+    // CI serves the production build — `next dev` cold-compiles heavy routes mid-test and can
+    // trip the 30s test timeout; `next start` is deterministic. Local runs keep hot reload.
+    command: process.env.CI ? 'pnpm start' : 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
