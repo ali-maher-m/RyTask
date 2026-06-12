@@ -64,9 +64,8 @@ Three things to get right:
   multiple origins). Without `CORS_ORIGIN`, the API reflects whatever origin calls it — fine
   for trying things out, too permissive for production.
 
-Other variables worth a look before you boot: `ALLOW_PUBLIC_SIGNUP` (default `false` —
-invite-only), `ACCESS_TOKEN_TTL_SECONDS` (hard-capped at 900 seconds; larger values are
-clamped), the `SLACK_*` variables if you use Slack capture (note that a configured Slack app
+Other variables worth a look before you boot: `ACCESS_TOKEN_TTL_SECONDS` (hard-capped at 900
+seconds; larger values are clamped), the `SLACK_*` variables if you use Slack capture (note that a configured Slack app
 also requires `SLACK_TOKEN_ENC_KEY`, a base64-encoded 32-byte key — generate it with
 `openssl rand -base64 32` — or the API refuses to start), and `MCP_PUBLIC_URL` if you want
 the MCP endpoint advertised on the Agent access page. The full table with defaults is in the
@@ -90,10 +89,14 @@ only inserts rows that do not exist yet, so it never overwrites your changes.
 
 The seed creates a working demo workspace: an organization named **RyTask Demo** with a
 founder account (`founder@rytask.local`, password `rytask-dev-password` — these credentials
-are public in the repository). The committed `migrate` command always runs the seed, and
-today you should let it: self-registration only joins an existing organization, so a
-completely empty database would leave you with no way to create the first account. A
-first-run setup screen that replaces this is planned <StatusBadge status="coming-soon" />.
+are public in the repository). The committed `migrate` command for this compose file always
+runs the seed, so on first boot you sign in as the founder and reclaim the workspace (below).
+
+If you would rather start from an empty database, the **first-run setup screen at `/setup`**
+creates your organization, owner account, first workspace, and a starter project, then signs
+you in and self-closes once an org exists. The hardened production compose
+(`docker-compose.production.yml` at the repo root) takes exactly this path — it never runs
+the seed (see the Dokploy deploy guide, `infra/docker/DEPLOY-DOKPLOY.md`).
 
 So on a production server, **reclaim the seeded workspace immediately**:
 

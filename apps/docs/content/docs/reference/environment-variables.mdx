@@ -29,11 +29,16 @@ back to their default.
 | `JWT_PUBLIC_KEY` | — | No | PEM public key (see above). |
 | `ACCESS_TOKEN_TTL_SECONDS` | `900` | No | Access-token lifetime. **Hard-capped at 900** (15 minutes) — a larger value is clamped down. |
 | `REFRESH_TOKEN_TTL_SECONDS` | `2592000` | No | Refresh-token lifetime (30 days). |
-| `ALLOW_PUBLIC_SIGNUP` | `false` | No | Org-level default for self-registration; invite-only unless `true` or `1`. |
 | `ARGON2_MEMORY_COST` | `19456` | No | argon2id memory cost (KiB) for password hashing. |
 | `ARGON2_TIME_COST` | `2` | No | argon2id iterations. |
 | `ARGON2_PARALLELISM` | `1` | No | argon2id parallelism. |
 | `CORS_ORIGIN` | — | No | Comma-separated list of allowed browser origins. When unset, the API reflects the request origin (the self-hosted single-tenant default); set it to narrow CORS in production. |
+
+> **Public self-registration is not an environment variable.** It is a per-organization
+> setting under **Settings → Organization** (off by default — invite-only), and the first
+> account is created through the [first-run setup screen](/docs/guides/users/organizations-and-members#first-run-setup)
+> at `/setup`, not at boot. The former `ALLOW_PUBLIC_SIGNUP` variable was removed — set the
+> policy in the app instead.
 
 ## Rate limiting
 
