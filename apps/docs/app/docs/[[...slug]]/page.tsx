@@ -19,7 +19,7 @@ function breadcrumbsFor(slugs: string[]): Breadcrumb[] {
   const crumbs: Breadcrumb[] = [{ name: 'Docs', url: '/docs' }];
   for (let i = 0; i < slugs.length; i++) {
     const ancestor = source.getPage(slugs.slice(0, i + 1));
-    if (ancestor) crumbs.push({ name: ancestor.data.title, url: ancestor.url });
+    if (ancestor) crumbs.push({ name: ancestor.data.title ?? 'Untitled', url: ancestor.url });
   }
   return crumbs;
 }
@@ -29,10 +29,11 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
+  const title = page.data.title ?? 'Untitled';
   const markdownUrl = `${page.url}.mdx`;
   const structuredData = jsonLdGraph(
     techArticleSchema({
-      title: page.data.title,
+      title,
       description: page.data.description,
       pathname: page.url,
     }),
@@ -88,7 +89,7 @@ export async function generateMetadata(props: {
   if (!page) notFound();
 
   return createMetadata({
-    title: page.data.title,
+    title: page.data.title ?? 'Untitled',
     description: page.data.description,
     pathname: page.url,
     image: ogImageUrl(page.slugs),
