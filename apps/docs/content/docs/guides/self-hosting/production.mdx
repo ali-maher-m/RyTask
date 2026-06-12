@@ -9,7 +9,7 @@ Docker with the Compose plugin installed (see [Requirements](/docs/guides/self-h
 ## 1. Clone the repository
 
 ```bash
-git clone https://github.com/rytask/rytask.git
+git clone https://github.com/ali-maher-m/RyTask.git
 cd rytask
 ```
 
@@ -37,18 +37,18 @@ Then create `docker-compose.override.yml` next to `docker-compose.yml`:
 services:
   api:
     environment:
-      JWT_SECRET: 'paste-the-generated-value-here'
-      APP_BASE_URL: 'https://rytask.example.com'
-      CORS_ORIGIN: 'https://rytask.example.com'
+      JWT_SECRET: "paste-the-generated-value-here"
+      APP_BASE_URL: "https://rytask.example.com"
+      CORS_ORIGIN: "https://rytask.example.com"
   worker:
     environment:
-      JWT_SECRET: 'paste-the-same-value-here'
+      JWT_SECRET: "paste-the-same-value-here"
   web:
     build:
       args:
-        NEXT_PUBLIC_API_URL: 'https://api.rytask.example.com'
+        NEXT_PUBLIC_API_URL: "https://api.rytask.example.com"
     environment:
-      NEXT_PUBLIC_API_URL: 'https://api.rytask.example.com'
+      NEXT_PUBLIC_API_URL: "https://api.rytask.example.com"
 ```
 
 Three things to get right:
@@ -119,16 +119,16 @@ in front.
 
 ## What is running, and where your data lives
 
-| Service | Port(s) | Notes |
-| --- | --- | --- |
-| `web` | 3000 | Next.js web app |
-| `api` | 3001 | NestJS API; REST under `/api/v1`, probes at `/healthz` and `/readyz` |
-| `worker` | — | Same image as `api`, started with `WORKER=1` |
-| `migrate` | — | One-shot; exits after migrations + seed |
-| `postgres` | 5432 | PostgreSQL 16 |
-| `redis` | 6379 | Redis 7 — queues, rate limits, idempotency cache |
-| `minio` | 9000, 9001 | Reserved for attachments <StatusBadge status="coming-soon" /> |
-| `mailhog` | 1025, 8025 | Development mail catcher |
+| Service    | Port(s)    | Notes                                                                |
+| ---------- | ---------- | -------------------------------------------------------------------- |
+| `web`      | 3000       | Next.js web app                                                      |
+| `api`      | 3001       | NestJS API; REST under `/api/v1`, probes at `/healthz` and `/readyz` |
+| `worker`   | —          | Same image as `api`, started with `WORKER=1`                         |
+| `migrate`  | —          | One-shot; exits after migrations + seed                              |
+| `postgres` | 5432       | PostgreSQL 16                                                        |
+| `redis`    | 6379       | Redis 7 — queues, rate limits, idempotency cache                     |
+| `minio`    | 9000, 9001 | Reserved for attachments <StatusBadge status="coming-soon" />        |
+| `mailhog`  | 1025, 8025 | Development mail catcher                                             |
 
 Two named volumes hold persistent data: **`pgdata`** (PostgreSQL — the single source of
 truth, and the thing you back up) and **`miniodata`** (empty today). Redis intentionally has

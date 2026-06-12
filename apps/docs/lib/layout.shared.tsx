@@ -11,6 +11,6 @@ export function baseOptions(): BaseLayoutProps {
         </>
       ),
     },
-    githubUrl: 'https://github.com/rytask/rytask',
+    githubUrl: 'https://github.com/ali-maher-m/RyTask',
   };
 }

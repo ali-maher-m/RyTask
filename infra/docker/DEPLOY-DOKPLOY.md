@@ -60,8 +60,11 @@ Dokploy generates the Traefik labels itself — don't add any to the compose fil
 2. Boot order is automatic: postgres healthy → `migrate` runs transactional migrations (with a
    retry loop for the cold-start DNS race) → api/worker/web start. **The production stack never
    runs the seed** — it would create `founder@rytask.local` with a known password.
-3. First boot: deploy with `ALLOW_PUBLIC_SIGNUP=true`, register your founder account at
-   `https://app.example.com`, then set it back to `false` and redeploy.
+3. First boot: visit **`https://app.example.com/setup`** — the first-run page creates the
+   organization + your owner account (+ workspace and starter project), signs you in, and
+   self-closes once an org exists. `/register` shows "This workspace is invite-only" until you
+   enable public signup in **Settings → Organization** (a per-org database setting, not an env
+   var); until then, add teammates via invites from inside the app.
 4. Enable **AutoDeploy** (service settings) to redeploy on every push to `main`.
 
 ## 5. Integrations (all optional, inert until configured)

@@ -79,8 +79,6 @@ export interface AuthConfig {
   jwt: JwtConfig;
   argon2: Argon2Config;
   throttle: ThrottleConfig;
-  /** Org-level default for self-registration; invite-only unless enabled (D8). */
-  allowPublicSignup: boolean;
   /** Base URL used to build verification/reset/invite links in emails. */
   appBaseUrl: string;
 }
@@ -89,9 +87,6 @@ const int = (value: string | undefined, fallback: number): number => {
   const n = value ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isFinite(n) ? n : fallback;
 };
-
-const bool = (value: string | undefined, fallback: boolean): boolean =>
-  value === undefined ? fallback : value === 'true' || value === '1';
 
 export const authConfig = registerAs('auth', (): AuthConfig => {
   // Fail fast on an insecure production secret before any token is ever signed/verified.
@@ -125,7 +120,6 @@ export const authConfig = registerAs('auth', (): AuthConfig => {
       loginMaxFailures: int(process.env.LOGIN_MAX_FAILURES, 5),
       loginLockoutSeconds: int(process.env.LOGIN_LOCKOUT_SECONDS, 15 * 60),
     },
-    allowPublicSignup: bool(process.env.ALLOW_PUBLIC_SIGNUP, false),
     appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
   };
 });
