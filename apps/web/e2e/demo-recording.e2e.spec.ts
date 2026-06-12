@@ -1,17 +1,26 @@
 import { type BrowserContext, type Page, expect, test } from '@playwright/test';
 
 /**
- * THROWAWAY — records the README demo GIF, not a real test. Drives the live docker stack through the
- * signature journey so Playwright captures a video we convert to a GIF:
- *   Slack-style quick-add → it appears → open it → start timer (ticks) → manual entry over budget →
- *   meter turns red → weekly report.
- * Deliberately paced (pause() beats) so the GIF is watchable. Run via playwright.demo.config.ts.
+ * THROWAWAY — records the README/launch demo, not a real test. Each scene is paced to match a
+ * narration clip (1.mp3 … 6.mp3) so the voiceover lines up. Scene boundaries are held by a wall
+ * clock from `t0`, so however long the actions take, each scene lasts at least its target.
+ * Run via playwright.demo.config.ts, then mux the audio with ffmpeg.
  */
 const FOUNDER_EMAIL = 'founder@rytask.local';
 const FOUNDER_PASSWORD = 'rytask-dev-password';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-const beat = (page: Page, ms = 1400) => page.waitForTimeout(ms);
+// Narration clip lengths (seconds) → cumulative scene-END targets (ms).
+const CLIPS = [10.344, 7.967, 5.512, 9.326, 6.504, 5.982];
+const LEAD_IN_MS = 700; // pre-roll absorbed before scene 1 (trimmed off in ffmpeg)
+const ENDS: number[] = [];
+{
+  let acc = LEAD_IN_MS;
+  for (const c of CLIPS) {
+    acc += Math.round(c * 1000);
+    ENDS.push(acc);
+  }
+}
 
 async function accessTokenOf(context: BrowserContext): Promise<string> {
   const [page] = context.pages();
@@ -29,67 +38,64 @@ async function signInFounder(page: Page): Promise<void> {
 }
 
 test('demo reel', async ({ page, request }) => {
+  // Auth + data setup happen BEFORE t0 so they don't eat into scene timing.
   await signInFounder(page);
-  await beat(page);
-
   const token = await accessTokenOf(page.context());
   const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
   const projectsRes = await request.get(`${API_BASE}/api/v1/projects?limit=1`, { headers });
   const projectId = ((await projectsRes.json()) as { data: Array<{ id: string }> }).data[0].id;
-
-  // ── Beat 1+2: capture the Slack way; recognized tokens preview as chips, then it appears ──
   await page.goto(`/projects/${projectId}/list`);
-  const input = page.getByTestId('quick-add-input');
-  await expect(input).toBeVisible();
-  await input.click();
-  await input.pressSequentially('Fix signup redirect @marissa #bug !high ^today', { delay: 55 });
-  await beat(page, 1600);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await beat(page, 1800);
+  await expect(page.getByTestId('quick-add-input')).toBeVisible();
 
-  // ── Beat 3: open the freshest item (top of the list) ──
+  const t0 = Date.now();
+  const holdUntil = async (sceneEndMs: number) => {
+    const remaining = sceneEndMs - (Date.now() - t0);
+    if (remaining > 0) await page.waitForTimeout(remaining);
+  };
+
+  // pre-roll
+  await page.waitForTimeout(LEAD_IN_MS);
+
+  // ── Scene 1 (1.mp3): capture the Slack way ──
+  const input = page.getByTestId('quick-add-input');
+  await input.click();
+  await input.pressSequentially('Fix signup redirect @marissa #bug !high ^today', { delay: 90 });
+  await holdUntil(ENDS[0]);
+
+  // ── Scene 2 (2.mp3): it parses the tokens; the task appears ──
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   const created = await request.post(`${API_BASE}/api/v1/work-items`, {
     headers,
     data: { projectId, title: 'Polish the onboarding empty-state' },
   });
   const key = ((await created.json()) as { data: { key: string } }).data.key;
+  await holdUntil(ENDS[1]);
+
+  // ── Scene 3 (3.mp3): open it, set an estimate, start the timer ──
   await page.goto(`/projects/${projectId}/items/${key}`);
   const detail = page.getByTestId('item-detail');
   await expect(detail).toBeVisible();
-  await beat(page);
-
-  // A 1h estimate gives the meter a planned tick to fill toward, then exceed.
   const estimate = detail.getByLabel('Estimate');
   await estimate.fill('1');
   await estimate.blur();
-  await beat(page);
-
-  // ── Beat 3 (cont.): start the timer — it ticks live ──
   await page.getByTestId('timer-toggle').click();
   await expect(page.getByTestId('timer-toggle')).toHaveText('Stop timer');
-  await expect(page.getByTestId('timer-elapsed')).toBeVisible();
-  await beat(page, 2600);
+  await holdUntil(ENDS[2]);
+
+  // ── Scene 4 (4.mp3): plan-vs-actual, the meter fills as time logs ──
   await page.getByTestId('timer-toggle').click();
   await expect(page.getByTestId('timer-toggle')).toHaveText('Start timer');
-  await beat(page);
-
-  // ── Beat 4+5: a manual 2h entry pushes past the 1h estimate → meter turns red (over budget) ──
   await page.getByLabel('Hours').fill('2');
+  await holdUntil(ENDS[3]);
+
+  // ── Scene 5 (5.mp3): it turns red when you go over budget ──
   await page.getByRole('button', { name: 'Add entry' }).click();
   await expect(page.getByTestId('time-tracking')).toContainText(/over/i);
-  await beat(page, 2400);
+  await holdUntil(ENDS[4]);
 
-  // Show the same over-budget meter inside the list row.
-  await page.goto(`/projects/${projectId}/list`);
-  const row = page
-    .getByTestId('work-item-row')
-    .filter({ has: page.getByText(key, { exact: true }) });
-  await expect(row.getByRole('meter')).toBeVisible({ timeout: 15_000 });
-  await beat(page, 2200);
-
-  // ── Beat 6: it rolls up into the weekly report ──
+  // ── Scene 6 (6.mp3): it rolls up into the weekly report ──
   await page.goto('/reports');
   await page.waitForLoadState('networkidle');
   await expect(page.getByRole('main').first()).toBeVisible({ timeout: 20_000 });
-  await beat(page, 3000);
+  await holdUntil(ENDS[5]);
 });

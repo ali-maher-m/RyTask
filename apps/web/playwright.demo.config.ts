@@ -15,7 +15,6 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     viewport: { width: 1280, height: 720 },
     video: { mode: 'on', size: { width: 1280, height: 720 } },
-    launchOptions: { slowMo: 250 },
   },
   // No webServer — the docker stack already serves :3000.
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
