@@ -1,6 +1,14 @@
 # Claude Code local config / installed skills — not for the public repo
 .claude/
 
+# Internal working artifacts — not for the public repo
+goals/
+branding/chats/
+branding/HANDOFF.md
+
+# Local-only compose override (holds your local JWT_SECRET — never commit)
+docker-compose.override.yml
+
 # macOS
 .DS_Store
 

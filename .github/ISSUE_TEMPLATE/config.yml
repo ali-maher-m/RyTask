@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or idea
+    url: https://github.com/ali-maher-m/RyTask/discussions
+    about: Ask a question or float an idea in Discussions — no bug template needed.
+  - name: Documentation
+    url: https://docs.rytask.app
+    about: Guides, references, and tutorials for using and self-hosting RyTask.
+  - name: Security vulnerability
+    url: https://github.com/ali-maher-m/RyTask/security/advisories/new
+    about: Please report security issues privately — never in a public issue.

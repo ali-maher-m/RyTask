@@ -1,248 +1,296 @@
 <div align="center">
 
+<img src="branding/assets/logo-mark.svg" alt="RyTask logo" width="72" height="72" />
+
 # RyTask
 
-### _Capture work in seconds. Prove where the time went._
+### Capture work in seconds. Prove where the time went.
 
-**An open-source, self-hostable project-management & issue tracker — friendly enough for non-technical teammates, and fully controllable by AI agents.**
+**An open-source, self-hostable project tracker for small, interrupt-driven teams —
+with native time tracking, first-class Slack capture, and full AI-agent control via MCP.**
 
-> 🏷️ **[rytask.app](https://rytask.app)** · domain secured.
+[**Documentation**](https://docs.rytask.app) · [**Quickstart**](https://docs.rytask.app/docs/tutorials/quickstart) · [**Self-hosting**](https://docs.rytask.app/docs/guides/self-hosting) · [**MCP tools**](https://docs.rytask.app/docs/reference/mcp-tools) · [**Contributing**](CONTRIBUTING.md)
+
+[![CI](https://github.com/ali-maher-m/RyTask/actions/workflows/ci.yml/badge.svg)](https://github.com/ali-maher-m/RyTask/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-docs.rytask.app-ECB30A.svg)](https://docs.rytask.app)
+[![MCP](https://img.shields.io/badge/MCP-49%20tools%2C%20100%25%20parity-8A63D2.svg)](https://docs.rytask.app/docs/explanation/mcp-parity)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-339933.svg?logo=nodedotjs&logoColor=white)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ECB30A.svg)](CONTRIBUTING.md)
+
+<img src="branding/screenshots/yellow-app.png" alt="RyTask — My issues view with the plan-vs-actual time meter inside every task row" width="840" />
+
+<sub>The signature move: a plan-vs-actual time meter lives <em>inside</em> every task row.
+Logged time fills against the estimate — and turns red when you're over.</sub>
 
 </div>
 
 ---
 
-> **Status:** Planning repo (pre-code) · **Owner:** Founder (solo engineer @ TBYB) · **Audience:** Public GitHub
->
-> This repository currently holds the **planning documents** for the product. Code lands once Stage 1 scope is locked. Every doc here is a real, living planning artifact — read them in the order in the [Documents Index](#-documents-index).
+## Why RyTask
 
----
+Every team tool gets the same things wrong for small, interrupt-driven teams:
 
-## 🎯 What is this?
-
-A serious, open-source alternative to **Plane, OpenProject, Linear, Jira, and ClickUp** — built to fix the exact things they get wrong for small, interrupt-driven teams:
-
-- The features you need most (**Slack capture**, **time tracking**) are **paywalled** in the free editions.
-- The good tools are **closed, capped, or cloud-only** — you can't own your data.
+- The features you actually need — **Slack capture** and **time tracking** — are paywalled in the free tiers.
+- The good tools are **closed, capped, or cloud-only**. You can't own your data.
 - The self-hostable ones are **heavy and jargon-heavy** — non-technical teammates won't touch them.
-- None give an **AI agent full control** of the workspace.
+- None of them give an **AI agent full control** of the workspace.
 
-We build the empty quadrant: **deep enough for engineers, friendly enough for everyone, self-hosted, time-tracked, and AI-native.**
+RyTask is built for the empty quadrant: **deep enough for engineers, friendly enough for
+everyone, self-hosted, time-tracked, and AI-native.** The whole core is free and open source —
+no feature gates, ever.
 
----
+[Read the full story →](https://docs.rytask.app/docs/explanation/why-rytask)
 
-## 🏷️ The name
+## What makes it different
 
-**RyTask** — short, friendly, and non-jargon (it passes the **"Albert test"**: a non-technical person says it without flinching). Domain secured at **[rytask.app](https://rytask.app)**; packages and containers ship under the lowercase `rytask` namespace (`@rytask/api`, `@rytask/web`).
+### ⏱ Honest time tracking, built in — not bolted on
 
----
+A one-click timer in every task row, manual entries when you forget, and every entry classified
+as **planned work or an interruption**. The plan-vs-actual report rolls it up per project and per
+person, with a full ledger, a "My week" view, and CSV export — so at the end of the week you can
+*prove* where the time went, not guess.
+[How the time model works →](https://docs.rytask.app/docs/explanation/time-tracking-model)
 
-## 💢 The problem & vision (in brief)
-
-A solo engineer at **Try Before You Bike (TBYB)** — a UK bike-rental platform on NestJS + Next.js + Drizzle + PostgreSQL — has a planned roadmap ("v2"), but the week is shredded by **urgent ad-hoc interruptions**: Slack DMs, a noisy Slack channel, email threads, and "urgent" tickets that jump the queue. Each feels small; together they consume the days budgeted for planned work. At sprint's end the plan has barely moved — and there's no credible, low-effort way to **prove to a manager (Albert) where the time actually went.**
-
-> **Vision:** _Build the project-management tool that captures work in seconds, proves where time really goes, and is friendly enough for the whole team — fully open-source and self-hostable, with an AI agent able to do everything a human can._
-
-We are not "Linear but free." We fix the **specific gap between what was planned and what actually happened** — and make that gap visible, defensible, and shared across technical and non-technical teammates.
-
-**North-Star Metric:** _Tasks Captured-and-Tracked per Active User per Week (CTW)_ — a task that is both (a) captured with low friction **and** (b) has time logged against it. It couples our two core bets: fast capture **and** honest time tracking.
-
----
-
-## ✨ Key differentiators
-
-The product exists to fix real pain. Each differentiator targets a place where every incumbent leaves the door open.
-
-| # | Differentiator | Why we win | Closest competitor (and its gap) |
-|---|----------------|-----------|----------------------------------|
-| **D1** | 🧑‍🤝‍🧑 **Non-technical-friendly UX** (the Albert/Marissa test) | Fast capture, zero jargon, sane defaults, opinionated simplicity; depth available, never imposed. A release **gate**, not a nice-to-have. | Basecamp (no dev depth) / Linear (jargon, scary) — nobody serves both faces. |
-| **D2** | 💬 **First-class Slack capture** | Sub-5s slash-command + @mention → task, two-way sync, low-noise notifications. **Free**, not paywalled. | Linear Asks / Shortcut capture, but neither nails non-tech latency; Plane paywalls Slack. |
-| **D3** | 🤖 **MCP with 100% workspace control** | Anything a human can do in the UI, an AI agent does via MCP (read **and** write, full parity, contract-tested). | Linear/Notion ship MCP but not full control; everyone else is community-only. |
-| **D4** | 🔀 **GitHub integration** | Branch/PR/commit linking, magic-word auto-close on merge, status sync — **free from day one**. | Linear/Shortcut excellent but cloud-only; Plane/OpenProject gate it. |
-| **D5** | 📅 **Real dates & timeline** | Per-task **due** date **and** **start + end** dates, estimates, true Gantt with dependencies. | OpenProject (heavy, EE baselines) / Linear (roadmap-lite, no dependency Gantt). |
-| **D6** | ⏱️ **Honest time tracking + reporting** | One-click timer, manual entry, and **planned-vs-urgent tagging** rolled into exec-readable dashboards — the founder's literal job-to-be-done. | ClickUp/Zoho track but paywall reports and are cloud-only; Linear/Shortcut have nothing. |
-| **D7** | 🗂️ **Priorities + custom workflows + views** | Urgent→None priorities; custom statuses with categories; Board / List / Timeline / Calendar — with non-tech defaults. | Table stakes everywhere; we add friendly defaults on top. |
-| **D8** | 📦 **One-command self-host** | Linear-grade UX you run with `docker compose up`. Own your data. **No feature gates in the OSS core.** | Vikunja (easy but shallow) / Plane–OpenProject (deep but heavier setup). |
-| **D9** | ⚙️ **Automations + custom fields + cycles/milestones + sub-tasks + dependencies** | **Unlimited** automation runs (self-host removes metering); the depth engineers need. | Every SaaS meters automation runs; OSS tools are shallow. |
-
-> **The combined moat:** _No tool combines native free time-tracking + first-class Slack capture + full-control MCP, delivered open-source and self-hosted with a non-technical-friendly UX._ That intersection is empty — it is our entire reason to exist.
-
----
-
-## 🛠️ Tech stack
-
-![NestJS](https://img.shields.io/badge/Backend-NestJS-E0234E?logo=nestjs&logoColor=white)
-![Next.js](https://img.shields.io/badge/Frontend-Next.js-000000?logo=nextdotjs&logoColor=white)
-![Drizzle ORM](https://img.shields.io/badge/ORM-Drizzle-C5F74F?logo=drizzle&logoColor=black)
-![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016-4169E1?logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Queues%20%26%20Cache-Redis%207-DC382D?logo=redis&logoColor=white)
-![BullMQ](https://img.shields.io/badge/Jobs-BullMQ-FF5C5C)
-![WebSockets](https://img.shields.io/badge/Realtime-WebSockets-4353FF)
-![MCP](https://img.shields.io/badge/AI-MCP%20server-8A63D2)
-![TypeScript](https://img.shields.io/badge/Lang-TypeScript%205.x-3178C6?logo=typescript&logoColor=white)
-![License](https://img.shields.io/badge/License-AGPL--3.0%20(proposed)-blue)
-![Status](https://img.shields.io/badge/Status-Planning-orange)
-
-- **Backend:** NestJS (modular monolith, clean bounded contexts, API-first, event-driven)
-- **Frontend:** Next.js
-- **ORM / DB:** Drizzle ORM over PostgreSQL 16
-- **Queues / cache:** Redis 7 + BullMQ background jobs
-- **Realtime:** WebSockets
-- **Integrations:** Slack bot, GitHub, first-party **MCP server** (100% UI parity)
-- **Tenancy:** multi-tenant (orgs/workspaces) from day one; `workspace_id` on every table
-- **Ops:** Docker Compose (one-command), observability hooks, safe transactional migrations
-
----
-
-## 📚 Documents index
-
-Read in this order — each builds on the one before.
-
-| Document | What it covers |
-|----------|----------------|
-| [VISION.md](./VISION.md) | The "why": founder story, problem statement, personas, market positioning, core principles, phased roadmap, monetization model, and key risks. **Start here.** |
-| [features.md](./features.md) | Master feature analysis: deep capability matrix across 15 PM tools, pricing/free-tier truth table, full categorized feature catalog with MVP/v2/v3 tags, pain-points→solution map, and the nine differentiators. |
-| [REQUIREMENTS.md](./REQUIREMENTS.md) | Detailed functional & non-functional requirements with stable IDs — the testable spec the build is verified against. |
-| [PRD.md](./PRD.md) | Product Requirements: scope, user stories, flows, acceptance criteria, and what ships in Stage 1 vs later. |
-| [BRD.md](./BRD.md) | Business Requirements: objectives, success metrics, stakeholders, scope boundaries, and the business case. |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Technical architecture: bounded contexts, data model, multi-tenancy, event-driven design, integrations, MCP parity, scaling, and the closed/enforced testing strategy. |
-
-**Supporting material:** [`capability-catalog.md`](./capability-catalog.md) (cross-cutting A–P capability catalog + MVP cut line) · [`research/`](./research/) (competitor and pain-point research) · [`docs/`](./docs/) (competitor deep-dives).
-
----
-
-## 🗺️ Roadmap (phased)
-
-Three stages, each with one theme. We earn the right to broaden by nailing the core job-to-be-done first.
+### 💬 Slack capture in under five seconds
 
 ```
- STAGE 1                    STAGE 2                      STAGE 3
- Internal MVP @ TBYB        Public OSS Beta              Market Platform
- ───────────────────       ─────────────────            ─────────────────
- "Replace Linear for me,    "Anyone can self-host        "An extensible platform
-  capture interruptions,     it in one command and        with plugins, marketplace,
-  prove time spent."         get the same wins."          and deep integrations."
-
- Single tenant, dogfood     Multi-tenant, public repo    Ecosystem + scale + cloud
+/task Fix the login bug @sam ~2h #bug
 ```
 
-| Stage | Theme | Headline scope | Gate (did it work?) |
-|-------|-------|----------------|---------------------|
-| **1 — Internal MVP** | Replace Linear for one interrupt-driven engineer and prove the time. | Work model (orgs→projects→issues, sub-tasks, comments); statuses/priorities/labels; due + start/end dates + estimates; **native time tracking** + **plan-vs-actual report v1**; **Slack capture**; **MCP v1**; Board + List views; Docker Compose scaffolding; testing harness from commit one. | Founder fully replaces Linear for ≥ 4 weeks and ships a weekly plan-vs-actual report the manager trusts. |
-| **2 — Public OSS Beta** | Anyone can self-host in one command and get the same wins. | **One-command install**; hardened multi-tenancy; full views (Board/List/**Gantt**/Calendar); matured time reporting; two-way Slack sync; **GitHub auto-close**; **MCP at 100% parity**; cycles/milestones/dependencies/custom fields; realtime + webhooks; community on-ramp. | Strangers self-host in one command and adopt it; a non-technical user uses it weekly unaided. |
-| **3 — Market Platform** | An extensible platform with plugins, a marketplace, and deep integrations. | Plugin/marketplace system; matured automations engine; deep integrations + importers (Jira/Linear/Plane/ClickUp); advanced analytics; Helm/scale/SSO/audit; optional managed cloud; MCP-based AI features. | A working plugin ecosystem and a sustainable revenue line with retained multi-team usage at scale. |
+That's a tracked, assigned, estimated, labelled task — without leaving the conversation. Message
+actions turn any Slack thread into a task too. Free, not paywalled.
+[Slack setup guide →](https://docs.rytask.app/docs/guides/slack)
 
-Full detail in [VISION.md §6](./VISION.md) and the feature tiers in [features.md](./features.md).
+### 🤖 An MCP server with 100% workspace control
 
----
+Anything a person can do in the UI, an AI agent can do over MCP — **49 tools**, enforced by an
+automated parity gate in CI, served over streamable HTTP and stdio. Create projects, triage
+issues, log time, run reports: your agent is a first-class teammate.
+[Connect an agent →](https://docs.rytask.app/docs/guides/mcp) ·
+[Tool reference →](https://docs.rytask.app/docs/reference/mcp-tools) ·
+[Why parity is enforced →](https://docs.rytask.app/docs/explanation/mcp-parity)
 
-## 🚀 Getting started (planned)
+### And the rest of a serious tracker
 
-> ⚠️ **Not yet runnable** — this is the _planned_ self-host experience. One command, sane defaults, your data.
+| | |
+|---|---|
+| **Fast capture everywhere** | One-line quick add with `@assignee` `#label` `!priority` `^friday` — [full grammar](https://docs.rytask.app/docs/reference/capture-syntax) |
+| **The core work loop** | Projects, custom statuses, priorities, labels, sub-tasks, comments with mentions, saved views, full-text search, notification inbox |
+| **GitHub linking** | Branches, PRs, and commits link to tasks; magic words (`fixes RY-12`) auto-close on merge — free from day one |
+| **Real multi-tenancy** | Organizations and workspaces, isolated by construction and verified by automated cross-tenant tests |
+| **Data portability** | Full workspace export to JSON — every entity. Your data is yours |
+| **Non-technical-friendly** | Plain language, sane defaults, zero jargon. Depth is available, never imposed |
+
+## Quick start
+
+All you need is Docker. Three commands to a running stack:
 
 ```bash
-# 1. Clone
-git clone https://github.com/<your-username>/rytask.git
-cd rytask
+git clone https://github.com/ali-maher-m/RyTask.git
+cd RyTask
 
-# 2. Configure (copy the example and adjust as needed)
-cp .env.example .env
-
-# 3. Launch the whole stack — NestJS API + Next.js web + PostgreSQL + Redis
-docker compose up -d
-
-# 4. Open the app
-#    Web UI →  http://localhost:3000
-#    API    →  http://localhost:3001/api/v1
-```
-
-```yaml
-# docker-compose.yml (illustrative placeholder)
+# The API refuses to boot without a strong JWT secret — generate one into a local override:
+JWT_SECRET=$(openssl rand -hex 32) && cat > docker-compose.override.yml <<EOF
 services:
-  web:        # Next.js frontend
-    image: rytask/web:latest
-    ports: ["3000:3000"]
-    depends_on: [api]
-
-  api:        # NestJS backend (REST + WebSockets + MCP)
-    image: rytask/api:latest
-    ports: ["3001:3001"]
+  api:
     environment:
-      DATABASE_URL: postgres://rytask:rytask@db:5432/rytask
-      REDIS_URL: redis://redis:6379
-    depends_on: [db, redis]
-
-  db:
-    image: postgres:16
+      JWT_SECRET: "$JWT_SECRET"
+  worker:
     environment:
-      POSTGRES_USER: rytask
-      POSTGRES_PASSWORD: rytask
-      POSTGRES_DB: rytask
-    volumes: ["rytask_pgdata:/var/lib/postgresql/data"]
+      JWT_SECRET: "$JWT_SECRET"
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+EOF
 
-  redis:
-    image: redis:7
-
-volumes:
-  rytask_pgdata:
+docker compose up -d --build
 ```
 
-Helm charts and horizontal-scaling guidance arrive in Stage 3.
+Then open [http://localhost:3000](http://localhost:3000) and sign in to the seeded demo
+workspace:
 
-### 💬 Slack capture & 🤖 MCP server (M3)
+- **Email:** `founder@rytask.local`
+- **Password:** `rytask-dev-password`
 
-Both capture channels run **inside the existing `api` image** — there is **no new compose service** to add.
-Configure them with environment variables only (all documented in [`.env.example`](./.env.example)); leave
-them unset to keep the channels inert (the Slack adapter no-ops and `docker compose up` still works).
+You land in a lived-in demo project — tasks under and over estimate, a timer already running —
+so you can see the plan-vs-actual meter doing its job immediately.
+
+The stack is the whole product: web app (`:3000`), API + MCP server (`:3001`), background
+worker, PostgreSQL 16, Redis 7, MinIO, and Mailhog, migrated and seeded automatically.
+
+- 📘 **Guided version:** the [15-minute quickstart](https://docs.rytask.app/docs/tutorials/quickstart) walks you from zero to your first tracked task.
+- 🚀 **Real server:** the [self-hosting guide](https://docs.rytask.app/docs/guides/self-hosting) and the production stack ([`docker-compose.production.yml`](docker-compose.production.yml), [Dokploy guide](infra/docker/DEPLOY-DOKPLOY.md)) cover TLS, domains, env, and backups.
+- ⚙️ **Every setting:** the [environment variable reference](https://docs.rytask.app/docs/reference/environment-variables).
+
+## Connect an AI agent
+
+The MCP server ships in the same image as the API — nothing extra to run.
+
+1. In RyTask, go to **Settings → Agent access** and create a personal access token.
+2. Point any MCP client at the streamable HTTP endpoint with the PAT as a bearer token —
+   or use the stdio entrypoint for desktop clients.
+
+```jsonc
+// Example: Claude Code / any MCP client (HTTP transport)
+{
+  "mcpServers": {
+    "rytask": {
+      "url": "http://localhost:3001/api/v1/mcp",
+      "headers": { "Authorization": "Bearer <your-PAT>" }
+    }
+  }
+}
+```
+
+The agent gets the same powers you have — scoped by the token, governed by the same permissions,
+covered by the same audit trail. The docs site also serves
+[`llms.txt`](https://docs.rytask.app/llms.txt) so agents can read the manual themselves.
+
+## Documentation
+
+Everything lives at **[docs.rytask.app](https://docs.rytask.app)**, organized in four sections
+(the [Diátaxis](https://diataxis.fr) model):
+
+| Section | Start here |
+|---|---|
+| **Tutorials** — learning by doing | [Quickstart](https://docs.rytask.app/docs/tutorials/quickstart) · [Your first week](https://docs.rytask.app/docs/tutorials/first-week) |
+| **How-to guides** — getting a job done | [Self-hosting](https://docs.rytask.app/docs/guides/self-hosting) · [Slack](https://docs.rytask.app/docs/guides/slack) · [MCP](https://docs.rytask.app/docs/guides/mcp) · [Integrations](https://docs.rytask.app/docs/guides/integrations) |
+| **Reference** — looking things up | [REST API](https://docs.rytask.app/docs/reference/rest-api) · [MCP tools](https://docs.rytask.app/docs/reference/mcp-tools) · [Capture syntax](https://docs.rytask.app/docs/reference/capture-syntax) · [Environment variables](https://docs.rytask.app/docs/reference/environment-variables) |
+| **Explanation** — understanding the design | [Architecture](https://docs.rytask.app/docs/explanation/architecture) · [Multi-tenancy](https://docs.rytask.app/docs/explanation/multi-tenancy) · [The time model](https://docs.rytask.app/docs/explanation/time-tracking-model) |
+
+The docs are honest about status: every feature page carries an **available / in-progress /
+coming-soon** badge, and the [feature status matrix](https://docs.rytask.app/docs/reference/feature-status)
+shows the complete picture.
+
+## Architecture at a glance
+
+API-first and event-driven: the web app, the Slack bot, the MCP server, and the GitHub
+integration are all clients of the **same** REST API and event bus — no special-cased back doors.
+
+```mermaid
+flowchart LR
+    subgraph clients [Clients]
+        WEB[Web app<br/>Next.js 15]
+        SLACK[Slack bot]
+        AGENT[AI agents<br/>MCP · 49 tools]
+        GH[GitHub App]
+    end
+
+    subgraph core [One image, three entrypoints]
+        API[REST API + WebSockets<br/>NestJS 11 modular monolith]
+        WORKER[Background worker<br/>BullMQ]
+    end
+
+    WEB --> API
+    SLACK --> API
+    AGENT --> API
+    GH --> API
+    API <--> PG[(PostgreSQL 16)]
+    API <--> RD[(Redis 7)]
+    WORKER <--> RD
+    WORKER <--> PG
+```
+
+The invariants that keep it honest (all enforced by CI, not convention):
+
+- **Hard module boundaries** — each domain module exposes one contract interface and its events;
+  importing another module's internals fails the `check:boundaries` gate.
+- **Multi-tenant by construction** — every tenant-scoped query is automatically constrained to
+  the caller's organization at the repository layer; isolation is asserted by automated tests.
+- **MCP parity is a build gate** — `check:mcp-parity` fails CI if any capability lacks a tool
+  (or any tool lacks a capability). Currently 49/49.
+- **Closed testing** — CI refuses to merge if a *declared required test is missing*, not merely
+  failing. Integration tests run against real PostgreSQL, never mocks.
+
+[Deep dive into the architecture →](https://docs.rytask.app/docs/explanation/architecture)
+
+### Repository layout
+
+```
+apps/api/        NestJS — API, background worker, and MCP stdio from one image
+apps/web/        Next.js web app
+apps/docs/       The documentation site (docs.rytask.app)
+packages/db/     Drizzle schema — the single source of truth for the data model
+packages/contracts/  Shared DTOs + the MCP tool registry
+packages/ui/     Shared React components + design tokens
+packages/sdk/    Generated TypeScript client
+infra/           Dockerfiles, production compose, deployment guides, k6 load tests
+branding/        Logos, colors, type — the visual source of truth
+knowledge/       The original planning documents (vision, requirements, architecture)
+```
+
+**Stack:** NestJS 11 · Next.js 15 / React 19 · Drizzle ORM · PostgreSQL 16 · Redis 7 + BullMQ ·
+WebSockets · `@modelcontextprotocol/sdk` · pnpm 9 + Turborepo · Biome · Vitest + testcontainers ·
+Playwright + axe.
+
+## Development
 
 ```bash
-# --- Slack capture (D2) — from your Slack app's "Basic Information" + "OAuth" ---
-SLACK_CLIENT_ID=…
-SLACK_CLIENT_SECRET=…
-SLACK_SIGNING_SECRET=…                       # verifies every inbound webhook (HMAC)
-SLACK_OAUTH_CALLBACK_URL=http://localhost:3001/integrations/slack/oauth/callback
-SLACK_TOKEN_ENC_KEY=$(openssl rand -base64 32) # 32-byte key; encrypts bot tokens at rest (AES-256-GCM)
-
-# --- MCP server (D3) — full-control agent access at 100% UI parity ---
-MCP_PUBLIC_URL=http://localhost:3001/mcp     # base URL of the streamable HTTP/SSE transport
-NEXT_PUBLIC_MCP_URL=http://localhost:3001/mcp # surfaced on the in-app Agent-access page
+corepack enable          # Node ≥22, pnpm 9
+pnpm install
+docker compose up -d postgres redis minio mailhog   # just the infrastructure
+pnpm db:migrate && pnpm db:seed
+pnpm dev                 # web :3000 + api :3001, hot reload
 ```
 
-The MCP server ships **two transports from the one image**:
+Run the same gates CI runs before you open a PR:
 
-- **HTTP/SSE** — served by the running `api` at `POST/GET /mcp`, authenticated with a personal access
-  token (`Authorization: Bearer <PAT>`). Nothing extra to start.
-- **stdio** — a local entrypoint for desktop MCP clients, a third entrypoint of the same image
-  (alongside `start` and `WORKER=1`):
+```bash
+pnpm lint && pnpm typecheck && pnpm test
+pnpm check:required-tests && pnpm check:mcp-parity && pnpm check:boundaries && pnpm check:design-tokens
+```
 
-  ```bash
-  RYTASK_PAT=<your-PAT> pnpm --filter @rytask/api mcp:stdio   # → node dist/main.mcp.js
-  ```
+The full guide — module anatomy, the testing policy, brand rules, PR flow — is in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-Create and scope PATs from **Settings → Agent access** in the app (the secret is shown once).
+## Status & roadmap
 
----
+**Stage 1 (internal MVP) is complete and on `main`:** identity & tenancy, the core work loop,
+Slack capture, the 49-tool MCP server, the flagship time tracking + plan-vs-actual reporting,
+GitHub linking, and full workspace export — all behind the CI gates described above.
 
-## 🤝 Contributing
+**Stage 2 (public OSS beta) is what comes next:** hardened self-hosting for strangers, Gantt +
+calendar views, two-way Slack sync, cycles/milestones/dependencies/custom fields, and a real
+community on-ramp. Stage 3 grows it into a platform — plugins, importers (Jira/Linear/Plane),
+advanced analytics, optional managed cloud.
 
-This is an early-stage, founder-led, open project. Contributions, ideas, and issue reports are welcome once the public repo opens.
+[The roadmap, in detail →](https://docs.rytask.app/docs/guides/roadmap)
 
-- **Now (planning phase):** open an issue to discuss vision, scope, or a feature you'd want. Read [VISION.md](./VISION.md) and [features.md](./features.md) first.
-- **Later (code phase):** a `CONTRIBUTING.md`, code of conduct, issue/PR templates, and a public roadmap will ship with Stage 2.
-- **Non-negotiable for any contribution:** tests. The project enforces a **closed/no-merge-without-tests** policy (unit + integration + e2e + contract) with CI gates and coverage thresholds — testability is designed in from the first commit.
+## Contributing
 
----
+Contributions are very welcome — code, docs, bug reports, and honest feedback all count.
 
-## 📄 License
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, architecture ground rules, and the PR flow.
+- Found a bug? [Open an issue](https://github.com/ali-maher-m/RyTask/issues/new/choose).
+- Have a question or an idea? [Start a discussion](https://github.com/ali-maher-m/RyTask/discussions).
+- One non-negotiable: **tests ship with the code.** CI literally refuses to merge without the
+  declared tests — see the [testing policy](CONTRIBUTING.md#testing-policy).
 
-**Proposed: [GNU AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.en.html).**
+Please be kind — we follow the [Contributor Covenant](CODE_OF_CONDUCT.md).
 
-AGPL keeps the project genuinely open and protects against a closed-source hosted fork of our own work, while still allowing anyone to self-host freely — consistent with our promise that **the core differentiators (Slack capture, time tracking, MCP control, GitHub, all views, self-hosting) are never paywalled.** Monetization (if pursued) comes later via _enterprise-only_ add-ons (SSO/SAML/SCIM, audit logs, advanced governance) and an optional managed-cloud offering — never by crippling the self-hosted core. A permissive alternative (Apache-2.0) remains under consideration; the final choice is made before the public launch.
+## Security
+
+Found a vulnerability? Please **don't** open a public issue — report it privately via
+[GitHub security advisories](https://github.com/ali-maher-m/RyTask/security/advisories/new).
+Details in [SECURITY.md](SECURITY.md).
+
+## License
+
+RyTask is licensed under the [GNU AGPL-3.0](LICENSE).
+
+AGPL keeps the project genuinely open: anyone can self-host it freely, and nobody can take the
+code closed-source as a hosted product. The core differentiators — time tracking, Slack capture,
+MCP control, GitHub linking, all views, self-hosting — are **never paywalled**.
 
 ---
 
 <div align="center">
 
-_Built by a solo engineer who got tired of proving where the week went. Self-hosted, honest, and AI-native by design._
+*Built by a solo engineer who got tired of proving where the week went.
+Self-hosted, honest, and AI-native by design.*
+
+**[docs.rytask.app](https://docs.rytask.app)** · **[github.com/ali-maher-m/RyTask](https://github.com/ali-maher-m/RyTask)**
 
 </div>
