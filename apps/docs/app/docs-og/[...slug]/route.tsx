@@ -25,7 +25,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const description = raw && raw.length > 140 ? `${raw.slice(0, 137)}…` : raw;
   const fonts = ogFonts();
 
-  return new ImageResponse(<OgCard title={page.data.title} description={description} />, {
+  const title = page.data.title ?? 'Untitled';
+
+  return new ImageResponse(<OgCard title={title} description={description} />, {
     width: 1200,
     height: 630,
     fonts: fonts.length ? fonts : undefined,
