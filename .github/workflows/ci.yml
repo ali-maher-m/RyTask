@@ -108,6 +108,12 @@ jobs:
         run: pnpm db:migrate && pnpm db:seed
       - name: Start API + worker (compiled, dev-mode env)
         working-directory: apps/api
+        env:
+          # The suite drives the API as the single seeded founder from one IP, so the
+          # production per-user rate limits (300 general / 20 auth per 60s) trip mid-suite.
+          # Relax them for the e2e stack only — production keeps the secure defaults.
+          THROTTLE_MAX_REQUESTS: '100000'
+          AUTH_THROTTLE_MAX_REQUESTS: '100000'
         run: |
           node dist/main.js > /tmp/api.log 2>&1 &
           WORKER=1 node dist/main.js > /tmp/worker.log 2>&1 &

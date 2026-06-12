@@ -33,7 +33,11 @@ test('an admin sees the Slack connect control on a not-connected workspace', asy
   await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
 
   // Slack is inert in dev → "Not connected" with an enabled Connect control for the admin.
-  await expect(page.getByText('Not connected')).toBeVisible();
+  // Scoped to the Slack card: the GitHub card (M5) shows its own "Not connected" badge.
+  const slackCard = page.locator('section', {
+    has: page.getByRole('heading', { name: 'Slack', exact: true }),
+  });
+  await expect(slackCard.getByText('Not connected')).toBeVisible();
   await expect(page.getByTestId('connect-slack')).toBeEnabled();
 
   // Accessibility scan of the connect-Slack surface (zero critical violations).
