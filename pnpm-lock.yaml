@@ -135,6 +135,12 @@ importers:
 
   apps/docs:
     dependencies:
+      '@fontsource/hanken-grotesk':
+        specifier: ^5.2.5
+        version: 5.2.8
+      '@fontsource/schibsted-grotesk':
+        specifier: ^5.2.5
+        version: 5.2.8
       '@rytask/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -1327,6 +1333,12 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource/hanken-grotesk@5.2.8':
+    resolution: {integrity: sha512-J/e6hdfNCbyc4WK5hmZtk0zjaIsFx3pvCdPVxY25iYw2C9v1ZggGz4nfHnRjMhcz4WfaadUuwLNtvj8sQ70tkg==}
+
+  '@fontsource/schibsted-grotesk@5.2.8':
+    resolution: {integrity: sha512-CyyDW5aS89oKGFAVndOsJTQ5pqzKuPnSKWjrdJdMT5TD/eA2JyWapUBhvy6X/lqqrB/GNk74PIff7coPifeVyg==}
 
   '@fuma-translate/react@0.0.3':
     resolution: {integrity: sha512-EGaUcCyXM2p1HMV6D/NM1kZjIwCMitO+lmDni7b/J0St8IAZ5cUddhtqPqYyMtFj6Og721B5dXSIN6IDq8wf/g==}
@@ -6707,6 +6719,10 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource/hanken-grotesk@5.2.8': {}
+
+  '@fontsource/schibsted-grotesk@5.2.8': {}
 
   '@fuma-translate/react@0.0.3(@types/react@19.0.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:

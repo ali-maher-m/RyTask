@@ -1,5 +1,6 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
+import { FAQ, FAQItem } from './faq';
 import { ComingSoon, InProgress, StatusBadge } from './status-badge';
 
 export function getMDXComponents(components?: MDXComponents) {
@@ -8,6 +9,8 @@ export function getMDXComponents(components?: MDXComponents) {
     ComingSoon,
     InProgress,
     StatusBadge,
+    FAQ,
+    FAQItem,
     ...components,
   } satisfies MDXComponents;
 }

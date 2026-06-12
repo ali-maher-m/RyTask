@@ -13,6 +13,8 @@
     "typecheck": "fumadocs-mdx && tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource/hanken-grotesk": "^5.2.5",
+    "@fontsource/schibsted-grotesk": "^5.2.5",
     "@rytask/contracts": "workspace:*",
     "fumadocs-core": "16.10.0",
     "fumadocs-mdx": "15.0.12",

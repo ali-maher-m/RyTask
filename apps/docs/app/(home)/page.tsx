@@ -1,3 +1,5 @@
+import { JsonLd } from '@/components/json-ld';
+import { jsonLdGraph, softwareApplicationSchema } from '@/lib/structured-data';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -37,6 +39,7 @@ export default function HomePage() {
         gap: 'var(--space-8)',
       }}
     >
+      <JsonLd data={jsonLdGraph(softwareApplicationSchema())} />
       <div style={{ textAlign: 'center', maxWidth: 'var(--container-prose)' }}>
         {/*
          * The wordmark text must inherit the page foreground (the standalone
