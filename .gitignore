@@ -1,5 +1,9 @@
-# Claude Code local config / installed skills — not for the public repo
-.claude/
+# Claude Code local config / installed skills — not for the public repo,
+# except the update-docs skill, which is committed so docs stay in sync with code
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/update-docs/
 
 # Internal working artifacts — not for the public repo
 goals/
@@ -38,3 +42,6 @@ test-results/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Claude Code personal settings
+.claude/settings.local.json

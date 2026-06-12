@@ -1,0 +1,34 @@
+{
+  "skill_name": "update-docs",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "env-var-change",
+      "prompt": "hey i just added a new env var AUTH_MAX_PATS_PER_USER to apps/api/src/common/config/auth.config.ts — it caps how many personal access tokens one user can create, defaults to 10. can you update the docs",
+      "expected_output": "reference/environment-variables.mdx gains a correctly formatted table row for AUTH_MAX_PATS_PER_USER with default 10; no generated MCP pages touched; frontmatter intact.",
+      "files": [],
+      "seed_change": "Append a DEFAULT_MAX_PATS_PER_USER constant and maxPatsPerUser() env reader to apps/api/src/common/config/auth.config.ts, committed before the run.",
+      "assertions": [
+        "environment-variables.mdx documents AUTH_MAX_PATS_PER_USER",
+        "Documented default matches the code (10)",
+        "No generated MCP tool pages were modified",
+        "Edited pages keep valid frontmatter (title + description)",
+        "New row follows the | Variable | Default | Required | What it does | table format with the variable in backticks"
+      ]
+    },
+    {
+      "id": 1,
+      "eval_name": "mcp-tool-description",
+      "prompt": "I updated the description of the create_issue tool in the mcp registry (packages/contracts). make sure the docs are in sync with it",
+      "expected_output": "The agent regenerates the MCP tool pages via the generator script rather than hand-editing; create_issue.mdx and the mcp-tools index both carry the new description; re-running the generator produces no further diff.",
+      "files": [],
+      "seed_change": "In packages/contracts/src/mcp/registry.ts, change the create_issue description from 'Create a work item (title-only or structured fields).' to 'Create a work item (title-only or structured fields). Returns the new item id and url.', committed before the run.",
+      "assertions": [
+        "reference/mcp-tools/create_issue.mdx contains the updated description text",
+        "The generated-file marker comment is preserved in create_issue.mdx",
+        "reference/mcp-tools/index.mdx also reflects the updated description",
+        "Re-running generate-mcp-pages.mjs after the agent finishes produces no further git diff"
+      ]
+    }
+  ]
+}
