@@ -18,6 +18,10 @@ with native time tracking, first-class Slack capture, and full AI-agent control 
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933.svg?logo=nodedotjs&logoColor=white)](package.json)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ECB30A.svg)](CONTRIBUTING.md)
 
+<img src="branding/screenshots/rytask-demo.gif" alt="RyTask demo — capture a task the Slack way, start the timer, watch the plan-vs-actual meter turn red when you go over budget, then roll it up into a weekly report" width="840" />
+
+<sub>Capture the Slack way → start the timer → the meter turns red when you're over budget → it rolls up into a weekly report.</sub>
+
 <img src="branding/screenshots/yellow-app.png" alt="RyTask — My issues view with the plan-vs-actual time meter inside every task row" width="840" />
 
 <sub>The signature move: a plan-vs-actual time meter lives <em>inside</em> every task row.
