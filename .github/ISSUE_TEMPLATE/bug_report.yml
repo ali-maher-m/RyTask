@@ -1,0 +1,56 @@
+name: Bug report
+description: Something isn't working the way it should
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. The more precise the repro, the faster it gets fixed.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: I clicked the timer on a task and…
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: RyTask version / commit
+      description: Release tag or `git rev-parse --short HEAD`
+    validations:
+      required: true
+  - type: dropdown
+    id: how-running
+    attributes:
+      label: How are you running it?
+      options:
+        - Docker compose (default quickstart)
+        - Production compose / Dokploy
+        - Local dev (pnpm dev)
+        - Other (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, browser, Docker version, anything relevant.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any errors from the browser console or `docker compose logs`.
+      render: shell
