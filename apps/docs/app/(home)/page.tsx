@@ -38,14 +38,33 @@ export default function HomePage() {
       }}
     >
       <div style={{ textAlign: 'center', maxWidth: 'var(--container-prose)' }}>
-        <Image
-          src="/wordmark.svg"
-          alt="RyTask"
-          width={180}
-          height={48}
-          style={{ margin: '0 auto var(--space-5)' }}
-          priority
-        />
+        {/*
+         * The wordmark text must inherit the page foreground (the standalone
+         * wordmark.svg uses currentColor, which resolves to black inside an
+         * <img> and disappears in dark mode), so render mark + text inline —
+         * same pattern as the nav title.
+         */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'var(--space-3)',
+            marginBottom: 'var(--space-5)',
+          }}
+        >
+          <Image src="/logo-mark.svg" alt="" width={40} height={40} priority />
+          <span
+            style={{
+              fontFamily: 'var(--font-brand)',
+              fontWeight: 'var(--w-display)' as never,
+              fontSize: 'var(--fs-display)',
+              letterSpacing: 'var(--track-display)',
+            }}
+          >
+            RyTask
+          </span>
+        </div>
         <h1
           style={{
             fontFamily: 'var(--font-brand)',
