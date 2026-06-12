@@ -158,3 +158,32 @@ over (red), and `RY-3` has a timer running.
 - [Time tracking](/docs/guides/users/time-tracking) — timers, manual entries, and the meter.
 - [Self-hosting](/docs/guides/self-hosting) — run RyTask on a real server.
 - [Environment variables](/docs/reference/environment-variables) — every setting explained.
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="What do I need to run RyTask?"
+    answer="Docker with Docker Compose (Docker Desktop or OrbStack both work), git, and about 15 minutes. One command brings up the database, cache, API, worker, and web app, already migrated and seeded."
+  >
+    Docker with Docker Compose (Docker Desktop or OrbStack both work), git, and about 15 minutes.
+    One command brings up the database, cache, API, worker, and web app — already migrated and
+    seeded.
+  </FAQItem>
+  <FAQItem
+    question="Why won't the RyTask API start?"
+    answer="The most common cause is a missing or short JWT_SECRET. The API runs in production mode and refuses to start without a strong secret of at least 32 characters. Run docker compose logs api to confirm, and set JWT_SECRET in a docker-compose.override.yml."
+  >
+    The most common cause is a missing or short `JWT_SECRET`. The API runs in production mode and
+    refuses to start without a strong secret of at least 32 characters. Run
+    `docker compose logs api` to confirm, and set `JWT_SECRET` in a `docker-compose.override.yml`.
+  </FAQItem>
+  <FAQItem
+    question="What are the default RyTask login credentials?"
+    answer="The seeded demo organization signs in with founder@rytask.local and the password rytask-dev-password. These are development seed credentials — rename the organization and invite your team, or change them, before using the instance for real."
+  >
+    The seeded demo organization signs in with `founder@rytask.local` and the password
+    `rytask-dev-password`. These are development seed credentials — rename the organization and
+    invite your team before using the instance for real.
+  </FAQItem>
+</FAQ>

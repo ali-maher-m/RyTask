@@ -1,6 +1,6 @@
 ---
 title: Scaling
-description: One image, two roles — how the API and the background worker scale independently, and where the real bottleneck usually is.
+description: Scale RyTask by role — the API and the background worker run the same image and scale independently, but Postgres is usually the first real bottleneck.
 ---
 
 Most teams never need this page — the default stack (one API, one worker) comfortably serves

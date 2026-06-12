@@ -73,3 +73,33 @@ follow-up message rather than instantly.
 This hand-off is **replay-safe**: each capture gets a deterministic job identity, so if
 Slack retries a delivery (which it sometimes does), you still get exactly one task, not
 two.
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="What syntax does Slack capture understand?"
+    answer="After /task, RyTask reads the same quick-add shorthand the web app uses: @handle for assignee, #label for a label, !priority (urgent/high/medium/low/none), and ^date for a due date. Everything else becomes the title. There is no estimate token in Slack."
+  >
+    After `/task`, RyTask reads the same quick-add shorthand the web app uses: `@handle` for
+    assignee, `#label` for a label, `!priority` (urgent/high/medium/low/none), and `^date` for a
+    due date. Everything else becomes the title — there is no estimate token in Slack.
+  </FAQItem>
+  <FAQItem
+    question="Can I capture a task with just a title?"
+    answer="Yes. Capture never blocks on missing details — /task Just a title creates the item with the first workflow status and no priority, and you can fill the rest in later. Type /task with no text for a small guided form instead."
+  >
+    Yes. Capture never blocks on missing details — `/task Just a title` creates the item with the
+    first workflow status and no priority, and you can fill the rest in later. Type `/task` with
+    no text for a small guided form instead.
+  </FAQItem>
+  <FAQItem
+    question="Who does a Slack-captured task belong to?"
+    answer="If your Slack account is linked to RyTask, you're recorded as the reporter. The capture runs under the admin who installed the integration, so it's never bounced for permissions, and every item is stamped with the Slack source and a Slack badge."
+  >
+    If your Slack account is [linked to RyTask](/docs/guides/slack/user-mapping), you're recorded
+    as the reporter. The capture runs under the admin who installed the integration, so it's never
+    bounced for permissions — and every item is stamped with the **Slack** source and a Slack
+    badge.
+  </FAQItem>
+</FAQ>

@@ -13,12 +13,10 @@ export const contentType = 'image/png';
 export default function Image() {
   const fonts = ogFonts();
   return new ImageResponse(
-    (
-      <OgCard
-        title="Know where the time went."
-        description="Open-source project tracker with native time tracking, Slack capture, and a full-control MCP server for AI agents."
-      />
-    ),
+    <OgCard
+      title="Know where the time went."
+      description="Open-source project tracker with native time tracking, Slack capture, and a full-control MCP server for AI agents."
+    />,
     { ...size, fonts: fonts.length ? fonts : undefined },
   );
 }

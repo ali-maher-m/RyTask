@@ -1,6 +1,6 @@
 ---
 name: "update-docs"
-description: "Update the RyTask documentation site (apps/docs, Fumadocs) so it matches the code. Use this whenever the user asks to update, sync, fix, or audit the docs; after a feature, env var, MCP tool, API endpoint, or infra change lands and the docs need to reflect it; when the user asks 'are the docs up to date?'; or when a PR/commit touches behavior that users or self-hosters would read about. Also use it before hand-editing anything under apps/docs/content — parts of the docs are generated and must not be edited directly."
+description: "Update the RyTask documentation site (apps/docs, Fumadocs) so it matches the code. Use this whenever the user asks to update, sync, fix, or audit the docs; after a feature, env var, MCP tool, API endpoint, or infra change lands and the docs need to reflect it; when the user asks 'are the docs up to date?'; or when a PR/commit touches behavior that users or self-hosters would read about. Also use it before hand-editing anything under apps/docs/content — parts of the docs are generated and must not be edited directly. It also keeps every page on the project's SEO, AEO, and GEO standard — titles, descriptions, answer-first structure, and FAQ blocks."
 argument-hint: "Optional: a commit range, branch, or a description of the change to document"
 user-invocable: true
 disable-model-invocation: false
@@ -69,20 +69,41 @@ Read the existing page fully before editing — match its structure and depth, a
 
 Conventions the site enforces or assumes:
 
-- **Frontmatter** — every page needs both fields, validated by the Fumadocs page schema:
+- **Frontmatter** — every page needs both fields, validated by the Fumadocs page schema. Write them to the SEO/AEO standard in Step 5 — a specific `title` (no "RyTask" prefix; the `| RyTask docs` suffix is automatic) and a ~110–160-character `description` that reads as a standalone search snippet:
   ```yaml
   ---
   title: Page title
-  description: One sentence that earns its place in search results.
+  description: A complete, standalone search-result snippet that leads with the page's primary term.
   ---
   ```
 - **New pages must be registered** in the sibling `meta.json` `pages` array, in the position they belong in the sidebar — an unlisted page is invisible.
 - **Links are root-relative**: `[backups](/docs/guides/self-hosting/backups-and-restore)`.
-- **Components** (from `apps/docs/components/mdx.tsx`): `<StatusBadge status="available|in-progress|coming-soon" />`, `<ComingSoon tier="..." />`, `<InProgress />`, plus the standard Fumadocs set (`Callout`, `Tabs`, …).
+- **Components** (from `apps/docs/components/mdx.tsx`): `<StatusBadge status="available|in-progress|coming-soon" />`, `<ComingSoon tier="..." />`, `<InProgress />`, `<FAQ>` / `<FAQItem question="..." answer="...">` (for answer-engine FAQ blocks — see Step 5), plus the standard Fumadocs set (`Callout`, `Tabs`, …).
 - **Voice**: plain, kind, jargon-free — it must make sense to a non-technical teammate (the Albert/Marissa test from `knowledge/VISION.md`). Sentence case headings. Explain *why* before *how*. No marketing fluff, no emoji as chrome.
 - The env var table format is `| Variable | Default | Required | What it does |`. Defaults must be the literal defaults from the code — copy them from the config source, don't paraphrase.
 
-## Step 5 — Validate
+## Step 5 — Write for search, answer, and AI engines (SEO/AEO/GEO)
+
+The technical SEO is **automatic** — canonical URLs, Open Graph/Twitter cards, per-page OG images, `sitemap.xml`, `robots.txt`, JSON-LD (Organization, WebSite, TechArticle, BreadcrumbList, FAQPage), and the per-page Markdown (`<url>.mdx`) + `/llms.txt` routes are all derived in `apps/docs/lib/metadata.ts`, `lib/structured-data.ts`, `app/sitemap.ts`, `app/robots.ts`, and the docs page component. You don't hand-write any of it. Your job is the *content*: the title, the description, the headings, and the answers. Only revisit the infrastructure when you add a brand-new top-level section or route — glance at the sitemap/robots to confirm it's covered.
+
+**SEO — the title and description carry the page.**
+- **Title** (`title`): specific and unique, front-load the primary term, ≤60 characters, sentence case. Don't repeat "RyTask" — the `| RyTask docs` suffix is added automatically.
+- **Description** (`description`): ~110–160 characters, lead with the page's primary term, written as a complete, standalone search-result snippet — not a teaser. No "Learn about…" / "A guide to…". It must be true to the body. A literal `#`, a `:`-followed-by-space, or a quote in the value breaks YAML — wrap the value in double quotes when it contains one.
+- One H1 only: Fumadocs renders the `title` as the page's H1, so **never** start a body with a top-level `#`. Section headings are H2/H3 in a logical hierarchy, descriptive and keyword-bearing.
+- Internal links use descriptive anchor text (not "here"), root-relative.
+
+**AEO — answer the question first.**
+- Open the page (and each major section) with a direct 1–3 sentence answer to the question the heading implies, *before* the context. Lead with the answer, then explain.
+- Where it reads naturally, phrase a section heading as the real question a user types ("How do I back up RyTask?") and answer it immediately beneath.
+- For genuine recurring questions, add a `## Common questions` section with a `<FAQ>` block. Each `<FAQItem question="…" answer="plain text for the schema">` renders a disclosure **and** emits FAQPage JSON-LD — keep `answer` a self-contained 40–60 words, and put the richer version (with links/code) in the children. Don't manufacture questions; only add ones people actually ask.
+- Prefer extractable structure: short paragraphs (one idea each), bullets, numbered steps, and tables — the environment-variables and permissions tables are the model.
+
+**GEO — be quotable in isolation.**
+- Every page is served as clean Markdown at `<url>.mdx` and aggregated in `/llms.txt`, so a model often sees one section out of context. Write self-contained sections, name the subject explicitly ("RyTask", the feature) instead of leaning on "it"/"this", and avoid "as mentioned above".
+- Make claims specific and citable: concrete defaults, numbers, version specifics, and the "verified against the code" facts this site is built on. Models cite precise statements over vague prose.
+- Keep facts current and dated where it matters (feature status, versions) — a stale claim mis-answers both readers and models.
+
+## Step 6 — Validate
 
 ```bash
 pnpm --filter @rytask/docs lint        # Biome
@@ -92,6 +113,6 @@ pnpm --filter @rytask/docs build       # full gate: generate → drift check →
 
 The build is the gate CI uses; if it's too slow for the iteration loop, run lint + typecheck per edit and the full build once at the end. Fix what they report before declaring the docs updated.
 
-## Step 6 — Report
+## Step 7 — Report
 
 Summarize for the user: which pages changed and why, which were regenerated vs hand-edited, anything you noticed that's drifted but was out of scope (e.g. a stale roadmap page), and any claim you could not verify against the code (flag it rather than guessing).

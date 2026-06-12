@@ -1,8 +1,8 @@
 import { OgCard } from '@/lib/og/card';
 import { ogFonts } from '@/lib/og/fonts';
 import { source } from '@/lib/source';
-import { ImageResponse } from 'next/og';
 import { notFound } from 'next/navigation';
+import { ImageResponse } from 'next/og';
 
 /**
  * Per-page Open Graph image, served at `/docs-og/<...slug>/image.png`. Hand-wired

@@ -1,6 +1,6 @@
 ---
 title: Welcome
-description: What RyTask is, and how these docs are organized.
+description: RyTask is an open-source, self-hostable project tracker with native time tracking, Slack capture, and a full-control MCP server — what it is and how these docs are organized.
 ---
 
 RyTask is an open-source project tracker you run on your own servers. It is built for small,
@@ -35,3 +35,32 @@ Not everything described here is shipped. Pages and matrix rows carry one of thr
 - <StatusBadge status="coming-soon" /> — on the roadmap; the page describes the plan, nothing more.
 
 The complete picture is on the [feature status matrix](/docs/reference/feature-status).
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="Is RyTask free?"
+    answer="Yes. RyTask is open-source under AGPL-3.0 and free to run — you only pay for the server you host it on. There is no paid tier or per-seat license for the self-hosted app."
+  >
+    Yes. RyTask is open-source under AGPL-3.0 and free to run — you only pay for the server you
+    host it on. There is no paid tier or per-seat license for the self-hosted app.
+  </FAQItem>
+  <FAQItem
+    question="Do I have to self-host RyTask?"
+    answer="Yes — today RyTask runs on your own infrastructure with Docker Compose (docker compose up -d). Running it yourself is what keeps it free and keeps your data on hardware you control."
+  >
+    Yes — today RyTask runs on your own infrastructure with Docker Compose
+    (`docker compose up -d`). Running it yourself is what keeps it free and keeps your data on
+    hardware you control. Start with the [15-minute quickstart](/docs/tutorials/quickstart).
+  </FAQItem>
+  <FAQItem
+    question="How is RyTask different from Jira, Linear, or ClickUp?"
+    answer="Three things: free native time tracking with plan-vs-actual reporting, first-class Slack capture that parses @assignee ~estimate #label, and a full-control MCP server that gives AI agents the same 49 actions a person has — all self-hosted."
+  >
+    Three things: free native [time tracking](/docs/guides/users/time-tracking) with
+    plan-vs-actual reporting, first-class [Slack capture](/docs/guides/slack/capture) that parses
+    `@assignee ~estimate #label`, and a full-control [MCP server](/docs/guides/mcp) that gives AI
+    agents the same 49 actions a person has — all self-hosted.
+  </FAQItem>
+</FAQ>

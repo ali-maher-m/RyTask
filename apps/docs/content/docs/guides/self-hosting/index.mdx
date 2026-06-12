@@ -47,3 +47,38 @@ API and worker start, so there is no separate "initialize the database" step.
 
 For every environment variable in one table, see the
 [environment variables reference](/docs/reference/environment-variables).
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="What do I need to self-host RyTask?"
+    answer="Docker and Docker Compose on a Linux server. One command (docker compose up -d --build) brings up Postgres, Redis, the API, the background worker, and the web app, already migrated and seeded."
+  >
+    Docker and Docker Compose on a Linux server. One command brings up Postgres, Redis, the API,
+    the background worker, and the web app — already migrated and seeded. See
+    [requirements](/docs/guides/self-hosting/requirements) for exact versions and sizing.
+  </FAQItem>
+  <FAQItem
+    question="Is RyTask really free to self-host?"
+    answer="Yes. RyTask is licensed under AGPL-3.0 and there is no paid tier — you only pay for the server you run it on."
+  >
+    Yes. RyTask is licensed under AGPL-3.0 and there is no paid tier — you only pay for the
+    server you run it on.
+  </FAQItem>
+  <FAQItem
+    question="Can I run RyTask without Docker?"
+    answer="Yes. You can run it from source with Node 22 and pnpm against your own PostgreSQL and Redis. The requirements page covers the from-source path."
+  >
+    Yes. You can run it from source with Node 22 and pnpm against your own PostgreSQL and Redis —
+    the [requirements](/docs/guides/self-hosting/requirements) page covers the from-source path.
+  </FAQItem>
+  <FAQItem
+    question="How do I back up RyTask?"
+    answer="RyTask ships one command to back up and one to restore. Your data lives in PostgreSQL; back that up plus your secrets. The backups and restore guide has the exact commands."
+  >
+    RyTask ships one command to back up and one to restore. Your data lives in PostgreSQL — back
+    that up along with your secrets. See
+    [backups & restore](/docs/guides/self-hosting/backups-and-restore) for the exact commands.
+  </FAQItem>
+</FAQ>

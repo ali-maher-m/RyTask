@@ -80,3 +80,32 @@ resolve the workspace.
 Once connected, the agent can list and call any of the 49 tools its token permits — see the
 [MCP tools reference](/docs/reference/mcp-tools) for the catalog and the
 [security model](/docs/guides/mcp/security) for what "permits" means.
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="Which MCP clients work with RyTask?"
+    answer="Any client that speaks the Model Context Protocol. Use the HTTP transport for remote clients like Claude Code, or the local stdio transport for clients like Claude Desktop. Both expose the same 49 tools."
+  >
+    Any client that speaks the Model Context Protocol. Use the HTTP transport for remote clients
+    like Claude Code, or the local stdio transport for clients like Claude Desktop — both expose
+    the same 49 tools.
+  </FAQItem>
+  <FAQItem
+    question="Do AI agents get full access to my workspace over MCP?"
+    answer="No. Every MCP call is gated by the token's scopes intersected with the holder's role, default-deny — an agent can only do what its personal access token permits, inside that token owner's organization."
+  >
+    No. Every MCP call is gated by the token's scopes intersected with the holder's role
+    (default-deny) — an agent can only do what its personal access token permits, inside that
+    token owner's organization. See the [security model](/docs/guides/mcp/security).
+  </FAQItem>
+  <FAQItem
+    question="What's the difference between the HTTP and stdio transports?"
+    answer="HTTP is the remote transport — a stateless endpoint at {API origin}/api/v1/mcp authenticated with a bearer token. stdio is for a client on the same machine, launched as a local command. Both expose the same tools."
+  >
+    HTTP is the remote transport — a stateless endpoint at `{API origin}/api/v1/mcp`
+    authenticated with a bearer token. stdio is for a client on the same machine, launched as a
+    local command. Both expose the same 49 tools.
+  </FAQItem>
+</FAQ>

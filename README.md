@@ -27,6 +27,8 @@ Logged time fills against the estimate — and turns red when you're over.</sub>
 
 ---
 
+> ⭐ If RyTask is useful to you, please star the repo — it helps a lot.
+
 ## Why RyTask
 
 Every team tool gets the same things wrong for small, interrupt-driven teams:

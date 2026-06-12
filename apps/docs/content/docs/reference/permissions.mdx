@@ -83,3 +83,33 @@ token call is the **intersection of the token's scopes and the holder's role**:
   out of scope is denied even if the role allows it.
 - The `*` wildcard scope, or an **empty scope list** (which is what UI sessions use), means
   full role delegation — the token can do everything the role can.
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="How do API token scopes and roles combine in RyTask?"
+    answer="The effective permission of a token call is the intersection of the token's scopes and the holder's role, default-deny. A scope can never grant beyond the role; a non-empty scope list restricts the token to exactly those permissions. An empty scope list or the * wildcard means full role delegation."
+  >
+    The effective permission of a token call is the **intersection of the token's scopes and the
+    holder's role**, default-deny. A scope can never grant beyond the role; a non-empty scope list
+    restricts the token to exactly those permissions. An empty scope list (what UI sessions use)
+    or the `*` wildcard means full role delegation.
+  </FAQItem>
+  <FAQItem
+    question="What are the organization roles in RyTask?"
+    answer="Five built-in roles, most to least privileged: OWNER, ADMIN, MEMBER, GUEST, VIEWER. GUEST and VIEWER are globally read-only, GUEST cannot list members, and only OWNER can delete or transfer the organization. Every role can manage its own API tokens."
+  >
+    Five built-in roles, most to least privileged: `OWNER`, `ADMIN`, `MEMBER`, `GUEST`, `VIEWER`.
+    `GUEST` and `VIEWER` are globally read-only, `GUEST` cannot list members, and only `OWNER` can
+    delete or transfer the organization. Every role can manage its own API tokens.
+  </FAQItem>
+  <FAQItem
+    question="What are the project roles, and how do they interact with org roles?"
+    answer="Inside a project, members hold ADMIN, MEMBER, or VIEWER (a higher role satisfies any lower requirement). The org permission is checked first, then the project role; org OWNER and ADMIN bypass project membership and act as project admins everywhere."
+  >
+    Inside a project, members hold `ADMIN`, `MEMBER`, or `VIEWER` (a higher role satisfies any
+    lower requirement). The org permission is checked first, then the project role — and org
+    `OWNER` and `ADMIN` bypass project membership entirely, acting as project admins everywhere.
+  </FAQItem>
+</FAQ>

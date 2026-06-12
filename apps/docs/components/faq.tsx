@@ -1,5 +1,5 @@
 import { faqPageSchema, jsonLdGraph } from '@/lib/structured-data';
-import { Children, type CSSProperties, isValidElement, type ReactNode } from 'react';
+import { type CSSProperties, Children, type ReactNode, isValidElement } from 'react';
 import { JsonLd } from './json-ld';
 
 /**

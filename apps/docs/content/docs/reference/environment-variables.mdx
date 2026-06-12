@@ -94,3 +94,31 @@ These appear in `.env.example` for the planned compose services (MinIO, Mailhog)
 path reads them today: `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`,
 `SMTP_HOST`, `SMTP_PORT`, and `NEXT_PUBLIC_MCP_URL` (the Agent access page gets the MCP URL
 from the API, which reads `MCP_PUBLIC_URL`). Setting them currently has no effect.
+
+## Common questions
+
+<FAQ>
+  <FAQItem
+    question="Which environment variables does RyTask require?"
+    answer="Only JWT_SECRET, and only in production: the API fails to boot without a strong secret of at least 32 characters (unless you supply an RS256 key pair). Every other variable has a safe self-host default."
+  >
+    Only `JWT_SECRET`, and only in production: the API fails to boot without a strong secret of at
+    least 32 characters (unless you supply an RS256 key pair). Every other variable has a safe
+    self-host default.
+  </FAQItem>
+  <FAQItem
+    question="Can RyTask run with an empty environment?"
+    answer="Yes. Safe self-host defaults are built in, so docker compose up works with nothing set. For production you should still set a strong JWT_SECRET and narrow CORS_ORIGIN."
+  >
+    Yes. Safe self-host defaults are built in, so `docker compose up` works with nothing set. For
+    production you should still set a strong `JWT_SECRET` and narrow `CORS_ORIGIN`.
+  </FAQItem>
+  <FAQItem
+    question="Is there an ALLOW_PUBLIC_SIGNUP environment variable?"
+    answer="No — it was removed. Public self-registration is now a per-organization setting under Settings → Organization (invite-only by default), and the first account is created through the first-run setup screen at /setup, not at boot."
+  >
+    No — it was removed. Public self-registration is now a per-organization setting under
+    **Settings → Organization** (invite-only by default), and the first account is created through
+    the first-run setup screen at `/setup`, not at boot.
+  </FAQItem>
+</FAQ>
