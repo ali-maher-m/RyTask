@@ -113,6 +113,9 @@ export class StartTimerProvider {
         // Snapshot the class from the PRIOR item's priority — the switch finalizes that accrual
         // (research D6); the finalized entry belongs to the item being switched away from.
         classification: deriveClassification({ priority: priorCtx.priority }),
+        // The auto-stopped prior accrual is a real timer entry regardless of how the new timer was
+        // started (so it stays TIMER even when start_timer is driven over MCP — AC-9).
+        source: 'TIMER',
       },
       { workspaceId, workItemId, userId, startedAt: now, note },
     );

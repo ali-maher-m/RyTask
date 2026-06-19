@@ -2,11 +2,11 @@ import type { ModuleTestPlan } from '../common/testing/testplan';
 
 /**
  * REQUIRED tests for the MCP transport edge (§14.2, Principle V). `scripts/check-required-tests.ts`
- * fails the build if any declared file is MISSING. The edge owns no domain — the 49 tools live in
- * `@rytask/contracts`' registry and `check-mcp-parity` keeps that surface green at 49/49. US4
+ * fails the build if any declared file is MISSING. The edge owns no domain — the 54 tools live in
+ * `@rytask/contracts`' registry and `check-mcp-parity` keeps that surface green at 54/54. US4
  * (T065–T077) adds: PAT-auth + capture + tenant-isolation integration tests (real Postgres), the
- * pagination + context contract tests, and the 7 grouped per-tool contract tests that together cover
- * all 49 tools (every MCP tool → a contract test, FR-X-002).
+ * pagination + context contract tests, and the grouped per-tool contract tests that together cover
+ * all 54 tools (every MCP tool → a contract test, FR-X-002) — incl. the time-tracking group (AC-9).
  */
 export const testPlan: ModuleTestPlan = {
   module: 'mcp',
@@ -56,6 +56,12 @@ export const testPlan: ModuleTestPlan = {
       file: 'tools/org-tools.contract.spec.ts',
     },
     { kind: 'contract', target: 'pat tools (3)', file: 'tools/token-tools.contract.spec.ts' },
+    // AC-9 — time-tracking tools: start/stop/get-active timer, log time, report (source=MCP).
+    {
+      kind: 'contract',
+      target: 'time-tracking tools (5)',
+      file: 'tools/time-tracking-tools.contract.spec.ts',
+    },
     // US8 — categorized errors with no partial mutation (T106).
     {
       kind: 'contract',

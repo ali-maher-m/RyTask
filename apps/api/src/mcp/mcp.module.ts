@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CommentsModule } from '../modules/comments/comments.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { SearchModule } from '../modules/search/search.module';
+import { TimeTrackingModule } from '../modules/time-tracking/time-tracking.module';
 import { ViewsModule } from '../modules/views/views.module';
 import { McpAuth } from './mcp-auth';
 import { ContextTools } from './tools/context-tools';
@@ -16,11 +17,12 @@ import { McpHttpController } from './transport/mcp-http.controller';
  * services under the same RBAC + tenant context as REST (`McpToolDispatcher` + `McpToolRegistrar`,
  * US4). The streamable-HTTP/SSE transport is the `McpHttpController`; the stdio entrypoint
  * (`main.mcp.ts`) reuses the same providers. The work-items/projects/orgs/identity modules are
- * `@Global` (their exported services inject here); Views/Comments/Notifications/Search are imported
- * explicitly so THEIR services inject too. The edge reaches only services, never repositories.
+ * `@Global` (their exported services inject here); Views/Comments/Notifications/Search/TimeTracking are
+ * imported explicitly so THEIR services inject too. The edge reaches only services/use-case providers,
+ * never repositories.
  */
 @Module({
-  imports: [ViewsModule, CommentsModule, NotificationsModule, SearchModule],
+  imports: [ViewsModule, CommentsModule, NotificationsModule, SearchModule, TimeTrackingModule],
   controllers: [McpHttpController, McpConfigController],
   providers: [McpAuth, McpToolDispatcher, ContextTools, McpToolRegistrar],
   exports: [McpAuth, McpToolDispatcher],

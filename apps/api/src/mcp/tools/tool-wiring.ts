@@ -8,6 +8,7 @@ import type {
   CreateLabel,
   CreateProject,
   CreateStatus,
+  CreateTimeLogInput,
   CreateWorkItem,
   ListNotificationsQuery,
   MoveWorkItem,
@@ -33,6 +34,11 @@ import { OrgsService } from '../../modules/orgs/services/orgs.service';
 import { ProjectsService } from '../../modules/projects/services/projects.service';
 import { StatusesService } from '../../modules/projects/services/statuses.service';
 import { SearchService } from '../../modules/search/services/search.service';
+import { CreateTimeLogProvider } from '../../modules/time-tracking/providers/create-time-log.provider';
+import { GetActiveTimerProvider } from '../../modules/time-tracking/providers/get-active-timer.provider';
+import { ReportOverviewProvider } from '../../modules/time-tracking/providers/report-overview.provider';
+import { StartTimerProvider } from '../../modules/time-tracking/providers/start-timer.provider';
+import { StopTimerProvider } from '../../modules/time-tracking/providers/stop-timer.provider';
 import { ViewsService } from '../../modules/views/services/views.service';
 import { LabelsService } from '../../modules/work-items/services/labels.service';
 import { WorkItemsService } from '../../modules/work-items/services/work-items.service';
@@ -74,6 +80,11 @@ export class McpToolRegistrar implements OnModuleInit {
     private readonly members: MemberAdminProvider,
     private readonly invites: InviteProvider,
     private readonly tokens: ApiTokensProvider,
+    private readonly startTimer: StartTimerProvider,
+    private readonly stopTimer: StopTimerProvider,
+    private readonly activeTimer: GetActiveTimerProvider,
+    private readonly createTimeLog: CreateTimeLogProvider,
+    private readonly timeReports: ReportOverviewProvider,
   ) {}
 
   onModuleInit(): void {
@@ -82,6 +93,7 @@ export class McpToolRegistrar implements OnModuleInit {
     this.wireCollabSearch();
     this.wireContext();
     this.wireOrgAndTokens();
+    this.wireTimeTracking();
   }
 
   // — work items + labels (14) —
@@ -284,5 +296,28 @@ export class McpToolRegistrar implements OnModuleInit {
       await this.tokens.revoke(session.principal, (input as ToolInput<'revoke_api_token'>).id);
       return null;
     });
+  }
+
+  // — time tracking (5) — AC-9. Drives the SAME providers as the timer/log/report REST controllers;
+  // writes stamp `source = 'MCP'` so plan-vs-actual reporting can attribute agent-logged time. The
+  // providers return their DTO directly (no `{ data }` envelope), so handlers return them as-is.
+  private wireTimeTracking(): void {
+    const d = this.dispatcher;
+    d.register('start_timer', (input) => {
+      const a = input as ToolInput<'start_timer'>;
+      return this.startTimer.start(a.workItemId, a.note ?? null);
+    });
+    d.register('stop_timer', (input) => {
+      const a = input as ToolInput<'stop_timer'>;
+      return this.stopTimer.stop(a.timerId, undefined, 'MCP');
+    });
+    d.register('get_active_timer', () => this.activeTimer.getActive());
+    d.register('log_time', (input) => {
+      const { workItemId, ...rest } = input as ToolInput<'log_time'>;
+      return this.createTimeLog.create(workItemId, rest as CreateTimeLogInput, undefined, 'MCP');
+    });
+    d.register('time_report', (input) =>
+      this.timeReports.getOverview(input as ToolInput<'time_report'>),
+    );
   }
 }

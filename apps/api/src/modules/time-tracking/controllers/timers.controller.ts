@@ -25,8 +25,9 @@ import { StopTimerProvider } from '../providers/stop-timer.provider';
  * Timer REST surface (US1, contracts/time-rest.md §Timer routes) under /api/v1. The tenant + acting
  * user are resolved server-side from the principal (never the body). `work:write` gates start/stop;
  * `work:read` gates the active-timer read. Item access + the one-active-timer logic live in the
- * providers; an optional `Idempotency-Key` makes start/stop replay-safe. These capabilities are an
- * intentional MCP v2 deferral — no MCP tool (parity stays 49/49, research D12 / FR-FIN-004).
+ * providers; an optional `Idempotency-Key` makes start/stop replay-safe. The `start_timer` /
+ * `stop_timer` / `get_active_timer` MCP tools drive these same providers (AC-9); an agent-stopped
+ * timer stamps `source = MCP`.
  */
 @RequirePermission('work:read')
 @Controller()

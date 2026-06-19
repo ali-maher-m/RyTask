@@ -17,7 +17,7 @@ const SECTIONS = [
   {
     href: '/docs/reference',
     title: 'Reference',
-    body: 'The REST API, all 49 MCP tools, environment variables, permissions, and more.',
+    body: 'The REST API, all 54 MCP tools, environment variables, permissions, and more.',
   },
   {
     href: '/docs/explanation',

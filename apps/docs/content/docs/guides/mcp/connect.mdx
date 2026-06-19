@@ -3,7 +3,7 @@ title: Connecting a client
 description: Point any MCP client at RyTask over HTTP with a bearer token, or run the local stdio transport — with copy-paste setup for Claude Code and Claude Desktop.
 ---
 
-RyTask's MCP server speaks two transports. Both expose the same 49 tools and both
+RyTask's MCP server speaks two transports. Both expose the same 54 tools and both
 authenticate with a [personal access token](/docs/guides/mcp/agent-access) (PAT).
 
 The app shows you everything on this page, pre-filled for your server: open
@@ -77,7 +77,7 @@ Add an `mcpServers` block to the client's configuration:
 Run the client from (or set its working directory to) the RyTask repository so `pnpm` can
 resolve the workspace.
 
-Once connected, the agent can list and call any of the 49 tools its token permits — see the
+Once connected, the agent can list and call any of the 54 tools its token permits — see the
 [MCP tools reference](/docs/reference/mcp-tools) for the catalog and the
 [security model](/docs/guides/mcp/security) for what "permits" means.
 
@@ -86,11 +86,11 @@ Once connected, the agent can list and call any of the 49 tools its token permit
 <FAQ>
   <FAQItem
     question="Which MCP clients work with RyTask?"
-    answer="Any client that speaks the Model Context Protocol. Use the HTTP transport for remote clients like Claude Code, or the local stdio transport for clients like Claude Desktop. Both expose the same 49 tools."
+    answer="Any client that speaks the Model Context Protocol. Use the HTTP transport for remote clients like Claude Code, or the local stdio transport for clients like Claude Desktop. Both expose the same 54 tools."
   >
     Any client that speaks the Model Context Protocol. Use the HTTP transport for remote clients
     like Claude Code, or the local stdio transport for clients like Claude Desktop — both expose
-    the same 49 tools.
+    the same 54 tools.
   </FAQItem>
   <FAQItem
     question="Do AI agents get full access to my workspace over MCP?"
@@ -106,6 +106,6 @@ Once connected, the agent can list and call any of the 49 tools its token permit
   >
     HTTP is the remote transport — a stateless endpoint at `{API origin}/api/v1/mcp`
     authenticated with a bearer token. stdio is for a client on the same machine, launched as a
-    local command. Both expose the same 49 tools.
+    local command. Both expose the same 54 tools.
   </FAQItem>
 </FAQ>

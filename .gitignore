@@ -10,6 +10,9 @@ goals/
 branding/chats/
 branding/HANDOFF.md
 
+# Session handoff — holds live deployment credentials, never commit
+MVP-HANDOFF.md
+
 # Local-only compose override (holds your local JWT_SECRET — never commit)
 docker-compose.override.yml
 

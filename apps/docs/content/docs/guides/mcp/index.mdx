@@ -1,6 +1,6 @@
 ---
 title: MCP & AI agents
-description: RyTask's first-party MCP server gives AI agents full parity with the UI — anything a person can do, an agent can do through 49 tools under the same permissions.
+description: RyTask's first-party MCP server gives AI agents full parity with the UI — anything a person can do, an agent can do through 54 tools under the same permissions.
 ---
 
 RyTask includes a first-party [Model Context Protocol](https://modelcontextprotocol.io)
@@ -11,7 +11,7 @@ statuses, search, comment, read notifications, and administer membership and tok
 ## The parity promise
 
 The MCP server is not a curated subset. RyTask's rule is **100% parity**: every service
-capability the application exposes has a corresponding MCP tool. Today that is **49 tools**,
+capability the application exposes has a corresponding MCP tool. Today that is **54 tools**,
 and the number is enforced, not aspirational — a CI check (`scripts/check-mcp-parity.ts`)
 fails the build if a capability ever ships without its tool. When RyTask grows a feature,
 agents get it too, by construction.
@@ -20,7 +20,7 @@ Just as important, the tools are not a parallel implementation. Each tool calls 
 service code** its REST and UI counterparts call, under the same tenancy and the same
 role-based permission checks. There is no separate "agent path" that could drift or leak.
 
-The full catalog — names, inputs, and outputs for all 49 tools — is in the
+The full catalog — names, inputs, and outputs for all 54 tools — is in the
 [MCP tools reference](/docs/reference/mcp-tools).
 
 ## How access works, in one paragraph

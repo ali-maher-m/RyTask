@@ -12,7 +12,7 @@ import { RequirePermission } from '../../common/rbac/decorators';
  * `null` when unset → MCP inert) plus a stdio hint for the local transport. Served under `/api/v1`
  * and requires a session (`org:read`) — it carries no secret (the PAT is minted separately and
  * shown once via the reused M0 tokens panel). This is config exposure, NOT an MCP tool, so the
- * 49/49 parity gate is unaffected.
+ * MCP parity gate is unaffected.
  */
 @Controller('integrations/mcp')
 export class McpConfigController {

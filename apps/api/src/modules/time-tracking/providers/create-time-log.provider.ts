@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CreateTimeLogInput, TimeLog } from '@rytask/contracts';
+import type { CreateTimeLogInput, TimeEntrySource, TimeLog } from '@rytask/contracts';
 import { IdempotencyService } from '../../../common/idempotency/idempotency.service';
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
@@ -21,8 +21,9 @@ import { toTimeLog } from '../domain/time.mapper';
 import { TimeLogsRepository } from '../repositories/time-logs.repository';
 
 /**
- * Create a manual time entry after the fact (US3, FR-TT-002/004 — research D5). `source` is forced to
- * `MANUAL` server-side; the two accepted forms (duration-only XOR start/end) are normalized to one
+ * Create a manual time entry after the fact (US3, FR-TT-002/004 — research D5). `source` defaults to
+ * `MANUAL` server-side and is never client-supplied via the REST body (an MCP agent logging time
+ * passes `MCP` — AC-9). The two accepted forms (duration-only XOR start/end) are normalized to one
  * stored shape by `duration.policy` so a manual entry sums identically to a timer entry (SC-004); an
  * invalid form is a friendly `400` with nothing persisted. RBAC: the route requires `work:write`; this
  * also asserts project membership via the projects contract (org admins bypass) — the start-timer
@@ -47,6 +48,7 @@ export class CreateTimeLogProvider {
     workItemId: string,
     input: CreateTimeLogInput,
     idempotencyKey?: string,
+    source: TimeEntrySource = 'MANUAL',
   ): Promise<TimeLog> {
     const ctx = await this.workItems.getItemContext(workItemId);
     if (!ctx) throw new NotFoundException('work item not found');
@@ -58,7 +60,7 @@ export class CreateTimeLogProvider {
     if (!resolved.ok) throw new BadRequestException(resolved.message);
 
     return this.idempotency.run(idempotencyKey, 'time.log.create', () =>
-      this.persist(ctx, userId, input, resolved.entry),
+      this.persist(ctx, userId, input, resolved.entry, source),
     );
   }
 
@@ -67,6 +69,7 @@ export class CreateTimeLogProvider {
     userId: string,
     input: CreateTimeLogInput,
     entry: ResolvedEntry,
+    source: TimeEntrySource,
   ): Promise<TimeLog> {
     // Snapshot the class at creation (research D6): an explicit value wins (overridden), else derive
     // from the item's priority — so a later priority change never re-splits this entry's history.
@@ -86,7 +89,7 @@ export class CreateTimeLogProvider {
       durationSeconds: entry.durationSeconds,
       note: input.note ?? null,
       billable: input.billable ?? false,
-      source: 'MANUAL',
+      source,
       classification,
       classificationOverridden,
     });

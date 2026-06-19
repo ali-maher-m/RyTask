@@ -30,7 +30,8 @@ import { TIME_TRACKING_ACCESS } from './time-tracking.contract';
  * Cross-module dependencies are injected by token from @Global modules — `WORK_ITEM_ACCESS`
  * (WorkItemsModule), `CLOCK` / `ID_GENERATOR` (PortsModule), `IdempotencyService`
  * (IdempotencyModule) — so this module imports none of them (the `comments` pattern). No new
- * dependency, no new entrypoint, no new MCP tool (49/49 holds).
+ * dependency, no new entrypoint; the MCP edge imports this module and drives the exported timer/log/
+ * report providers as the time-control tools (AC-9, registry 54/54).
  *
  * Phase 2 registered the two tenant-scoped repositories. US1 adds the timer surface
  * (`TimersController` + start/stop/get-active providers); US2 adds the aggregation surface
@@ -56,6 +57,16 @@ import { TIME_TRACKING_ACCESS } from './time-tracking.contract';
     WeeklySummaryProvider,
     { provide: TIME_TRACKING_ACCESS, useExisting: TimeRollupProvider },
   ],
-  exports: [TIME_TRACKING_ACCESS],
+  // TIME_TRACKING_ACCESS is the cross-module read port. The five use-case providers are also exported
+  // so the MCP transport edge (apps/api/src/mcp, not a domain module) can drive the SAME timer/log/
+  // report use cases an agent needs — start/stop/log time + report (AC-9, the create_issue pattern).
+  exports: [
+    TIME_TRACKING_ACCESS,
+    StartTimerProvider,
+    StopTimerProvider,
+    GetActiveTimerProvider,
+    CreateTimeLogProvider,
+    ReportOverviewProvider,
+  ],
 })
 export class TimeTrackingModule {}

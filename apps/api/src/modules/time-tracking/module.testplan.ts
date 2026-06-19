@@ -5,10 +5,11 @@ import type { ModuleTestPlan } from '../../common/testing/testplan';
  * (US1–US8, T028/T039/T049/T059/T065/T077/T082). `scripts/check-required-tests.ts`
  * fails the build when any declared `requiredTests[].file` is missing.
  *
- * `mcpTools: []` is a DOCUMENTED v2 deferral (Principle IV / FR-FIN-004, research D12):
- * time-*control* via MCP/Slack is v2, so M2 registers ZERO time tools and `check-mcp-parity`
- * stays green at 49/49 by omission (byte-for-byte the M3 mechanism). The `providers` /
- * `controllers` / `policies` / `requiredTests` arrays grow as each story lands.
+ * `mcpTools` lists the five time-control tools the MCP edge exposes for this module (AC-9, BRD §5):
+ * start/stop/get-active timer, log time, and the report overview. They call the SAME providers as
+ * REST and stamp `source = MCP` on writes; the per-tool contract test lives in the MCP edge's plan
+ * (`apps/api/src/mcp/mcp.testplan.ts`), and `check-mcp-parity` covers the matching capabilities.
+ * (The earlier Slack/MCP time-control deferral was lifted to honor the BRD's v1 MCP tool set.)
  */
 export const testPlan: ModuleTestPlan = {
   module: 'time-tracking',
@@ -76,10 +77,10 @@ export const testPlan: ModuleTestPlan = {
     // US5 — planned vs interruption (priority baseline + override precedence)
     'classification.policy',
   ],
-  // M4 reporting adds ZERO MCP tools: reports-via-API/MCP is FR-RPT-009 (Should, v2). The deferral is
-  // recorded by omission (no `serviceCapabilities` entry) + this comment, byte-for-byte the M2/M3
-  // mechanism, so `check-mcp-parity` stays green at 49/49 (plan.md Complexity Tracking).
-  mcpTools: [],
+  // AC-9 — the time-control tools the MCP edge exposes for this module (BRD §5 MVP tool set). Each
+  // maps 1:1 to a `timeTracking.*` capability in `scripts/check-mcp-parity.ts`; the per-tool contract
+  // test is declared in `apps/api/src/mcp/mcp.testplan.ts` (the edge owns the MCP wiring + tests).
+  mcpTools: ['start_timer', 'stop_timer', 'get_active_timer', 'log_time', 'time_report'],
   tenantScopedTables: ['timers', 'time_logs'],
   requiredTests: [
     // US1 — the live timer (start/switch/stop, server-CLOCK truth, reload/restart, idempotent replay)

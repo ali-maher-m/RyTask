@@ -293,6 +293,35 @@ export const mcpTools: McpToolDefinition[] = [
     capability: 'apiTokens.revoke',
     destructive: true,
   },
+  // AC-9 — time tracking (BRD §5 MVP tool set: timer + log_time + time_report; FR-TT-001/002/009,
+  // FR-INT-MCP-001). Tools call the SAME time-tracking providers as REST; writes stamp `source = MCP`
+  // (the create_issue pattern) so plan-vs-actual reporting can attribute agent-logged time.
+  {
+    name: 'start_timer',
+    description: 'Start a timer on a work item (one active per user; server-persisted).',
+    capability: 'timeTracking.startTimer',
+  },
+  {
+    name: 'stop_timer',
+    description: 'Stop the caller’s running timer and write a finalized time log (source=MCP).',
+    capability: 'timeTracking.stopTimer',
+  },
+  {
+    name: 'get_active_timer',
+    description: 'Get the caller’s currently running timer, if any.',
+    capability: 'timeTracking.getActiveTimer',
+  },
+  {
+    name: 'log_time',
+    description: 'Log time on a work item after the fact (duration or start/end; source=MCP).',
+    capability: 'timeTracking.logTime',
+  },
+  {
+    name: 'time_report',
+    description:
+      'Time report for a date range: planned-vs-interruption totals, weekly rows, and top items.',
+    capability: 'timeTracking.report',
+  },
 ];
 
 export const mcpToolCapabilities = (): ReadonlySet<string> =>

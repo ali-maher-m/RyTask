@@ -22,7 +22,8 @@ import { WeeklySummaryProvider } from '../providers/weekly-summary.provider';
  * projects (`assertRole(VIEWER)` when `projectId` is supplied, else `accessibleProjectIds()`).
  * Read-only by contract (FR-015): no writes, no activity, no notifications, no idempotency surface.
  *
- * No MCP tool — reports-via-API/MCP is FR-RPT-009 (v2); the registry stays 49/49.
+ * The overview is also exposed over MCP as the `time_report` tool (AC-9); the interruptions ledger
+ * and weekly summary stay REST-only for now (a deliberately narrower-than-REST MCP surface).
  */
 @RequirePermission('work:read')
 @Controller('time/reports')

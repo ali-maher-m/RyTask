@@ -26,11 +26,16 @@ export interface ServiceMocks {
   members?: Record<string, unknown>;
   invites?: Record<string, unknown>;
   tokens?: Record<string, unknown>;
+  startTimer?: Record<string, unknown>;
+  stopTimer?: Record<string, unknown>;
+  activeTimer?: Record<string, unknown>;
+  createTimeLog?: Record<string, unknown>;
+  timeReports?: Record<string, unknown>;
 }
 
 const stub = (): Record<string, unknown> => ({});
 
-/** Build a dispatcher with all 49 handlers registered against the given service mocks. */
+/** Build a dispatcher with all 54 handlers registered against the given service mocks. */
 export function buildDispatcher(mocks: ServiceMocks = {}): McpToolDispatcher {
   const tenant = new TenantContextService();
   const dispatcher = new McpToolDispatcher(tenant);
@@ -51,6 +56,11 @@ export function buildDispatcher(mocks: ServiceMocks = {}): McpToolDispatcher {
     cast(mocks.members),
     cast(mocks.invites),
     cast(mocks.tokens),
+    cast(mocks.startTimer),
+    cast(mocks.stopTimer),
+    cast(mocks.activeTimer),
+    cast(mocks.createTimeLog),
+    cast(mocks.timeReports),
   );
   registrar.onModuleInit();
   return dispatcher;

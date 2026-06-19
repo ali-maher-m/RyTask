@@ -72,13 +72,15 @@ const serviceCapabilities: string[] = [
   'apiTokens.list',
   'apiTokens.create',
   'apiTokens.revoke',
-  // M2 — time tracking (start/stop timer, log/edit/delete time, aggregate) is DELIVERED AS
-  // WEB + REST ONLY this milestone. Time-*control* via MCP/Slack is a locked v2 deferral
-  // (FR-TT-010 / FR-INT-MCP-008, plan Complexity Tracking, research D12): the spec's M2 scope is
-  // "integrate into shipped surfaces, no pull-forward". As with M0's credential flows above, the
-  // gate is held green by OMITTING these capabilities here (the codebase has no separate
-  // deferred-capabilities list) — so parity stays 49/49 and time-tracking/module.testplan.ts
-  // declares `mcpTools: []`. The milestone-wide parity expansion lands with v2.
+  // AC-9 — time tracking (BRD §5 MVP tool set: timer + log_time + time_report). An agent can
+  // start/stop/get-active a timer, log time after the fact, and read the report overview through the
+  // SAME providers REST uses; writes stamp `source = MCP`. (Edit/delete time logs + the interruption
+  // ledger + weekly summary remain REST-only for now — a deliberate, narrower-than-REST MCP surface.)
+  'timeTracking.startTimer',
+  'timeTracking.stopTimer',
+  'timeTracking.getActiveTimer',
+  'timeTracking.logTime',
+  'timeTracking.report',
 ];
 
 function main(): void {

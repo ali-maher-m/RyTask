@@ -41,6 +41,14 @@ import {
   updateStatusSchema,
 } from '../statuses.contract';
 import {
+  type ActiveTimer,
+  type ReportOverview,
+  type TimeLog,
+  createTimeLogSchema,
+  reportRangeQuerySchema,
+  startTimerSchema,
+} from '../time-tracking.contract';
+import {
   type View,
   type ViewListResponse,
   saveViewSchema,
@@ -158,6 +166,13 @@ export const toolInput = {
   list_api_tokens: noArgs,
   create_api_token: createApiTokenSchema,
   revoke_api_token: byId,
+  // — time tracking (5) — AC-9. Inputs reuse the REST contract zod; the work-item / timer id is
+  // folded in via `.extend(...)` since an MCP tool takes one argument object.
+  start_timer: startTimerSchema.extend({ workItemId: uuid }),
+  stop_timer: z.object({ timerId: uuid }).strict(),
+  get_active_timer: noArgs,
+  log_time: createTimeLogSchema.extend({ workItemId: uuid }),
+  time_report: reportRangeQuerySchema,
 } satisfies Record<string, z.ZodTypeAny>;
 
 /** The exhaustive set of MCP tool names, derived from the I/O map. */
@@ -231,6 +246,12 @@ export interface ToolOutput {
   list_api_tokens: ApiTokenDto[];
   create_api_token: ApiTokenSecret;
   revoke_api_token: null;
+  // time tracking (AC-9)
+  start_timer: ActiveTimer;
+  stop_timer: TimeLog;
+  get_active_timer: ActiveTimer | null;
+  log_time: TimeLog;
+  time_report: ReportOverview;
 }
 
 /** Compile-time assertion that every tool with an input schema also declares an output type. */

@@ -77,6 +77,12 @@ export const TOOL_PERMISSIONS: Record<McpToolName, Permission> = {
   list_api_tokens: 'tokens:read',
   create_api_token: 'tokens:write',
   revoke_api_token: 'tokens:write',
+  // time tracking (AC-9) — same coarse gate as the timer/reports REST controllers.
+  start_timer: 'work:write',
+  stop_timer: 'work:write',
+  get_active_timer: 'work:read',
+  log_time: 'work:write',
+  time_report: 'work:read',
 };
 
 /**

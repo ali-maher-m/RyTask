@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { timers, type Database, type TimeEntryClass, timeLogs } from '@rytask/db';
+import {
+  timers,
+  type Database,
+  type TimeEntryClass,
+  type TimeEntrySource,
+  timeLogs,
+} from '@rytask/db';
 import { and, eq } from 'drizzle-orm';
 import { DB } from '../../../common/database/database.module';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
@@ -19,14 +25,16 @@ export interface CreateTimerData {
 /**
  * What to write when a running timer is finalized into a `time_log` (stop or switch). `projectId`
  * is resolved by the provider from the timer's item (the timer row doesn't denormalize it);
- * `source` is always `TIMER`; `classification` is the snapshot the provider derives (US5 wires the
- * real policy — US1 passes the `PLANNED` baseline).
+ * `source` defaults to `TIMER` but the provider may override it (e.g. `MCP` when an agent stops the
+ * timer over MCP — AC-9); `classification` is the snapshot the provider derives (US5 wires the real
+ * policy — US1 passes the `PLANNED` baseline).
  */
 export interface FinalizeTimerData {
   projectId: string;
   endedAt: Date;
   durationSeconds: number;
   classification: TimeEntryClass;
+  source: TimeEntrySource;
 }
 
 /**
@@ -141,7 +149,8 @@ export class TimersRepository extends TenantScopedRepository {
     });
   }
 
-  /** The `time_logs` insert shape for a finalized timer — `source = TIMER`, attributed to its owner. */
+  /** The `time_logs` insert shape for a finalized timer — `source` from the provider (TIMER, or MCP
+   * when an agent stops it — AC-9), attributed to its owner. */
   private finalizedLogValues(orgId: string, timer: TimerRow, finalize: FinalizeTimerData) {
     return {
       organizationId: orgId,
@@ -153,7 +162,7 @@ export class TimersRepository extends TenantScopedRepository {
       endedAt: finalize.endedAt,
       durationSeconds: finalize.durationSeconds,
       note: timer.note,
-      source: 'TIMER' as const,
+      source: finalize.source,
       classification: finalize.classification,
     };
   }

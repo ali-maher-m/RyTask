@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { TimeLog } from '@rytask/contracts';
+import type { TimeEntrySource, TimeLog } from '@rytask/contracts';
 import { IdempotencyService } from '../../../common/idempotency/idempotency.service';
 import { CLOCK, type Clock } from '../../../common/ports/clock.port';
 import { TenantContextService } from '../../../common/tenancy/tenant-context.service';
@@ -26,15 +26,23 @@ export class StopTimerProvider {
     private readonly tenant: TenantContextService,
   ) {}
 
-  async stop(timerId: string, idempotencyKey?: string): Promise<TimeLog> {
+  async stop(
+    timerId: string,
+    idempotencyKey?: string,
+    source: TimeEntrySource = 'TIMER',
+  ): Promise<TimeLog> {
     const userId = this.tenant.getUserId();
     if (!userId) throw new ForbiddenException('no acting user in context');
     return this.idempotency.run(idempotencyKey, 'time.timer.stop', () =>
-      this.runStop(timerId, userId),
+      this.runStop(timerId, userId, source),
     );
   }
 
-  private async runStop(timerId: string, userId: string): Promise<TimeLog> {
+  private async runStop(
+    timerId: string,
+    userId: string,
+    source: TimeEntrySource,
+  ): Promise<TimeLog> {
     const timer = await this.timers.findById(timerId);
     // Tenant-scoped findById already filters by org; ownership makes another user's timer a 404.
     if (!timer || timer.userId !== userId) {
@@ -52,6 +60,8 @@ export class StopTimerProvider {
       // Snapshot the class from the item's priority at finalize time (research D6 — a timer entry is
       // never overridden at the source; an explicit override is an edit afterward).
       classification: deriveClassification({ priority: ctx.priority }),
+      // TIMER by default; MCP when an agent stops the timer over MCP (AC-9).
+      source,
     });
     await this.workItems.recordTimeStopped(timer.workItemId, userId, durationSeconds);
     await this.workItems.recordTimeLogged(timer.workItemId, userId, durationSeconds);

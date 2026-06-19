@@ -4,7 +4,7 @@ import type { MetadataRoute } from 'next';
 
 /**
  * Lists every indexable URL for crawlers: the home page plus every docs page
- * (hand-written, the 49 generated MCP tool pages, and the OpenAPI reference —
+ * (hand-written, the 54 generated MCP tool pages, and the OpenAPI reference —
  * all enumerated from the same source the site renders from, so the sitemap
  * can't drift from what actually exists).
  */

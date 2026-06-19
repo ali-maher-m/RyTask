@@ -31,10 +31,11 @@ import { UpdateTimeLogProvider } from '../providers/update-time-log.provider';
 
 /**
  * Time-log REST surface (US3/US4, contracts/time-rest.md §Time-log routes) under /api/v1. Manual
- * entries (`source` forced `MANUAL` server-side), the per-item entries list (keyset), and owner-or-admin
- * edit/delete. `work:write` gates the mutations + item access lives in the providers; `work:read` gates
- * the list. Edit/delete add their owner-or-admin default-deny in US4. The tenant/principal is resolved
- * server-side; an optional `Idempotency-Key` makes create replay-safe. MCP v2 deferral — no MCP tool.
+ * entries (`source` defaults `MANUAL` server-side; the `log_time` MCP tool passes `MCP` — AC-9), the
+ * per-item entries list (keyset), and owner-or-admin edit/delete. `work:write` gates the mutations +
+ * item access lives in the providers; `work:read` gates the list. Edit/delete add their owner-or-admin
+ * default-deny in US4. The tenant/principal is resolved server-side; an optional `Idempotency-Key`
+ * makes create replay-safe.
  */
 @RequirePermission('work:read')
 @Controller()

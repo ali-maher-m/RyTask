@@ -1,0 +1,92 @@
+# Nightly performance gate (AC-15, NFR-PERF / FR-CAP-001 SC-002). Runs the k6 capture-latency
+# script against a freshly-seeded ephemeral stack and FAILS if server-side create p95 slips past
+# 300 ms. Deliberately a NON-BLOCKING nightly + manual job (not a PR gate): p95 thresholds are noisy
+# on shared GitHub runners, so this informs without red-flagging unrelated PRs. The capture hot path
+# is the one brain every channel (web/Slack/MCP/API) funnels into, so holding it here holds them all.
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # 07:00 UTC daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  perf:
+    name: k6 capture-latency gate (p95 <= 300ms)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Start infrastructure (Postgres, Redis, MinIO, Mailhog)
+        run: |
+          docker compose up -d postgres redis minio mailhog
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U rytask > /dev/null 2>&1 && break
+            sleep 1
+          done
+          docker compose exec -T postgres pg_isready -U rytask
+      - name: Migrate + seed
+        env:
+          DATABASE_URL: postgres://rytask:rytask@localhost:5432/rytask
+        run: pnpm db:migrate && pnpm db:seed
+      - name: Start API + worker (compiled)
+        working-directory: apps/api
+        env:
+          # k6 drives ~10 VUs from one IP, so the production per-user rate limits (300 general /
+          # 20 auth per 60s) would trip mid-run and fail the checks threshold. Relax them for this
+          # ephemeral perf stack only — production keeps the secure defaults. (Same as the e2e job.)
+          THROTTLE_MAX_REQUESTS: '100000'
+          AUTH_THROTTLE_MAX_REQUESTS: '100000'
+        run: |
+          node dist/main.js > /tmp/api.log 2>&1 &
+          WORKER=1 node dist/main.js > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3001/healthz > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3001/healthz
+      - name: Mint a work:write PAT (login as the seeded founder)
+        id: pat
+        run: |
+          ACCESS=$(curl -sf -X POST http://localhost:3001/api/v1/auth/login \
+            -H 'content-type: application/json' \
+            -d '{"email":"founder@rytask.local","password":"rytask-dev-password"}' \
+            | jq -r '.accessToken // .data.accessToken')
+          if [ -z "$ACCESS" ] || [ "$ACCESS" = "null" ]; then echo "login failed"; exit 1; fi
+          SECRET=$(curl -sf -X POST http://localhost:3001/api/v1/api-tokens \
+            -H "authorization: Bearer $ACCESS" \
+            -H 'content-type: application/json' \
+            -d '{"name":"k6-perf","type":"PAT","scopes":["work:read","work:write"]}' \
+            | jq -r '.secret // .data.secret')
+          if [ -z "$SECRET" ] || [ "$SECRET" = "null" ]; then echo "token mint failed"; exit 1; fi
+          echo "::add-mask::$SECRET"
+          echo "pat=$SECRET" >> "$GITHUB_OUTPUT"
+      - uses: grafana/setup-k6-action@v1
+      - name: k6 capture-create perf gate
+        env:
+          BASE_URL: http://localhost:3001
+          RYTASK_PAT: ${{ steps.pat.outputs.pat }}
+          # Deterministic seed project id (packages/db/src/seed.ts SEED_PROJECT_ID).
+          PROJECT_ID: '0193b3a0-0000-7000-8000-000000000010'
+        run: k6 run infra/k6/capture-create.js
+      - name: Server logs (on failure)
+        if: failure()
+        run: tail -n 100 /tmp/api.log /tmp/worker.log || true

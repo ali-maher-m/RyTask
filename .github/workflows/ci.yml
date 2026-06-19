@@ -130,6 +130,7 @@ jobs:
         if: failure()
         run: tail -n 100 /tmp/api.log /tmp/worker.log || true
 
-  # --- Post-merge (documented; enable when deploy + nightly infra exist) ---
+  # --- Post-merge (documented; enable when deploy infra exists) ---
   # build-and-push:  build & push api/web images, deploy staging->prod + drizzle migrate
-  # nightly:         k6 load/perf regression gate + dependency/secret scan
+  # The k6 load/perf regression gate (AC-15) runs as a non-blocking nightly + manual job —
+  # see .github/workflows/nightly.yml. (Dependency/secret scan is still to be added here.)

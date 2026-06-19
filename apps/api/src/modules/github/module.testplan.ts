@@ -7,7 +7,7 @@ import type { ModuleTestPlan } from '../../common/testing/testplan';
  * `mcpTools: []` is a DOCUMENTED v1 deferral (BRD §5.1 — the MVP MCP tool surface includes
  * neither GitHub administration nor webhook plumbing; BRD §5.2 defers the certified-parity gate
  * to v2). The deferral is recorded by omission (no `serviceCapabilities` entry) + this comment —
- * byte-for-byte the M2/M3/M4 mechanism — so `check-mcp-parity` stays green at 49/49.
+ * byte-for-byte the M2/M3/M4 mechanism — so `check-mcp-parity` stays green at 54/54.
  */
 export const testPlan: ModuleTestPlan = {
   module: 'github',

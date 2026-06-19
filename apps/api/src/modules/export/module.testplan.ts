@@ -6,7 +6,7 @@ import type { ModuleTestPlan } from '../../common/testing/testplan';
  *
  * `mcpTools: []` is a DOCUMENTED v1 deferral (BRD §5.1 — the MVP MCP tool surface does not
  * include workspace export; BRD §5.2 defers the certified-parity gate to v2). Recorded by
- * omission + this comment — the M2/M3/M4 mechanism — so `check-mcp-parity` stays green at 49/49.
+ * omission + this comment — the M2/M3/M4 mechanism — so `check-mcp-parity` stays green at 54/54.
  *
  * `tenantScopedTables` is empty by design: this module OWNS no tables (a read-model over the
  * shared schema, the M4 reporting precedent); its cross-tenant isolation is asserted by the

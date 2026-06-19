@@ -173,7 +173,8 @@ export interface TimeSummaryResponse {
 // are `YYYY-MM-DD`; weeks are keyed by their ISO Monday (UTC `date_trunc`, research D5). Every figure
 // reconciles: `plannedSeconds + interruptionSeconds === loggedSeconds` at every level (binary
 // classification, SC-002) and the ledger total === the headline interruption figure (SC-003). These
-// are pure reads — no MCP tool (FR-RPT-009 is v2; registry stays 49/49). The cross-field range rules
+// are pure reads; the overview is exposed as the `time_report` MCP tool (AC-9), while the ledger +
+// weekly summary stay REST-only for now (a deliberately narrower-than-REST MCP surface). The range rules
 // (`from <= to`, span ≤ 366d, `weekStart` is a Monday) live in `report-range.policy` server-side, NOT
 // in a Zod `.refine` (TS2589 — the same reason the duration rules stay out of the schemas above).
 
