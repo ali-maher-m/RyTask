@@ -25,8 +25,10 @@ Today the registry stands at 54 tools covering 54 capabilities. When a new featu
 capabilities go on the list, and the build stays red until the matching tools exist. The
 deliberate exceptions are documented in place: credential flows (register, login, password
 reset) are excluded by design because an agent authenticates with a token and never performs
-them, and time-tracking control over MCP is an explicitly deferred v2 item rather than a
-silent gap.
+them. Time tracking is covered — an agent can start, stop, and read a timer, log time after the
+fact, and pull the time report — while a few narrower capabilities (editing or deleting past
+entries, the interruption ledger, and the personal weekly summary) stay REST-only for now
+rather than being silent gaps.
 
 ## Same services, same rules
 
